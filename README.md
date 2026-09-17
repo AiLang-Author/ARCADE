@@ -1,14 +1,25 @@
+# Arcade
+
+AILANG house for **fast 2D games**. GTK window, kernel owns the pixels. First
+title: **NOWAY HOME**.
+
+---
+
 # NOWAY HOME
 
-AILANG arcade fighter. The hive tore a hole near Earth, swallowed a carrier, and
-farms the fleet as food. You are a fighter off that carrier. Ten queens hold the
-hyperdrive. Get home.
+The hive tore a hole near Earth, swallowed a carrier, and farms the fleet as
+food. You are a fighter off that carrier. Ten queens hold the hyperdrive. Get
+home.
 
 Title track: **Turn Us Around** (Suno, original lyrics). Queen theme: **Queen Ship
 Protocol**. Lyric crawl on the idle rift.
 
-AILANG arcade engine with a GTK chrome window. First game: a Galaga-style fighter
-with formation lines, dive attacks, and RNG explosion clips.
+![Title](noway-home/Intro.png)
+![Play](noway-home/gameplay.png)
+![Queen](noway-home/bossbattle.png)
+
+AILANG arcade engine with a GTK chrome window. Formation lines, dive attacks,
+and RNG explosion clips.
 
 Same contract as CAD, Paint, ECU dash, and HalCodeGTK:
 
@@ -60,21 +71,13 @@ Deskbar / desktop: `scripts/launch_arcade.sh` (also `noway-home.desktop`).
 
 ## Screenshots
 
-Drop PNGs in `docs/shots/` (this folder). Names the README already links:
+Shots live in `noway-home/` (this game’s folder). Later titles get their own.
 
 | File | Shot |
 |---|---|
-| `docs/shots/title.png` | attract — NOWAY HOME + lyric crawl into the tear |
-| `docs/shots/play.png` | stage |
-| `docs/shots/queen.png` | queen fight |
-
-```markdown
-![Title](docs/shots/title.png)
-![Play](docs/shots/play.png)
-![Queen](docs/shots/queen.png)
-```
-
-Uncomment those image lines once the files are in the folder.
+| `noway-home/Intro.png` | attract — NOWAY HOME + lyric crawl |
+| `noway-home/gameplay.png` | stage |
+| `noway-home/bossbattle.png` | queen fight |
 
 ## Next games
 
