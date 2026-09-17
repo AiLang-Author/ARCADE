@@ -1,11 +1,12 @@
 # Arcade
 
-AILANG house for **fast 2D games**. GTK window, kernel owns the pixels. First
-title: **NOWAY HOME**.
+This repo is the shelf for **fun, fast 2D games** built on the AILANG arcade
+engine (GTK window, kernel owns the pixels). **NOWAY HOME is the first title.**
+More games go here the same way — new `Game/` module, same host.
 
 ---
 
-# NOWAY HOME
+# NOWAY HOME *(game 1)*
 
 The hive tore a hole near Earth, swallowed a carrier, and farms the fleet as
 food. You are a fighter off that carrier. Ten queens hold the hyperdrive. Get
@@ -14,12 +15,17 @@ home.
 Title track: **Turn Us Around** (Suno, original lyrics). Queen theme: **Queen Ship
 Protocol**. Lyric crawl on the idle rift.
 
-![Title](noway-home/Intro.png)
-![Play](noway-home/gameplay.png)
-![Queen](noway-home/bossbattle.png)
+**Attract**
 
-AILANG arcade engine with a GTK chrome window. Formation lines, dive attacks,
-and RNG explosion clips.
+![Title](noway-home/Intro.png)
+
+**Stage**
+
+![Play](noway-home/gameplay.png)
+
+**Queen**
+
+![Queen](noway-home/bossbattle.png)
 
 Same contract as CAD, Paint, ECU dash, and HalCodeGTK:
 
@@ -69,21 +75,13 @@ Needs `ailang.x` on `PATH` (from Ailang-Self-Hosting `install_compiler.sh`) and 
 
 Deskbar / desktop: `scripts/launch_arcade.sh` (also `noway-home.desktop`).
 
-## Screenshots
-
-Shots live in `noway-home/` (this game’s folder). Later titles get their own.
-
-| File | Shot |
-|---|---|
-| `noway-home/Intro.png` | attract — NOWAY HOME + lyric crawl |
-| `noway-home/gameplay.png` | stage |
-| `noway-home/bossbattle.png` | queen fight |
-
 ## Next games
 
-A title is `Game/<Name>.ailang` that implements `Name_Init` / `Name_Start` /
-`Name_Tick`. The engine already has window-sized playfield, on-demand vector
-sprites, entity pool, formation slots, starfield, HUD fonts, and boom RNG.
-1942, Xevious, Gyruss, … drop in as another `Game/` module.
+Arcade is not a one-game repo. NOWAY HOME is **the first**. The next title is
+`Game/<Name>.ailang` with `Name_Init` / `Name_Start` / `Name_Tick`. The engine
+already has window-sized playfield, on-demand vector sprites, entity pool,
+formation slots, starfield, HUD fonts, and boom RNG. 1942, Xevious, Gyruss, …
+drop in as another module. Each game can keep shots in its own folder
+(`noway-home/` for this one).
 
 Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
