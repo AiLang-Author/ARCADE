@@ -73,7 +73,11 @@ Needs `ailang.x` on `PATH` (from Ailang-Self-Hosting `install_compiler.sh`) and 
 | p | pause / settings (music + SFX volume) |
 | Esc / q | quit |
 
-Deskbar / desktop: `scripts/launch_arcade.sh` (also `noway-home.desktop`).
+Deskbar / desktop (Linux): `scripts/launch_arcade.sh` (also `noway-home.desktop`).
+
+**Haiku:** native front end is `Haiku-Arcade/` (`arcade_shell_haiku.cxx` + `install.sh`).
+That installer was **not** in the first GitHub push — it lives in this folder.
+Build on Haiku with `make`, then `sh install.sh` (reuses CAD’s `sys_compat`).
 
 ## Next games
 
