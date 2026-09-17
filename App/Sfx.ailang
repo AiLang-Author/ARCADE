@@ -4,6 +4,7 @@
 
 LibraryImport.Arena
 Import.App.State
+Import.App.Ipc
 
 FixedPool.SfxCode {
     "NONE":  Initialize=0
@@ -62,7 +63,7 @@ Function.Sfx_Flush {
     Body: {
         IfCondition EqualTo(Sfx.ok, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Sfx.w, Sfx.flushed) ThenBlock: { ReturnValue(1) }
-        Sfx.fd = SystemCall(2, "/dev/shm/arcade_app/sfx.bin", 577, 420)
+        Sfx.fd = Ipc_Open(9, 577, 420)
         IfCondition LessThan(Sfx.fd, 0) ThenBlock: { ReturnValue(0) }
         SystemCall(1, Sfx.fd, Sfx.buf, 72)
         SystemCall(3, Sfx.fd)

@@ -48,7 +48,7 @@ Function.Set_Save {
         off = Set_Put2(b, off, Arcade.sv)
         SetByte(b, off, 10)
         n = Add(off, 1)
-        fd = SystemCall(2, "/dev/shm/arcade_app/vol.txt", 577, 420)
+        fd = Ipc_Open(10, 577, 420)
         IfCondition GreaterEqual(fd, 0) ThenBlock: {
             SystemCall(1, fd, b, n)
             SystemCall(3, fd)
