@@ -182,6 +182,7 @@ FixedPool.Ipc {
     "fd":    Initialize=0, CanChange=True
     "map":   Initialize=0, CanChange=True
     "mapsz": Initialize=0, CanChange=True
+    "tmp":   Initialize=0, CanChange=True
 }
 
 FixedPool.Scratch {

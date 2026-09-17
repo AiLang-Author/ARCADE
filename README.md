@@ -75,9 +75,13 @@ Needs `ailang.x` on `PATH` (from Ailang-Self-Hosting `install_compiler.sh`) and 
 
 Deskbar / desktop (Linux): `scripts/launch_arcade.sh` (also `noway-home.desktop`).
 
-**Haiku:** native front end is `Haiku-Arcade/` (`arcade_shell_haiku.cxx` + `install.sh`).
-That installer was **not** in the first GitHub push — it lives in this folder.
-Build on Haiku with `make`, then `sh install.sh` (reuses CAD’s `sys_compat`).
+**Haiku:** native window is a **sibling repo**, not this folder:
+
+https://github.com/AiLang-Author/Haiku-Arcade
+
+Clone it next to Arcade so the shared `assets/`, `fonts/`, and `arcade_app.x`
+symlinks resolve. Testers: `sh pack.sh` in Haiku-Arcade, copy
+`dist/NOWAY-HOME-Haiku` onto Haiku, double-click `install.sh`.
 
 ## Next games
 

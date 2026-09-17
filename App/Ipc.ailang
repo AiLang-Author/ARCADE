@@ -10,8 +10,67 @@ Import.App.World
 Function.Ipc_Ensure {
     Output: Integer
     Body: {
+        SystemCall(83, "/dev/shm", 493)
         SystemCall(83, "/dev/shm/arcade_app", 493)
+        SystemCall(83, "/tmp/arcade_app", 493)
         ReturnValue(1)
+    }
+}
+
+Function.Ipc_Open {
+    Input: kind: Integer
+    Input: flags: Integer
+    Input: mode: Integer
+    Output: Integer
+    Body: {
+        fd = Subtract(0, 1)
+        IfCondition EqualTo(Ipc.tmp, 0) ThenBlock: {
+            IfCondition EqualTo(kind, 1) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/frame.raw", flags, mode) }
+            IfCondition EqualTo(kind, 2) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/meta.bin", flags, mode) }
+            IfCondition EqualTo(kind, 3) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/frame.tmp", flags, mode) }
+            IfCondition EqualTo(kind, 4) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/gen.tmp", flags, mode) }
+            IfCondition EqualTo(kind, 5) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/gen.txt", flags, mode) }
+            IfCondition EqualTo(kind, 6) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/size.txt", flags, mode) }
+            IfCondition EqualTo(kind, 7) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/keys.txt", flags, mode) }
+            IfCondition EqualTo(kind, 8) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/cmd.txt", flags, mode) }
+            IfCondition EqualTo(kind, 9) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/sfx.bin", flags, mode) }
+            IfCondition EqualTo(kind, 10) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/vol.txt", flags, mode) }
+        }
+        ElseBlock: {
+            IfCondition EqualTo(kind, 1) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/frame.raw", flags, mode) }
+            IfCondition EqualTo(kind, 2) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/meta.bin", flags, mode) }
+            IfCondition EqualTo(kind, 3) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/frame.tmp", flags, mode) }
+            IfCondition EqualTo(kind, 4) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/gen.tmp", flags, mode) }
+            IfCondition EqualTo(kind, 5) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/gen.txt", flags, mode) }
+            IfCondition EqualTo(kind, 6) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/size.txt", flags, mode) }
+            IfCondition EqualTo(kind, 7) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/keys.txt", flags, mode) }
+            IfCondition EqualTo(kind, 8) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/cmd.txt", flags, mode) }
+            IfCondition EqualTo(kind, 9) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/sfx.bin", flags, mode) }
+            IfCondition EqualTo(kind, 10) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/vol.txt", flags, mode) }
+        }
+        ReturnValue(fd)
+    }
+}
+
+Function.Ipc_Rename {
+    Input: kind: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.tmp, 0) ThenBlock: {
+            IfCondition EqualTo(kind, 1) ThenBlock: {
+                SystemCall(82, "/dev/shm/arcade_app/frame.tmp", "/dev/shm/arcade_app/frame.raw")
+            }
+            IfCondition EqualTo(kind, 2) ThenBlock: {
+                SystemCall(82, "/dev/shm/arcade_app/gen.tmp", "/dev/shm/arcade_app/gen.txt")
+            }
+        }
+        ElseBlock: {
+            IfCondition EqualTo(kind, 1) ThenBlock: {
+                SystemCall(82, "/tmp/arcade_app/frame.tmp", "/tmp/arcade_app/frame.raw")
+            }
+            IfCondition EqualTo(kind, 2) ThenBlock: {
+                SystemCall(82, "/tmp/arcade_app/gen.tmp", "/tmp/arcade_app/gen.txt")
+            }
+        }
     }
 }
 
@@ -46,13 +105,18 @@ Function.Ipc_MapFrame {
             SystemCall(11, Ipc.map, Ipc.mapsz)
             Ipc.map = 0
         }
-        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/frame.raw", 66, 420)
-        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ipc.tmp, 1) ThenBlock: { ReturnValue(0) }
+        Ipc.fd = Ipc_Open(1, 66, 420)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: {
+            Ipc.tmp = 1
+            ReturnValue(0)
+        }
         SystemCall(77, Ipc.fd, Ipc.n)
         Ipc.map = SystemCall(9, 0, Ipc.n, 3, 1, Ipc.fd, 0)
         SystemCall(3, Ipc.fd)
         IfCondition LessThan(Ipc.map, 4096) ThenBlock: {
             Ipc.map = 0
+            Ipc.tmp = 1
             ReturnValue(0)
         }
         Ipc.mapsz = Ipc.n
@@ -68,21 +132,26 @@ Function.Ipc_Present {
         Arc_LE32(Ipc.hdr, 0, FB.width)
         Arc_LE32(Ipc.hdr, 4, FB.height)
         Arc_LE32(Ipc.hdr, 8, FB.pitch)
-        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/meta.bin", 577, 420)
+        Ipc.fd = Ipc_Open(2, 577, 420)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: {
+            Ipc.tmp = 1
+            Ipc.fd = Ipc_Open(2, 577, 420)
+        }
         IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
         SystemCall(1, Ipc.fd, Ipc.hdr, 12)
         SystemCall(3, Ipc.fd)
         Ipc.n = Multiply(FB.pitch, FB.height)
-        IfCondition EqualTo(Ipc_MapFrame(), 1) ThenBlock: {
+        mapped = Ipc_MapFrame()
+        IfCondition EqualTo(mapped, 1) ThenBlock: {
             Ipc.fd = FB_GetDrawBuffer()
             MemoryCopy(Ipc.map, Ipc.fd, Ipc.n)
         }
         ElseBlock: {
-            Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/frame.tmp", 577, 420)
+            Ipc.fd = Ipc_Open(3, 577, 420)
             IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
             SystemCall(1, Ipc.fd, FB_GetDrawBuffer(), Ipc.n)
             SystemCall(3, Ipc.fd)
-            SystemCall(82, "/dev/shm/arcade_app/frame.tmp", "/dev/shm/arcade_app/frame.raw")
+            Ipc_Rename(1)
         }
         Ipc.gen = Add(Ipc.gen, 1)
         IfCondition EqualTo(Ipc.genb, 0) ThenBlock: { Ipc.genb = Allocate(32) }
@@ -100,11 +169,11 @@ Function.Ipc_Present {
             Ipc.w = Add(Ipc.w, 1)
         }
         SetByte(Ipc.genb, Ipc.n, 10)
-        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/gen.tmp", 577, 420)
+        Ipc.fd = Ipc_Open(4, 577, 420)
         IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
         SystemCall(1, Ipc.fd, Ipc.genb, Add(Ipc.n, 1))
         SystemCall(3, Ipc.fd)
-        SystemCall(82, "/dev/shm/arcade_app/gen.tmp", "/dev/shm/arcade_app/gen.txt")
+        Ipc_Rename(2)
         ReturnValue(1)
     }
 }
@@ -130,7 +199,7 @@ Function.Ipc_PollSize {
     Output: Integer
     Body: {
         IfCondition EqualTo(Ipc.size, 0) ThenBlock: { Ipc.size = Allocate(64) }
-        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/size.txt", 0, 0)
+        Ipc.fd = Ipc_Open(6, 0, 0)
         IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
         Ipc.n = SystemCall(0, Ipc.fd, Ipc.size, 48)
         SystemCall(3, Ipc.fd)
@@ -149,7 +218,7 @@ Function.Ipc_PollKeys {
     Output: Integer
     Body: {
         IfCondition EqualTo(Ipc.keys, 0) ThenBlock: { Ipc.keys = Allocate(64) }
-        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/keys.txt", 0, 0)
+        Ipc.fd = Ipc_Open(7, 0, 0)
         IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
         Ipc.n = SystemCall(0, Ipc.fd, Ipc.keys, 48)
         SystemCall(3, Ipc.fd)
@@ -177,13 +246,13 @@ Function.Ipc_PollCmd {
     Output: Integer
     Body: {
         IfCondition EqualTo(Ipc.cmd, 0) ThenBlock: { Ipc.cmd = Allocate(64) }
-        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/cmd.txt", 0, 0)
+        Ipc.fd = Ipc_Open(8, 0, 0)
         IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
         Ipc.n = SystemCall(0, Ipc.fd, Ipc.cmd, 48)
         SystemCall(3, Ipc.fd)
         IfCondition LessEqual(Ipc.n, 0) ThenBlock: { ReturnValue(0) }
         Ipc.c = GetByte(Ipc.cmd, 0)
-        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/cmd.txt", 577, 420)
+        Ipc.fd = Ipc_Open(8, 577, 420)
         IfCondition GreaterEqual(Ipc.fd, 0) ThenBlock: { SystemCall(3, Ipc.fd) }
         IfCondition EqualTo(Ipc.c, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Ipc.c, 10) ThenBlock: { ReturnValue(0) }
