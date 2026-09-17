@@ -1,0 +1,278 @@
+// App/State.ailang — shared pools for the arcade engine.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Display.Render.Framebuffer
+
+FixedPool.Kind {
+    "NONE":    Initialize=0
+    "PLAYER":  Initialize=1
+    "BEE":     Initialize=2
+    "BUTTER":  Initialize=3
+    "BOSS":    Initialize=4
+    "PBULLET": Initialize=5
+    "EBULLET": Initialize=6
+    "BOOM":    Initialize=7
+    "SHARD":   Initialize=8
+    "SCOUT":   Initialize=9
+    "DART":    Initialize=10
+    "HEAVY":   Initialize=11
+    "FLAG":    Initialize=12
+    "DROP":    Initialize=13
+    "CAP":     Initialize=14
+    "QUEEN":   Initialize=15
+    "GATE":    Initialize=16
+}
+
+FixedPool.View {
+    "FRONT":  Initialize=0
+    "BACK":   Initialize=1
+    "TOP":    Initialize=2
+    "BOTTOM": Initialize=3
+    "SIDE":   Initialize=4
+}
+
+FixedPool.EFlag {
+    "ALIVE": Initialize=1
+    "VIS":   Initialize=2
+}
+
+FixedPool.EField {
+    "KIND":  Initialize=0
+    "FL":    Initialize=1
+    "X":     Initialize=2
+    "Y":     Initialize=3
+    "VX":    Initialize=4
+    "VY":    Initialize=5
+    "VIEW":  Initialize=6
+    "FR":    Initialize=7
+    "HP":    Initialize=8
+    "ST":    Initialize=9
+    "SLOT":  Initialize=10
+    "W":     Initialize=11
+    "H":     Initialize=12
+    "ACC":   Initialize=13
+    "LIFE":  Initialize=14
+    "SHEET": Initialize=15
+    "ARM":   Initialize=16
+    "ARM0":  Initialize=17
+}
+
+FixedPool.Est {
+    "FORM":   Initialize=0
+    "DIVE":   Initialize=1
+    "RETURN": Initialize=2
+    "ENTER":  Initialize=3
+    "HUNT":   Initialize=4
+    "BEAM":   Initialize=5
+    "FLEE":   Initialize=6
+}
+
+FixedPool.Mode {
+    "TITLE": Initialize=0
+    "PLAY":  Initialize=1
+    "DEAD":  Initialize=2
+    "WAVE":  Initialize=3
+    "WARP":  Initialize=4
+    "HOME":  Initialize=5
+}
+
+FixedPool.Drop {
+    "SHIELD": Initialize=1
+    "NUGGET": Initialize=2
+    "LIFE":   Initialize=3
+}
+
+FixedPool.World {
+    "UW":    Initialize=1024
+    "UH":    Initialize=1024
+    "fw":    Initialize=800, CanChange=True
+    "fh":    Initialize=600, CanChange=True
+    "cell":  Initialize=32, CanChange=True
+    "surf":  Initialize=0, CanChange=True
+    "shake": Initialize=0, CanChange=True
+    "font":  Initialize=0, CanChange=True
+    "ok":    Initialize=0, CanChange=True
+}
+
+FixedPool.Key {
+    "l": Initialize=0, CanChange=True
+    "r": Initialize=0, CanChange=True
+    "u": Initialize=0, CanChange=True
+    "d": Initialize=0, CanChange=True
+    "f": Initialize=0, CanChange=True
+    "s": Initialize=0, CanChange=True
+    "p": Initialize=0, CanChange=True
+}
+
+FixedPool.Arcade {
+    "run":     Initialize=1, CanChange=True
+    "mode":    Initialize=0, CanChange=True
+    "pause":   Initialize=0, CanChange=True
+    "score":   Initialize=0, CanChange=True
+    "lives":   Initialize=3, CanChange=True
+    "wave":    Initialize=1, CanChange=True
+    "player":  Initialize=-1, CanChange=True
+    "fire_cd": Initialize=0, CanChange=True
+    "dive_cd": Initialize=0, CanChange=True
+    "t":       Initialize=0, CanChange=True
+    "left":    Initialize=0, CanChange=True
+    "need":    Initialize=1, CanChange=True
+    "font_ok": Initialize=0, CanChange=True
+    "pat":     Initialize=0, CanChange=True
+    "fsize":   Initialize=18, CanChange=True
+    "agg":     Initialize=2, CanChange=True
+    "want":    Initialize=16, CanChange=True
+    "spips":   Initialize=2, CanChange=True
+    "sht":     Initialize=0, CanChange=True
+    "next1":   Initialize=20000, CanChange=True
+    "ext":     Initialize=0, CanChange=True
+    "dual":    Initialize=0, CanChange=True
+    "held":    Initialize=-1, CanChange=True
+    "inv":     Initialize=0, CanChange=True
+    "grab":    Initialize=0, CanChange=True
+    "gate":    Initialize=-1, CanChange=True
+    "warp":    Initialize=0, CanChange=True
+    "wt":      Initialize=0, CanChange=True
+    "grp":     Initialize=0, CanChange=True
+    "gn":      Initialize=0, CanChange=True
+    "gwait":   Initialize=0, CanChange=True
+    "hd":      Initialize=0, CanChange=True
+    "got":     Initialize=0, CanChange=True
+    "mv":      Initialize=7, CanChange=True
+    "sv":      Initialize=8, CanChange=True
+    "sel":     Initialize=0, CanChange=True
+    "pk":      Initialize=0, CanChange=True
+    "sk":      Initialize=0, CanChange=True
+    "sw":      Initialize=0, CanChange=True
+    "rw":      Initialize=0, CanChange=True
+    "ct":      Initialize=0, CanChange=True
+}
+
+FixedPool.Queen {
+    "id":  Initialize=-1, CanChange=True
+    "hp0": Initialize=16, CanChange=True
+    "br":  Initialize=40, CanChange=True
+    "bg":  Initialize=150, CanChange=True
+    "bb":  Initialize=100, CanChange=True
+    "wr":  Initialize=20, CanChange=True
+    "wg":  Initialize=80, CanChange=True
+    "wb":  Initialize=60, CanChange=True
+    "gr":  Initialize=140, CanChange=True
+    "gg":  Initialize=255, CanChange=True
+    "gb":  Initialize=190, CanChange=True
+    "ar":  Initialize=60, CanChange=True
+    "ag":  Initialize=190, CanChange=True
+    "ab":  Initialize=120, CanChange=True
+    "emit": Initialize=0, CanChange=True
+    "shot": Initialize=0, CanChange=True
+}
+
+FixedPool.Ipc {
+    "hdr":  Initialize=0, CanChange=True
+    "gen":  Initialize=0, CanChange=True
+    "genb": Initialize=0, CanChange=True
+    "ts":   Initialize=0, CanChange=True
+    "cmd":  Initialize=0, CanChange=True
+    "keys": Initialize=0, CanChange=True
+    "size": Initialize=0, CanChange=True
+    "n":    Initialize=0, CanChange=True
+    "i":    Initialize=0, CanChange=True
+    "c":    Initialize=0, CanChange=True
+    "w":    Initialize=0, CanChange=True
+    "fd":    Initialize=0, CanChange=True
+    "map":   Initialize=0, CanChange=True
+    "mapsz": Initialize=0, CanChange=True
+}
+
+FixedPool.Scratch {
+    "a": Initialize=0, CanChange=True
+    "b": Initialize=0, CanChange=True
+    "c": Initialize=0, CanChange=True
+    "d": Initialize=0, CanChange=True
+    "e": Initialize=0, CanChange=True
+    "f": Initialize=0, CanChange=True
+    "x": Initialize=0, CanChange=True
+    "y": Initialize=0, CanChange=True
+    "i": Initialize=0, CanChange=True
+    "n": Initialize=0, CanChange=True
+    "w": Initialize=0, CanChange=True
+}
+
+FixedPool.Rng {
+    "s": Initialize=1, CanChange=True
+}
+
+Function.Arc_Seed {
+    Input: seed: Integer
+    Body: {
+        IfCondition EqualTo(seed, 0) ThenBlock: { seed = 1 }
+        Rng.s = BitwiseAnd(seed, 0x7FFFFFFF)
+    }
+}
+
+Function.Arc_Rand {
+    Output: Integer
+    Body: {
+        Rng.s = BitwiseAnd(Add(Multiply(Rng.s, 1664525), 1013904223), 0x7FFFFFFF)
+        ReturnValue(Rng.s)
+    }
+}
+
+Function.Arc_Range {
+    Input: n: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessEqual(n, 1) ThenBlock: { ReturnValue(0) }
+        ReturnValue(Modulo(Arc_Rand(), n))
+    }
+}
+
+Function.Arc_RGBA {
+    Input: r: Integer
+    Input: g: Integer
+    Input: b: Integer
+    Output: Integer
+    Body: {
+        ReturnValue(BitwiseOr(FB_RGB(r, g, b), ShiftLeft(255, 24)))
+    }
+}
+
+Function.Arc_LE32 {
+    Input: buf: Address
+    Input: off: Integer
+    Input: val: Integer
+    Body: {
+        SetByte(buf, off, BitwiseAnd(val, 255))
+        SetByte(buf, Add(off, 1), BitwiseAnd(ShiftRight(val, 8), 255))
+        SetByte(buf, Add(off, 2), BitwiseAnd(ShiftRight(val, 16), 255))
+        SetByte(buf, Add(off, 3), BitwiseAnd(ShiftRight(val, 24), 255))
+    }
+}
+
+Function.Arc_Atoi {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        Scratch.x = 0
+        Scratch.w = 0
+        Scratch.n = 0
+        WhileLoop LessThan(Scratch.x, 96) {
+            Scratch.c = GetByte(s, Scratch.x)
+            IfCondition EqualTo(Scratch.c, 0) ThenBlock: {
+                ReturnValue(Scratch.w)
+            }
+            IfCondition EqualTo(Scratch.c, 10) ThenBlock: {
+                ReturnValue(Scratch.w)
+            }
+            IfCondition And(GreaterEqual(Scratch.c, 48), LessEqual(Scratch.c, 57)) ThenBlock: {
+                Scratch.w = Add(Multiply(Scratch.w, 10), Subtract(Scratch.c, 48))
+                Scratch.n = 1
+            }
+            IfCondition And(EqualTo(Scratch.c, 32), EqualTo(Scratch.n, 1)) ThenBlock: {
+                ReturnValue(Scratch.w)
+            }
+            Scratch.x = Add(Scratch.x, 1)
+        }
+        ReturnValue(Scratch.w)
+    }
+}

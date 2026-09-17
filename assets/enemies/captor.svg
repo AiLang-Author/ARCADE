@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64">
+  <!-- front -->
+  <g transform="translate(0,0)">
+    <polygon points="8,20 56,20 60,28 56,50 8,50 4,28" fill="#082018"/>
+    <polygon points="12,22 52,22 54,30 50,48 14,48 10,30" fill="#1a8a6a"/>
+    <polygon points="16,24 48,24 48,32 16,32" fill="#3cd4a0"/>
+    <rect x="26" y="14" width="12" height="10" fill="#082018"/>
+    <rect x="28" y="16" width="8" height="7" fill="#ff3040"/>
+    <ellipse cx="32" cy="52" rx="16" ry="6" fill="#5a1020"/>
+    <ellipse cx="32" cy="50" rx="12" ry="4" fill="#ff2038"/>
+    <ellipse cx="32" cy="49" rx="6" ry="2" fill="#ffd0d4"/>
+    <polygon points="6,28 14,26 14,44 6,40" fill="#0d4030"/>
+    <polygon points="58,28 50,26 50,44 58,40" fill="#0d4030"/>
+    <rect x="8" y="32" width="4" height="8" fill="#ff3040"/>
+    <rect x="52" y="32" width="4" height="8" fill="#ff3040"/>
+  </g>
+  <!-- back -->
+  <g transform="translate(64,0)">
+    <polygon points="10,18 54,18 58,32 50,52 14,52 6,32" fill="#082018"/>
+    <polygon points="14,20 50,20 52,32 46,50 18,50 12,32" fill="#146850"/>
+    <rect x="24" y="28" width="16" height="10" fill="#0d4030"/>
+    <rect x="28" y="30" width="8" height="6" fill="#3cd4a0"/>
+    <polygon points="8,30 16,28 16,46 8,42" fill="#ff3040"/>
+    <polygon points="56,30 48,28 48,46 56,42" fill="#ff3040"/>
+  </g>
+  <!-- top -->
+  <g transform="translate(128,0)">
+    <polygon points="8,16 56,16 62,32 56,48 8,48 2,32" fill="#082018"/>
+    <polygon points="12,18 52,18 56,32 52,46 12,46 8,32" fill="#1a8a6a"/>
+    <polygon points="18,22 46,22 48,32 46,42 18,42 16,32" fill="#3cd4a0"/>
+    <ellipse cx="32" cy="32" rx="8" ry="6" fill="#082018"/>
+    <ellipse cx="32" cy="32" rx="5" ry="4" fill="#ff3040"/>
+    <rect x="4" y="28" width="8" height="8" fill="#0d4030"/>
+    <rect x="52" y="28" width="8" height="8" fill="#0d4030"/>
+    <rect x="6" y="30" width="4" height="4" fill="#ff3040"/>
+    <rect x="54" y="30" width="4" height="4" fill="#ff3040"/>
+  </g>
+  <!-- bottom / dish -->
+  <g transform="translate(192,0)">
+    <polygon points="10,18 54,18 58,28 50,50 14,50 6,28" fill="#082018"/>
+    <polygon points="14,20 50,20 52,28 46,48 18,48 12,28" fill="#146850"/>
+    <ellipse cx="32" cy="40" rx="18" ry="10" fill="#5a1020"/>
+    <ellipse cx="32" cy="38" rx="14" ry="8" fill="#ff2038"/>
+    <ellipse cx="32" cy="36" rx="8" ry="4" fill="#ffd0d4"/>
+    <rect x="28" y="16" width="8" height="12" fill="#3cd4a0"/>
+  </g>
+  <!-- side -->
+  <g transform="translate(256,0)">
+    <polygon points="8,24 48,18 58,28 52,48 14,50 6,36" fill="#082018"/>
+    <polygon points="12,26 46,22 54,30 48,46 16,48 10,34" fill="#1a8a6a"/>
+    <polygon points="20,24 44,22 46,30 22,32" fill="#3cd4a0"/>
+    <ellipse cx="50" cy="36" rx="8" ry="10" fill="#5a1020"/>
+    <ellipse cx="50" cy="34" rx="6" ry="7" fill="#ff2038"/>
+    <rect x="14" y="34" width="10" height="6" fill="#0d4030"/>
+    <rect x="16" y="36" width="6" height="3" fill="#ff3040"/>
+  </g>
+</svg>

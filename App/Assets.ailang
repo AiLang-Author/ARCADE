@@ -1,0 +1,440 @@
+// App/Assets.ailang — SVG/TVG on demand at the current window cell size.
+// Five-view strips (front back top bottom side). Procedural fallback if a
+// vector file is missing so the engine always has something to blit.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.SVG
+LibraryImport.Display.Render.DSurfaceTypes
+LibraryImport.Display.Render.DSurface
+LibraryImport.Display.Render.DDrawPixel
+LibraryImport.Display.Render.VIF
+LibraryImport.Display.Render.StyleRaster
+Import.App.State
+Import.App.World
+Import.App.Entity
+
+FixedPool.Gfx {
+    "ok":     Initialize=0, CanChange=True
+    "cell":   Initialize=0, CanChange=True
+    "player": Initialize=0, CanChange=True
+    "bee":    Initialize=0, CanChange=True
+    "butter": Initialize=0, CanChange=True
+    "boss":   Initialize=0, CanChange=True
+    "scout":  Initialize=0, CanChange=True
+    "dart":   Initialize=0, CanChange=True
+    "heavy":  Initialize=0, CanChange=True
+    "flag":   Initialize=0, CanChange=True
+    "cap":    Initialize=0, CanChange=True
+    "gate":   Initialize=0, CanChange=True
+    "pshot":  Initialize=0, CanChange=True
+    "eshot":  Initialize=0, CanChange=True
+    "boom0":  Initialize=0, CanChange=True
+    "boom1":  Initialize=0, CanChange=True
+    "boom2":  Initialize=0, CanChange=True
+    "boom3":  Initialize=0, CanChange=True
+}
+
+Function.Gfx_Drop {
+    Input: surf: Integer
+    Output: Integer
+    Body: {
+        IfCondition NotEqual(surf, 0) ThenBlock: {
+            Surface_Destroy(surf)
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Gfx_TryLoad {
+    Input: svg: Address
+    Input: tvg: Address
+    Input: w: Integer
+    Input: h: Integer
+    Output: Integer
+    Body: {
+        surf = 0
+        IfCondition NotEqual(svg, 0) ThenBlock: {
+            surf = SVG_RasterFile(svg, w, h)
+        }
+        IfCondition NotEqual(surf, 0) ThenBlock: { ReturnValue(surf) }
+        IfCondition NotEqual(tvg, 0) ThenBlock: {
+            surf = TVG_RenderFile(tvg, h)
+        }
+        ReturnValue(surf)
+    }
+}
+
+Function.Gfx_NewStrip {
+    Input: cols: Integer
+    Input: cell: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessThan(cols, 1) ThenBlock: { cols = 1 }
+        surf = Surface_Create(SurfaceFormat.PIXEL_32, Multiply(cols, cell), cell)
+        IfCondition EqualTo(surf, 0) ThenBlock: { ReturnValue(0) }
+        Draw_Pix_FillRect(surf, 0, 0, Multiply(cols, cell), cell, 0)
+        ReturnValue(surf)
+    }
+}
+
+Function.Gfx_Box {
+    Input: surf: Integer
+    Input: x: Integer
+    Input: y: Integer
+    Input: w: Integer
+    Input: h: Integer
+    Input: col: Integer
+    Body: {
+        IfCondition LessThan(w, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(h, 1) ThenBlock: { ReturnValue(0) }
+        Draw_Pix_FillRect(surf, x, y, w, h, col)
+    }
+}
+
+Function.Gfx_Craft {
+    Input: surf: Integer
+    Input: ox: Integer
+    Input: cell: Integer
+    Input: view: Integer
+    Input: pal: Integer
+    Body: {
+        c = cell
+        s = Divide(c, 16)
+        IfCondition LessThan(s, 1) ThenBlock: { s = 1 }
+        body = Arc_RGBA(230, 235, 245)
+        wing = Arc_RGBA(40, 90, 210)
+        nose = Arc_RGBA(220, 50, 60)
+        glow = Arc_RGBA(80, 200, 255)
+        IfCondition EqualTo(pal, 1) ThenBlock: {
+            body = Arc_RGBA(250, 210, 40)
+            wing = Arc_RGBA(30, 70, 180)
+            nose = Arc_RGBA(40, 50, 90)
+            glow = Arc_RGBA(255, 240, 120)
+        }
+        IfCondition EqualTo(pal, 2) ThenBlock: {
+            body = Arc_RGBA(230, 50, 70)
+            wing = Arc_RGBA(250, 250, 255)
+            nose = Arc_RGBA(40, 40, 80)
+            glow = Arc_RGBA(255, 160, 80)
+        }
+        IfCondition EqualTo(pal, 3) ThenBlock: {
+            body = Arc_RGBA(40, 180, 90)
+            wing = Arc_RGBA(50, 90, 200)
+            nose = Arc_RGBA(240, 220, 70)
+            glow = Arc_RGBA(120, 255, 180)
+        }
+        IfCondition EqualTo(pal, 4) ThenBlock: {
+            body = Arc_RGBA(80, 230, 230)
+            wing = Arc_RGBA(20, 120, 160)
+            nose = Arc_RGBA(255, 255, 255)
+            glow = Arc_RGBA(180, 255, 255)
+        }
+        IfCondition EqualTo(pal, 5) ThenBlock: {
+            body = Arc_RGBA(255, 140, 40)
+            wing = Arc_RGBA(80, 30, 20)
+            nose = Arc_RGBA(255, 230, 80)
+            glow = Arc_RGBA(255, 80, 40)
+        }
+        IfCondition EqualTo(pal, 6) ThenBlock: {
+            body = Arc_RGBA(150, 70, 210)
+            wing = Arc_RGBA(60, 30, 110)
+            nose = Arc_RGBA(255, 200, 80)
+            glow = Arc_RGBA(220, 120, 255)
+        }
+        IfCondition EqualTo(pal, 7) ThenBlock: {
+            body = Arc_RGBA(240, 190, 50)
+            wing = Arc_RGBA(180, 40, 40)
+            nose = Arc_RGBA(255, 255, 220)
+            glow = Arc_RGBA(255, 80, 80)
+        }
+        IfCondition EqualTo(pal, 8) ThenBlock: {
+            body = Arc_RGBA(26, 138, 106)
+            wing = Arc_RGBA(13, 64, 48)
+            nose = Arc_RGBA(255, 48, 64)
+            glow = Arc_RGBA(255, 32, 56)
+        }
+        // top (classic) and default
+        Gfx_Box(surf, Add(ox, Multiply(s, 6)), Multiply(s, 2), Multiply(s, 4), Multiply(s, 12), body)
+        Gfx_Box(surf, Add(ox, Multiply(s, 2)), Multiply(s, 6), Multiply(s, 12), Multiply(s, 4), wing)
+        Gfx_Box(surf, Add(ox, Multiply(s, 7)), Multiply(s, 1), Multiply(s, 2), Multiply(s, 3), nose)
+        Gfx_Box(surf, Add(ox, Multiply(s, 7)), Multiply(s, 5), Multiply(s, 2), Multiply(s, 3), glow)
+        IfCondition EqualTo(view, View.FRONT) ThenBlock: {
+            Gfx_Box(surf, Add(ox, Multiply(s, 4)), Multiply(s, 4), Multiply(s, 8), Multiply(s, 8), body)
+            Gfx_Box(surf, Add(ox, Multiply(s, 1)), Multiply(s, 7), Multiply(s, 14), Multiply(s, 3), wing)
+            Gfx_Box(surf, Add(ox, Multiply(s, 6)), Multiply(s, 2), Multiply(s, 4), Multiply(s, 3), glow)
+        }
+        IfCondition EqualTo(view, View.BACK) ThenBlock: {
+            Gfx_Box(surf, Add(ox, Multiply(s, 5)), Multiply(s, 4), Multiply(s, 6), Multiply(s, 8), body)
+            Gfx_Box(surf, Add(ox, Multiply(s, 2)), Multiply(s, 10), Multiply(s, 3), Multiply(s, 4), nose)
+            Gfx_Box(surf, Add(ox, Multiply(s, 11)), Multiply(s, 10), Multiply(s, 3), Multiply(s, 4), nose)
+        }
+        IfCondition EqualTo(view, View.SIDE) ThenBlock: {
+            Gfx_Box(surf, Add(ox, Multiply(s, 3)), Multiply(s, 6), Multiply(s, 11), Multiply(s, 4), body)
+            Gfx_Box(surf, Add(ox, Multiply(s, 12)), Multiply(s, 5), Multiply(s, 3), Multiply(s, 3), nose)
+            Gfx_Box(surf, Add(ox, Multiply(s, 4)), Multiply(s, 9), Multiply(s, 6), Multiply(s, 3), wing)
+        }
+        IfCondition EqualTo(view, View.BOTTOM) ThenBlock: {
+            Gfx_Box(surf, Add(ox, Multiply(s, 6)), Multiply(s, 3), Multiply(s, 4), Multiply(s, 10), Arc_RGBA(40, 45, 60))
+            Gfx_Box(surf, Add(ox, Multiply(s, 3)), Multiply(s, 7), Multiply(s, 10), Multiply(s, 3), wing)
+        }
+        IfCondition Or(EqualTo(pal, 3), EqualTo(pal, 7)) ThenBlock: {
+            Gfx_Box(surf, Add(ox, Multiply(s, 1)), Multiply(s, 4), Multiply(s, 3), Multiply(s, 8), wing)
+            Gfx_Box(surf, Add(ox, Multiply(s, 12)), Multiply(s, 4), Multiply(s, 3), Multiply(s, 8), wing)
+        }
+        IfCondition EqualTo(pal, 6) ThenBlock: {
+            Gfx_Box(surf, Add(ox, Multiply(s, 3)), Multiply(s, 10), Multiply(s, 10), Multiply(s, 4), body)
+        }
+    }
+}
+
+Function.Gfx_BuildCraft {
+    Input: pal: Integer
+    Input: cell: Integer
+    Output: Integer
+    Body: {
+        surf = Gfx_NewStrip(5, cell)
+        IfCondition EqualTo(surf, 0) ThenBlock: { ReturnValue(0) }
+        v = 0
+        WhileLoop LessThan(v, 5) {
+            Gfx_Craft(surf, Multiply(v, cell), cell, v, pal)
+            v = Add(v, 1)
+        }
+        ReturnValue(surf)
+    }
+}
+
+Function.Gfx_BuildShot {
+    Input: pal: Integer
+    Input: cell: Integer
+    Output: Integer
+    Body: {
+        surf = Gfx_NewStrip(1, cell)
+        IfCondition EqualTo(surf, 0) ThenBlock: { ReturnValue(0) }
+        s = Divide(cell, 16)
+        IfCondition LessThan(s, 1) ThenBlock: { s = 1 }
+        col = Arc_RGBA(255, 240, 80)
+        IfCondition EqualTo(pal, 1) ThenBlock: { col = Arc_RGBA(255, 80, 120) }
+        Gfx_Box(surf, Multiply(s, 7), Multiply(s, 2), Multiply(s, 2), Multiply(s, 12), col)
+        Gfx_Box(surf, Multiply(s, 6), Multiply(s, 3), Multiply(s, 4), Multiply(s, 4), Arc_RGBA(255, 255, 255))
+        ReturnValue(surf)
+    }
+}
+
+Function.Gfx_BuildBoom {
+    Input: style: Integer
+    Input: cell: Integer
+    Output: Integer
+    Body: {
+        surf = Gfx_NewStrip(8, cell)
+        IfCondition EqualTo(surf, 0) ThenBlock: { ReturnValue(0) }
+        f = 0
+        WhileLoop LessThan(f, 8) {
+            ox = Multiply(f, cell)
+            cx = Add(ox, Divide(cell, 2))
+            cy = Divide(cell, 2)
+            r = Add(2, Multiply(Add(f, 1), Divide(cell, 10)))
+            col = Arc_RGBA(255, 220, 80)
+            IfCondition EqualTo(style, 0) ThenBlock: {
+                IfCondition GreaterThan(f, 3) ThenBlock: { col = Arc_RGBA(255, 120, 40) }
+                IfCondition GreaterThan(f, 6) ThenBlock: { col = Arc_RGBA(180, 40, 20) }
+                Gfx_Box(surf, Subtract(cx, r), Subtract(cy, r), Multiply(r, 2), Multiply(r, 2), col)
+                Gfx_Box(surf, Subtract(cx, Divide(r, 2)), Subtract(cy, Divide(r, 2)), r, r, Arc_RGBA(255, 200, 80))
+                Gfx_Box(surf, Subtract(cx, Divide(r, 3)), Subtract(cy, Divide(r, 3)), Divide(Multiply(r, 2), 3), Divide(Multiply(r, 2), 3), Arc_RGBA(255, 255, 255))
+                Gfx_Box(surf, Subtract(cx, 1), Subtract(cy, Multiply(r, 2)), 2, Multiply(r, 4), Arc_RGBA(255, 180, 60))
+                Gfx_Box(surf, Subtract(cx, Multiply(r, 2)), Subtract(cy, 1), Multiply(r, 4), 2, Arc_RGBA(255, 180, 60))
+            }
+            IfCondition EqualTo(style, 1) ThenBlock: {
+                col = Arc_RGBA(80, 180, 255)
+                IfCondition GreaterThan(f, 4) ThenBlock: { col = Arc_RGBA(40, 80, 180) }
+                Gfx_Box(surf, Subtract(cx, r), Subtract(cy, Divide(cell, 16)), Multiply(r, 2), Divide(cell, 8), col)
+                Gfx_Box(surf, Subtract(cx, Divide(cell, 16)), Subtract(cy, r), Divide(cell, 8), Multiply(r, 2), col)
+            }
+            IfCondition EqualTo(style, 2) ThenBlock: {
+                k = 0
+                WhileLoop LessThan(k, Add(3, f)) {
+                    dx = Multiply(Subtract(Modulo(Add(k, f), 7), 3), Divide(cell, 8))
+                    dy = Multiply(Subtract(Modulo(Add(k, Multiply(f, 3)), 7), 3), Divide(cell, 8))
+                    Gfx_Box(surf, Add(cx, dx), Add(cy, dy), Add(2, Divide(cell, 16)), Add(2, Divide(cell, 16)), Arc_RGBA(255, Subtract(200, Multiply(f, 20)), 40))
+                    k = Add(k, 1)
+                }
+            }
+            IfCondition EqualTo(style, 3) ThenBlock: {
+                a = Subtract(255, Multiply(f, 28))
+                IfCondition LessThan(a, 40) ThenBlock: { a = 40 }
+                col = BitwiseOr(FB_RGB(255, a, Divide(a, 2)), ShiftLeft(a, 24))
+                Gfx_Box(surf, Subtract(cx, r), Subtract(cy, r), Multiply(r, 2), Multiply(r, 2), col)
+            }
+            f = Add(f, 1)
+        }
+        ReturnValue(surf)
+    }
+}
+
+Function.Gfx_Take {
+    Input: svg: Address
+    Input: tvg: Address
+    Input: cols: Integer
+    Input: cell: Integer
+    Input: fallback: Integer
+    Output: Integer
+    Body: {
+        surf = Gfx_TryLoad(svg, tvg, Multiply(cols, cell), cell)
+        IfCondition NotEqual(surf, 0) ThenBlock: { ReturnValue(surf) }
+        ReturnValue(fallback)
+    }
+}
+
+Function.Gfx_Reload {
+    Output: Integer
+    Body: {
+        cell = World.cell
+        IfCondition LessThan(cell, 12) ThenBlock: { cell = 12 }
+        IfCondition And(EqualTo(Gfx.ok, 1), EqualTo(Gfx.cell, cell)) ThenBlock: {
+            ReturnValue(0)
+        }
+        Gfx.player = Gfx_Drop(Gfx.player)
+        Gfx.bee = Gfx_Drop(Gfx.bee)
+        Gfx.butter = Gfx_Drop(Gfx.butter)
+        Gfx.boss = Gfx_Drop(Gfx.boss)
+        Gfx.scout = Gfx_Drop(Gfx.scout)
+        Gfx.dart = Gfx_Drop(Gfx.dart)
+        Gfx.heavy = Gfx_Drop(Gfx.heavy)
+        Gfx.flag = Gfx_Drop(Gfx.flag)
+        Gfx.cap = Gfx_Drop(Gfx.cap)
+        Gfx.gate = Gfx_Drop(Gfx.gate)
+        Gfx.pshot = Gfx_Drop(Gfx.pshot)
+        Gfx.eshot = Gfx_Drop(Gfx.eshot)
+        Gfx.boom0 = Gfx_Drop(Gfx.boom0)
+        Gfx.boom1 = Gfx_Drop(Gfx.boom1)
+        Gfx.boom2 = Gfx_Drop(Gfx.boom2)
+        Gfx.boom3 = Gfx_Drop(Gfx.boom3)
+
+        SVG_Init()
+        VIF_Init()
+
+        Gfx.player = Gfx_TryLoad("assets/ships/player.svg", "assets/ships/player.tvg", Multiply(5, cell), cell)
+        IfCondition EqualTo(Gfx.player, 0) ThenBlock: { Gfx.player = Gfx_BuildCraft(0, cell) }
+        Gfx.bee = Gfx_TryLoad("assets/enemies/bee.svg", "assets/enemies/bee.tvg", Multiply(5, cell), cell)
+        IfCondition EqualTo(Gfx.bee, 0) ThenBlock: { Gfx.bee = Gfx_BuildCraft(1, cell) }
+        Gfx.butter = Gfx_TryLoad("assets/enemies/butterfly.svg", "assets/enemies/butterfly.tvg", Multiply(5, cell), cell)
+        IfCondition EqualTo(Gfx.butter, 0) ThenBlock: { Gfx.butter = Gfx_BuildCraft(2, cell) }
+        Gfx.boss = Gfx_TryLoad("assets/enemies/boss.svg", "assets/enemies/boss.tvg", Multiply(5, cell), cell)
+        IfCondition EqualTo(Gfx.boss, 0) ThenBlock: { Gfx.boss = Gfx_BuildCraft(3, cell) }
+        Gfx.scout = Gfx_TryLoad("assets/enemies/scout.svg", "assets/enemies/scout.tvg", Multiply(5, cell), cell)
+        IfCondition EqualTo(Gfx.scout, 0) ThenBlock: { Gfx.scout = Gfx_BuildCraft(4, cell) }
+        Gfx.dart = Gfx_TryLoad("assets/enemies/dart.svg", "assets/enemies/dart.tvg", Multiply(5, cell), cell)
+        IfCondition EqualTo(Gfx.dart, 0) ThenBlock: { Gfx.dart = Gfx_BuildCraft(5, cell) }
+        Gfx.heavy = Gfx_TryLoad("assets/enemies/heavy.svg", "assets/enemies/heavy.tvg", Multiply(5, cell), cell)
+        IfCondition EqualTo(Gfx.heavy, 0) ThenBlock: { Gfx.heavy = Gfx_BuildCraft(6, cell) }
+        Gfx.flag = Gfx_TryLoad("assets/enemies/flagship.svg", "assets/enemies/flagship.tvg", Multiply(5, cell), cell)
+        IfCondition EqualTo(Gfx.flag, 0) ThenBlock: { Gfx.flag = Gfx_BuildCraft(7, cell) }
+        Gfx.cap = Gfx_TryLoad("assets/enemies/captor.svg", "assets/enemies/captor.tvg", Multiply(5, cell), cell)
+        IfCondition EqualTo(Gfx.cap, 0) ThenBlock: { Gfx.cap = Gfx_BuildCraft(8, cell) }
+        Gfx.gate = Gfx_TryLoad("assets/fx/portal.svg", "assets/fx/portal.tvg", Multiply(8, cell), cell)
+        IfCondition EqualTo(Gfx.gate, 0) ThenBlock: { Gfx.gate = Gfx_BuildBoom(1, cell) }
+        Gfx.pshot = Gfx_TryLoad("assets/bullets/player.svg", "assets/bullets/player.tvg", cell, cell)
+        IfCondition EqualTo(Gfx.pshot, 0) ThenBlock: { Gfx.pshot = Gfx_BuildShot(0, cell) }
+        Gfx.eshot = Gfx_TryLoad("assets/bullets/enemy.svg", "assets/bullets/enemy.tvg", cell, cell)
+        IfCondition EqualTo(Gfx.eshot, 0) ThenBlock: { Gfx.eshot = Gfx_BuildShot(1, cell) }
+        Gfx.boom0 = Gfx_TryLoad("assets/explosions/burst.svg", "assets/explosions/burst.tvg", Multiply(8, cell), cell)
+        IfCondition EqualTo(Gfx.boom0, 0) ThenBlock: { Gfx.boom0 = Gfx_BuildBoom(0, cell) }
+        Gfx.boom1 = Gfx_TryLoad("assets/explosions/ring.svg", "assets/explosions/ring.tvg", Multiply(8, cell), cell)
+        IfCondition EqualTo(Gfx.boom1, 0) ThenBlock: { Gfx.boom1 = Gfx_BuildBoom(1, cell) }
+        Gfx.boom2 = Gfx_TryLoad("assets/explosions/debris.svg", "assets/explosions/debris.tvg", Multiply(8, cell), cell)
+        IfCondition EqualTo(Gfx.boom2, 0) ThenBlock: { Gfx.boom2 = Gfx_BuildBoom(2, cell) }
+        Gfx.boom3 = Gfx_TryLoad("assets/explosions/flash.svg", "assets/explosions/flash.tvg", Multiply(8, cell), cell)
+        IfCondition EqualTo(Gfx.boom3, 0) ThenBlock: { Gfx.boom3 = Gfx_BuildBoom(3, cell) }
+
+        Gfx.cell = cell
+        Gfx.ok = 1
+        PrintMessage("[Gfx] cell=")
+        PrintNumber(cell)
+        PrintMessage(" window=")
+        PrintNumber(World.fw)
+        PrintMessage("x")
+        PrintNumber(World.fh)
+        PrintMessage("\n")
+        ReturnValue(1)
+    }
+}
+
+Function.Gfx_SurfFor {
+    Input: kind: Integer
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(kind, Kind.PLAYER) ThenBlock: { ReturnValue(Gfx.player) }
+        IfCondition EqualTo(kind, Kind.BEE) ThenBlock: { ReturnValue(Gfx.bee) }
+        IfCondition EqualTo(kind, Kind.BUTTER) ThenBlock: { ReturnValue(Gfx.butter) }
+        IfCondition EqualTo(kind, Kind.BOSS) ThenBlock: { ReturnValue(Gfx.boss) }
+        IfCondition EqualTo(kind, Kind.SCOUT) ThenBlock: { ReturnValue(Gfx.scout) }
+        IfCondition EqualTo(kind, Kind.DART) ThenBlock: { ReturnValue(Gfx.dart) }
+        IfCondition EqualTo(kind, Kind.HEAVY) ThenBlock: { ReturnValue(Gfx.heavy) }
+        IfCondition EqualTo(kind, Kind.FLAG) ThenBlock: { ReturnValue(Gfx.flag) }
+        IfCondition EqualTo(kind, Kind.CAP) ThenBlock: { ReturnValue(Gfx.cap) }
+        IfCondition EqualTo(kind, Kind.GATE) ThenBlock: { ReturnValue(Gfx.gate) }
+        IfCondition EqualTo(kind, Kind.PBULLET) ThenBlock: { ReturnValue(Gfx.pshot) }
+        IfCondition EqualTo(kind, Kind.EBULLET) ThenBlock: { ReturnValue(Gfx.eshot) }
+        IfCondition EqualTo(kind, Kind.BOOM) ThenBlock: {
+            st = Scratch.a
+            IfCondition EqualTo(st, 1) ThenBlock: { ReturnValue(Gfx.boom1) }
+            IfCondition EqualTo(st, 2) ThenBlock: { ReturnValue(Gfx.boom2) }
+            IfCondition EqualTo(st, 3) ThenBlock: { ReturnValue(Gfx.boom3) }
+            ReturnValue(Gfx.boom0)
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Gfx_DrawEnt {
+    Input: id: Integer
+    Body: {
+        IfCondition EqualTo(Ent_Alive(id), 0) ThenBlock: { ReturnValue(0) }
+        fl = Ent_Get(id, EField.FL)
+        vis = BitwiseAnd(fl, EFlag.VIS)
+        IfCondition EqualTo(vis, 0) ThenBlock: { ReturnValue(0) }
+        kind = Ent_Get(id, EField.KIND)
+        col = Ent_Get(id, EField.VIEW)
+        IfCondition EqualTo(kind, Kind.GATE) ThenBlock: {
+            col = Ent_Get(id, EField.FR)
+        }
+        IfCondition EqualTo(kind, Kind.BOOM) ThenBlock: {
+            Scratch.a = Ent_Get(id, EField.ST)
+            col = Ent_Get(id, EField.FR)
+        }
+        IfCondition EqualTo(kind, Kind.SHARD) ThenBlock: {
+            Scratch.a = Ent_Get(id, EField.ST)
+            col = Ent_Get(id, EField.FR)
+            kind = Kind.BOOM
+        }
+        IfCondition EqualTo(kind, Kind.PBULLET) ThenBlock: { col = 0 }
+        IfCondition EqualTo(kind, Kind.EBULLET) ThenBlock: { col = 0 }
+        surf = Gfx_SurfFor(kind)
+        flash = 0
+        IfCondition EqualTo(kind, Kind.PLAYER) ThenBlock: {
+            IfCondition GreaterThan(Arcade.inv, 0) ThenBlock: {
+                IfCondition LessThan(Modulo(Arcade.t, 6), 3) ThenBlock: { flash = 1 }
+            }
+        }
+        IfCondition EqualTo(flash, 0) ThenBlock: {
+            Ent_Blit(id, surf, Gfx.cell, Gfx.cell, col)
+            IfCondition EqualTo(kind, Kind.PLAYER) ThenBlock: {
+                IfCondition EqualTo(Arcade.dual, 1) ThenBlock: {
+                    ox = Ent_Get(id, EField.X)
+                    Ent_Set(id, EField.X, Add(ox, 22))
+                    Ent_Blit(id, surf, Gfx.cell, Gfx.cell, col)
+                    Ent_Set(id, EField.X, ox)
+                }
+            }
+        }
+        IfCondition EqualTo(kind, Kind.CAP) ThenBlock: {
+            IfCondition EqualTo(Ent_Get(id, EField.LIFE), 1) ThenBlock: {
+                ox = Ent_Get(id, EField.X)
+                oy = Ent_Get(id, EField.Y)
+                Ent_Set(id, EField.Y, Add(oy, 22))
+                Ent_Blit(id, Gfx.player, Gfx.cell, Gfx.cell, View.BACK)
+                Ent_Set(id, EField.Y, oy)
+            }
+        }
+    }
+}

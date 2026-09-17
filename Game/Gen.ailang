@@ -1,0 +1,567 @@
+// Game/Gen.ailang — mix-and-match polygon stamps → formation + parade convoys.
+// Occupancy is a 10×5 grid. 2–4 primitives OR together, often mirrored.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+Import.App.State
+Import.App.Formation
+Import.Game.Paths
+
+FixedPool.Gen {
+    "mask":    Initialize=0, CanChange=True
+    "cv":      Initialize=0, CanChange=True
+    "ok":      Initialize=0, CanChange=True
+    "n":       Initialize=0, CanChange=True
+    "nprim":   Initialize=0, CanChange=True
+    "prim":    Initialize=0, CanChange=True
+    "convoys": Initialize=3, CanChange=True
+    "x":       Initialize=0, CanChange=True
+    "y":       Initialize=0, CanChange=True
+    "w":       Initialize=0, CanChange=True
+    "h":       Initialize=0, CanChange=True
+    "cx":      Initialize=0, CanChange=True
+    "cy":      Initialize=0, CanChange=True
+    "rad":     Initialize=0, CanChange=True
+    "fill":    Initialize=0, CanChange=True
+    "psmall":  Initialize=0, CanChange=True
+    "nsmall":  Initialize=0, CanChange=True
+}
+
+Function.Gen_Init {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Gen.ok, 1) ThenBlock: { ReturnValue(1) }
+        Gen.mask = Allocate(50)
+        IfCondition EqualTo(Gen.mask, 0) ThenBlock: { ReturnValue(0) }
+        Gen.cv = Allocate(512)
+        IfCondition EqualTo(Gen.cv, 0) ThenBlock: { ReturnValue(0) }
+        MemorySet(Gen.mask, 0, 50)
+        MemorySet(Gen.cv, 0, 512)
+        Gen.ok = 1
+        ReturnValue(1)
+    }
+}
+
+Function.Gen_CvGet {
+    Input: i: Integer
+    Input: f: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessThan(i, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(i, 7) ThenBlock: { ReturnValue(0) }
+        ReturnValue(Dereference(Add(Gen.cv, Add(Multiply(i, 64), Multiply(f, 8)))))
+    }
+}
+
+Function.Gen_CvSet {
+    Input: i: Integer
+    Input: f: Integer
+    Input: v: Integer
+    Body: {
+        IfCondition LessThan(i, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(i, 7) ThenBlock: { ReturnValue(0) }
+        StoreValue(Add(Gen.cv, Add(Multiply(i, 64), Multiply(f, 8))), v)
+    }
+}
+
+Function.Gen_Mark {
+    Input: row: Integer
+    Input: col: Integer
+    Body: {
+        IfCondition LessThan(row, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(row, 4) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(col, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(col, 9) ThenBlock: { ReturnValue(0) }
+        i = Add(Multiply(row, 10), col)
+        SetByte(Gen.mask, i, 1)
+    }
+}
+
+Function.Gen_Clear {
+    Body: {
+        IfCondition EqualTo(Gen.ok, 0) ThenBlock: { Gen_Init() }
+        MemorySet(Gen.mask, 0, 50)
+        Gen.n = 0
+    }
+}
+
+Function.Gen_Count {
+    Output: Integer
+    Body: {
+        n = 0
+        i = 0
+        WhileLoop LessThan(i, 50) {
+            IfCondition GreaterThan(GetByte(Gen.mask, i), 0) ThenBlock: {
+                n = Add(n, 1)
+            }
+            i = Add(i, 1)
+        }
+        Gen.n = n
+        ReturnValue(n)
+    }
+}
+
+Function.Gen_StampRect {
+    Body: {
+        r = Gen.y
+        bot = Add(Gen.y, Gen.h)
+        ryt = Add(Gen.x, Gen.w)
+        WhileLoop LessThan(r, bot) {
+            c = Gen.x
+            WhileLoop LessThan(c, ryt) {
+                on = Gen.fill
+                IfCondition EqualTo(r, Gen.y) ThenBlock: { on = 1 }
+                IfCondition EqualTo(c, Gen.x) ThenBlock: { on = 1 }
+                last_r = Subtract(bot, 1)
+                last_c = Subtract(ryt, 1)
+                IfCondition EqualTo(r, last_r) ThenBlock: { on = 1 }
+                IfCondition EqualTo(c, last_c) ThenBlock: { on = 1 }
+                IfCondition EqualTo(on, 1) ThenBlock: { Gen_Mark(r, c) }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+    }
+}
+
+Function.Gen_StampDiamond {
+    Body: {
+        r = 0
+        WhileLoop LessThan(r, 5) {
+            c = 0
+            WhileLoop LessThan(c, 10) {
+                dr = Subtract(r, Gen.cy)
+                IfCondition LessThan(dr, 0) ThenBlock: { dr = Subtract(0, dr) }
+                dc = Subtract(c, Gen.cx)
+                IfCondition LessThan(dc, 0) ThenBlock: { dc = Subtract(0, dc) }
+                IfCondition LessEqual(Add(dr, dc), Gen.rad) ThenBlock: {
+                    Gen_Mark(r, c)
+                }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+    }
+}
+
+Function.Gen_StampV {
+    Body: {
+        r = 0
+        WhileLoop LessThan(r, 5) {
+            c = 0
+            WhileLoop LessThan(c, 10) {
+                dc = Subtract(c, Gen.cx)
+                IfCondition LessThan(dc, 0) ThenBlock: { dc = Subtract(0, dc) }
+                IfCondition EqualTo(Gen.fill, 1) ThenBlock: {
+                    IfCondition LessEqual(dc, r) ThenBlock: { Gen_Mark(r, c) }
+                }
+                ElseBlock: {
+                    IfCondition EqualTo(dc, r) ThenBlock: { Gen_Mark(r, c) }
+                }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+    }
+}
+
+Function.Gen_StampTri {
+    Body: {
+        r = 0
+        WhileLoop LessThan(r, 5) {
+            span = Add(1, r)
+            IfCondition GreaterThan(Gen.w, 1) ThenBlock: {
+                span = Divide(Multiply(r, Gen.w), 4)
+                span = Add(span, 1)
+            }
+            c = 0
+            WhileLoop LessThan(c, 10) {
+                dc = Subtract(c, Gen.cx)
+                IfCondition LessThan(dc, 0) ThenBlock: { dc = Subtract(0, dc) }
+                IfCondition LessEqual(dc, span) ThenBlock: { Gen_Mark(r, c) }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+    }
+}
+
+Function.Gen_StampWings {
+    Body: {
+        thick = Gen.w
+        IfCondition LessThan(thick, 1) ThenBlock: { thick = 1 }
+        IfCondition GreaterThan(thick, 3) ThenBlock: { thick = 3 }
+        r = Gen.y
+        bot = Add(Gen.y, Gen.h)
+        IfCondition GreaterThan(bot, 5) ThenBlock: { bot = 5 }
+        WhileLoop LessThan(r, bot) {
+            c = 0
+            WhileLoop LessThan(c, thick) {
+                Gen_Mark(r, c)
+                Gen_Mark(r, Subtract(9, c))
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+    }
+}
+
+Function.Gen_StampPlus {
+    Body: {
+        r = 0
+        WhileLoop LessThan(r, 5) {
+            c = 0
+            WhileLoop LessThan(c, 10) {
+                IfCondition Or(EqualTo(r, Gen.cy), EqualTo(c, Gen.cx)) ThenBlock: {
+                    Gen_Mark(r, c)
+                }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+    }
+}
+
+Function.Gen_StampDiag {
+    Body: {
+        i = 0
+        WhileLoop LessThan(i, 5) {
+            Gen_Mark(i, i)
+            Gen_Mark(i, Subtract(9, i))
+            IfCondition EqualTo(Gen.fill, 1) ThenBlock: {
+                Gen_Mark(i, Add(i, 1))
+                Gen_Mark(i, Subtract(8, i))
+            }
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Gen_StampBand {
+    Body: {
+        r = Gen.y
+        bot = Add(Gen.y, Gen.h)
+        IfCondition GreaterThan(bot, 5) ThenBlock: { bot = 5 }
+        WhileLoop LessThan(r, bot) {
+            c = Gen.x
+            ryt = Add(Gen.x, Gen.w)
+            IfCondition GreaterThan(ryt, 10) ThenBlock: { ryt = 10 }
+            WhileLoop LessThan(c, ryt) {
+                Gen_Mark(r, c)
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+    }
+}
+
+Function.Gen_StampBlob {
+    Body: {
+        r = 0
+        WhileLoop LessThan(r, 5) {
+            c = 0
+            WhileLoop LessThan(c, 10) {
+                dr = Subtract(r, Gen.cy)
+                IfCondition LessThan(dr, 0) ThenBlock: { dr = Subtract(0, dr) }
+                dc = Subtract(c, Gen.cx)
+                IfCondition LessThan(dc, 0) ThenBlock: { dc = Subtract(0, dc) }
+                cheb = dr
+                IfCondition GreaterThan(dc, cheb) ThenBlock: { cheb = dc }
+                IfCondition LessEqual(cheb, Gen.rad) ThenBlock: { Gen_Mark(r, c) }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+    }
+}
+
+Function.Gen_StampOne {
+    Body: {
+        p = Gen.prim
+        IfCondition EqualTo(p, 0) ThenBlock: {
+            Gen.fill = 1
+            Gen_StampRect()
+        }
+        IfCondition EqualTo(p, 1) ThenBlock: {
+            Gen.fill = 0
+            Gen_StampRect()
+        }
+        IfCondition EqualTo(p, 2) ThenBlock: { Gen_StampDiamond() }
+        IfCondition EqualTo(p, 3) ThenBlock: {
+            Gen.fill = 1
+            Gen_StampV()
+        }
+        IfCondition EqualTo(p, 4) ThenBlock: { Gen_StampTri() }
+        IfCondition EqualTo(p, 5) ThenBlock: { Gen_StampWings() }
+        IfCondition EqualTo(p, 6) ThenBlock: { Gen_StampPlus() }
+        IfCondition EqualTo(p, 7) ThenBlock: { Gen_StampDiag() }
+        IfCondition EqualTo(p, 8) ThenBlock: { Gen_StampBand() }
+        IfCondition EqualTo(p, 9) ThenBlock: { Gen_StampBlob() }
+    }
+}
+
+Function.Gen_RollParams {
+    Body: {
+        Gen.cx = Add(3, Arc_Range(4))
+        Gen.cy = Add(1, Arc_Range(3))
+        Gen.x = Arc_Range(4)
+        Gen.y = Arc_Range(3)
+        Gen.w = Add(3, Arc_Range(5))
+        Gen.h = Add(2, Arc_Range(3))
+        Gen.rad = Add(1, Arc_Range(3))
+        ryt = Add(Gen.x, Gen.w)
+        IfCondition GreaterThan(ryt, 10) ThenBlock: {
+            Gen.w = Subtract(10, Gen.x)
+        }
+        bot = Add(Gen.y, Gen.h)
+        IfCondition GreaterThan(bot, 5) ThenBlock: {
+            Gen.h = Subtract(5, Gen.y)
+        }
+        IfCondition LessThan(Gen.w, 2) ThenBlock: { Gen.w = 2 }
+        IfCondition LessThan(Gen.h, 2) ThenBlock: { Gen.h = 2 }
+    }
+}
+
+Function.Gen_Mirror {
+    Body: {
+        r = 0
+        WhileLoop LessThan(r, 5) {
+            c = 0
+            WhileLoop LessThan(c, 5) {
+                a = Add(Multiply(r, 10), c)
+                b = Add(Multiply(r, 10), Subtract(9, c))
+                va = GetByte(Gen.mask, a)
+                vb = GetByte(Gen.mask, b)
+                IfCondition GreaterThan(va, 0) ThenBlock: { SetByte(Gen.mask, b, 1) }
+                IfCondition GreaterThan(vb, 0) ThenBlock: { SetByte(Gen.mask, a, 1) }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+    }
+}
+
+Function.Gen_Punch {
+    Body: {
+        guard = 0
+        WhileLoop GreaterThan(Gen.n, Arcade.want) {
+            s = Arc_Range(50)
+            IfCondition GreaterThan(GetByte(Gen.mask, s), 0) ThenBlock: {
+                SetByte(Gen.mask, s, 0)
+                Gen.n = Subtract(Gen.n, 1)
+            }
+            guard = Add(guard, 1)
+            IfCondition GreaterThan(guard, 200) ThenBlock: {
+                ReturnValue(0)
+            }
+        }
+    }
+}
+
+Function.Gen_FillSpare {
+    Body: {
+        guard = 0
+        WhileLoop LessThan(Gen.n, Arcade.want) {
+            s = Arc_Range(50)
+            IfCondition EqualTo(GetByte(Gen.mask, s), 0) ThenBlock: {
+                SetByte(Gen.mask, s, 1)
+                Gen.n = Add(Gen.n, 1)
+            }
+            guard = Add(guard, 1)
+            IfCondition GreaterThan(guard, 200) ThenBlock: {
+                ReturnValue(0)
+            }
+        }
+    }
+}
+
+Function.Gen_Kinds {
+    Body: {
+        i = 0
+        WhileLoop LessThan(i, 50) {
+            IfCondition GreaterThan(GetByte(Gen.mask, i), 0) ThenBlock: {
+                row = Divide(i, 10)
+                roll = Arc_Range(4)
+                k = Kind.BEE
+                IfCondition EqualTo(row, 0) ThenBlock: {
+                    k = Kind.BOSS
+                    IfCondition EqualTo(roll, 0) ThenBlock: { k = Kind.HEAVY }
+                    IfCondition EqualTo(roll, 1) ThenBlock: {
+                        IfCondition GreaterEqual(Arcade.agg, 4) ThenBlock: { k = Kind.FLAG }
+                    }
+                }
+                IfCondition EqualTo(row, 1) ThenBlock: {
+                    k = Kind.BUTTER
+                    IfCondition LessThan(roll, 2) ThenBlock: { k = Kind.HEAVY }
+                }
+                IfCondition EqualTo(row, 2) ThenBlock: {
+                    k = Kind.BUTTER
+                    IfCondition EqualTo(roll, 0) ThenBlock: { k = Kind.DART }
+                    IfCondition EqualTo(roll, 1) ThenBlock: { k = Kind.BEE }
+                }
+                IfCondition EqualTo(row, 3) ThenBlock: {
+                    k = Kind.BEE
+                    IfCondition EqualTo(roll, 0) ThenBlock: { k = Kind.DART }
+                }
+                IfCondition EqualTo(row, 4) ThenBlock: {
+                    k = Kind.BEE
+                    IfCondition LessThan(roll, 2) ThenBlock: { k = Kind.SCOUT }
+                }
+                SetByte(Gen.mask, i, k)
+            }
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Gen_GateXY {
+    Input: g: Integer
+    Body: {
+        Gen.x = -60
+        Gen.y = 40
+        IfCondition EqualTo(g, 1) ThenBlock: {
+            Gen.x = 1084
+            Gen.y = 40
+        }
+        IfCondition EqualTo(g, 2) ThenBlock: {
+            Gen.x = -60
+            Gen.y = 180
+        }
+        IfCondition EqualTo(g, 3) ThenBlock: {
+            Gen.x = 1084
+            Gen.y = 180
+        }
+        IfCondition EqualTo(g, 4) ThenBlock: {
+            Gen.x = -60
+            Gen.y = 320
+        }
+        IfCondition EqualTo(g, 5) ThenBlock: {
+            Gen.x = 1084
+            Gen.y = 320
+        }
+        IfCondition EqualTo(g, 6) ThenBlock: {
+            Gen.x = 220
+            Gen.y = -70
+        }
+        IfCondition EqualTo(g, 7) ThenBlock: {
+            Gen.x = 804
+            Gen.y = -70
+        }
+    }
+}
+
+Function.Gen_Convoys {
+    Body: {
+        w = Arcade.wave
+        IfCondition LessThan(w, 1) ThenBlock: { w = 1 }
+        base = Subtract(w, 1)
+        dec = Divide(base, 10)
+        C = 3
+        IfCondition GreaterEqual(dec, 4) ThenBlock: { C = 4 }
+        Gen.convoys = C
+        i = 0
+        WhileLoop LessThan(i, C) {
+            g = Arc_Range(8)
+            j = 0
+            WhileLoop LessThan(j, i) {
+                prev = Gen_CvGet(j, 0)
+                IfCondition EqualTo(prev, g) ThenBlock: {
+                    g = Modulo(Add(g, 3), 8)
+                }
+                j = Add(j, 1)
+            }
+            Gen_GateXY(g)
+            nprof = Add(2, Arc_Range(2))
+            seq = 0
+            mul = 1
+            k = 0
+            WhileLoop LessThan(k, nprof) {
+                p = Path_PickEnter()
+                bit = Multiply(p, mul)
+                seq = Add(seq, bit)
+                mul = Multiply(mul, 16)
+                k = Add(k, 1)
+            }
+            dir = 1
+            IfCondition GreaterThan(Gen.x, 512) ThenBlock: { dir = 0 }
+            Gen_CvSet(i, 0, g)
+            Gen_CvSet(i, 1, seq)
+            Gen_CvSet(i, 2, nprof)
+            Gen_CvSet(i, 3, dir)
+            Gen_CvSet(i, 4, 0)
+            Gen_CvSet(i, 5, 0)
+            Gen_CvSet(i, 6, Gen.x)
+            Gen_CvSet(i, 7, Gen.y)
+            i = Add(i, 1)
+        }
+        i = 0
+        WhileLoop LessThan(i, 50) {
+            IfCondition GreaterThan(GetByte(Gen.mask, i), 0) ThenBlock: {
+                row = Divide(i, 10)
+                band = Divide(Multiply(row, C), 5)
+                IfCondition GreaterEqual(band, C) ThenBlock: { band = Subtract(C, 1) }
+                Form_Set(i, 3, band)
+            }
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Gen_Build {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Gen.ok, 0) ThenBlock: { Gen_Init() }
+        w = Arcade.wave
+        IfCondition LessThan(w, 1) ThenBlock: { w = 1 }
+        base = Subtract(w, 1)
+        dec = Divide(base, 10)
+        IfCondition GreaterThan(dec, 9) ThenBlock: { dec = 9 }
+        tier = Modulo(base, 10)
+        agg = Add(1, Multiply(dec, 2))
+        half = Divide(tier, 2)
+        agg = Add(agg, half)
+        IfCondition GreaterThan(agg, 18) ThenBlock: { agg = 18 }
+        Arcade.agg = agg
+        want = Add(14, Multiply(tier, 2))
+        want = Add(want, Multiply(dec, 5))
+        want = Add(want, Arc_Range(4))
+        IfCondition LessThan(want, 12) ThenBlock: { want = 12 }
+        IfCondition GreaterThan(want, 50) ThenBlock: { want = 50 }
+        Arcade.want = want
+        Gen_Clear()
+        nprim = Add(2, Arc_Range(3))
+        IfCondition GreaterThan(nprim, 4) ThenBlock: { nprim = 4 }
+        Gen.nprim = nprim
+        first = 0
+        i = 0
+        WhileLoop LessThan(i, nprim) {
+            Gen.prim = Arc_Range(10)
+            IfCondition EqualTo(i, 0) ThenBlock: { first = Gen.prim }
+            Gen_RollParams()
+            Gen_StampOne()
+            i = Add(i, 1)
+        }
+        IfCondition GreaterThan(Arc_Range(3), 0) ThenBlock: { Gen_Mirror() }
+        Gen_Count()
+        IfCondition LessThan(Gen.n, 4) ThenBlock: {
+            Gen.prim = 0
+            Gen.fill = 1
+            Gen.x = 2
+            Gen.y = 0
+            Gen.w = 6
+            Gen.h = 4
+            Gen_StampRect()
+            Gen_Count()
+        }
+        Gen_Punch()
+        Gen_FillSpare()
+        Gen_Count()
+        Gen_Kinds()
+        Gen_Convoys()
+        Arcade.pat = first
+        IfCondition GreaterThan(nprim, 1) ThenBlock: {
+            Arcade.pat = Add(10, first)
+        }
+        ReturnValue(Gen.n)
+    }
+}

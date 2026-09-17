@@ -1,0 +1,7 @@
+arcade_app.x
+host/arcade_shell_gtk
+config/settings.txt
+*.o
+*~
+a.out
+/tmp/

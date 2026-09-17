@@ -1,0 +1,143 @@
+// App/Formation.ailang — slot grid + bob. Games assign occupants.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+Import.App.State
+Import.App.Entity
+
+FixedPool.Form {
+    "base": Initialize=0, CanChange=True
+    "rows": Initialize=5, CanChange=True
+    "cols": Initialize=10, CanChange=True
+    "n":    Initialize=50, CanChange=True
+    "bobx": Initialize=0, CanChange=True
+    "boby": Initialize=0, CanChange=True
+    "ok":   Initialize=0, CanChange=True
+}
+
+Function.Form_Get {
+    Input: i: Integer
+    Input: f: Integer
+    Output: Integer
+    Body: {
+        ReturnValue(Dereference(Add(Form.base, Add(Multiply(i, 32), Multiply(f, 8)))))
+    }
+}
+
+Function.Form_Set {
+    Input: i: Integer
+    Input: f: Integer
+    Input: v: Integer
+    Body: {
+        StoreValue(Add(Form.base, Add(Multiply(i, 32), Multiply(f, 8))), v)
+    }
+}
+
+Function.Form_Init {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Form.ok, 1) ThenBlock: { ReturnValue(1) }
+        Form.n = Multiply(Form.rows, Form.cols)
+        Form.base = Allocate(Multiply(Form.n, 32))
+        IfCondition EqualTo(Form.base, 0) ThenBlock: { ReturnValue(0) }
+        Form.ok = 1
+        ReturnValue(1)
+    }
+}
+
+Function.Form_Reset {
+    Body: {
+        IfCondition EqualTo(Form.ok, 0) ThenBlock: { Form_Init() }
+        i = 0
+        WhileLoop LessThan(i, Form.n) {
+            row = Divide(i, Form.cols)
+            col = Modulo(i, Form.cols)
+            hx = Add(120, Multiply(col, 80))
+            hy = Add(110, Multiply(row, 78))
+            Form_Set(i, 0, -1)
+            Form_Set(i, 1, hx)
+            Form_Set(i, 2, hy)
+            Form_Set(i, 3, 0)
+            i = Add(i, 1)
+        }
+        Form.bobx = 0
+        Form.boby = 0
+    }
+}
+
+Function.Form_Tick {
+    Body: {
+        i = 0
+        WhileLoop LessThan(i, Form.n) {
+            id = Form_Get(i, 0)
+            IfCondition GreaterEqual(id, 0) ThenBlock: {
+                IfCondition EqualTo(Ent_Alive(id), 1) ThenBlock: {
+                    IfCondition EqualTo(Ent_Get(id, EField.ST), Est.FORM) ThenBlock: {
+                        Ent_Set(id, EField.X, Add(Form_Get(i, 1), Form.bobx))
+                        Ent_Set(id, EField.Y, Add(Form_Get(i, 2), Form.boby))
+                        Ent_Set(id, EField.VIEW, View.TOP)
+                    }
+                }
+                ElseBlock: {
+                    Form_Set(i, 0, -1)
+                }
+            }
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Form_Place {
+    Input: slot: Integer
+    Input: id: Integer
+    Body: {
+        IfCondition LessThan(slot, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(slot, Form.n) ThenBlock: { ReturnValue(0) }
+        Form_Set(slot, 0, id)
+        IfCondition GreaterEqual(id, 0) ThenBlock: {
+            Ent_Set(id, EField.SLOT, slot)
+            Ent_Set(id, EField.ST, Est.FORM)
+            Ent_Set(id, EField.X, Form_Get(slot, 1))
+            Ent_Set(id, EField.Y, Form_Get(slot, 2))
+        }
+    }
+}
+
+Function.Form_Alive {
+    Output: Integer
+    Body: {
+        n = 0
+        i = 0
+        WhileLoop LessThan(i, Form.n) {
+            id = Form_Get(i, 0)
+            IfCondition GreaterEqual(id, 0) ThenBlock: {
+                IfCondition EqualTo(Ent_Alive(id), 1) ThenBlock: { n = Add(n, 1) }
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(n)
+    }
+}
+
+Function.Form_Pick {
+    Output: Integer
+    Body: {
+        n = Form_Alive()
+        IfCondition LessEqual(n, 0) ThenBlock: { ReturnValue(-1) }
+        k = Modulo(Arcade.t, n)
+        i = 0
+        WhileLoop LessThan(i, Form.n) {
+            id = Form_Get(i, 0)
+            IfCondition GreaterEqual(id, 0) ThenBlock: {
+                IfCondition EqualTo(Ent_Alive(id), 1) ThenBlock: {
+                    IfCondition EqualTo(Ent_Get(id, EField.ST), Est.FORM) ThenBlock: {
+                        IfCondition EqualTo(k, 0) ThenBlock: { ReturnValue(id) }
+                        k = Subtract(k, 1)
+                    }
+                }
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(-1)
+    }
+}

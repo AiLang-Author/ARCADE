@@ -1,0 +1,1712 @@
+// Game/Galaga.ailang — first title on the arcade engine.
+// Formation lines, dive attacks, view switching, RNG booms.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+Import.App.State
+Import.App.Entity
+Import.App.Formation
+Import.App.Boom
+Import.App.Sfx
+Import.Game.Paths
+Import.Game.Gen
+Import.App.Set
+
+Function.Galaga_Player {
+    Output: Integer
+    Body: {
+        id = Ent_Spawn(Kind.PLAYER, 512, 920)
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(-1) }
+        Ent_Set(id, EField.W, 56)
+        Ent_Set(id, EField.H, 56)
+        Ent_Set(id, EField.HP, 1)
+        Ent_Set(id, EField.VIEW, View.TOP)
+        Arcade.player = id
+        Arcade.spips = 2
+        Arcade.sht = 0
+        Arcade.inv = 120
+        IfCondition EqualTo(Arcade.dual, 1) ThenBlock: {
+            Ent_Set(id, EField.W, 80)
+        }
+        ReturnValue(id)
+    }
+}
+
+Function.Galaga_IsFoe {
+    Input: kind: Integer
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(kind, Kind.BEE) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.BUTTER) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.BOSS) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.SCOUT) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.DART) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.HEAVY) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.FLAG) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.CAP) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.QUEEN) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Galaga_SlotOk {
+    Input: slot: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessThan(slot, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(slot, Form.n) ThenBlock: { ReturnValue(0) }
+        ReturnValue(1)
+    }
+}
+
+Function.Galaga_ClipFoe {
+    Input: id: Integer
+    Body: {
+        k = Ent_Get(id, EField.KIND)
+        IfCondition EqualTo(k, Kind.QUEEN) ThenBlock: { ReturnValue(0) }
+        st = Ent_Get(id, EField.ST)
+        IfCondition EqualTo(st, Est.ENTER) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(st, Est.FLEE) ThenBlock: { ReturnValue(0) }
+        x = Ent_Get(id, EField.X)
+        y = Ent_Get(id, EField.Y)
+        far = 0
+        IfCondition LessThan(x, -60) ThenBlock: { far = 1 }
+        IfCondition GreaterThan(x, 1084) ThenBlock: { far = 1 }
+        IfCondition LessThan(y, -60) ThenBlock: { far = 1 }
+        IfCondition GreaterThan(y, 1100) ThenBlock: { far = 1 }
+        IfCondition EqualTo(st, Est.DIVE) ThenBlock: {
+            IfCondition EqualTo(far, 1) ThenBlock: { Ent_Kill(id) }
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(st, Est.RETURN) ThenBlock: {
+            IfCondition EqualTo(far, 1) ThenBlock: { Ent_Kill(id) }
+            ReturnValue(0)
+        }
+        sit = 0
+        IfCondition LessThan(x, 28) ThenBlock: { sit = 1 }
+        IfCondition GreaterThan(x, 996) ThenBlock: { sit = 1 }
+        IfCondition LessThan(y, 28) ThenBlock: { sit = 1 }
+        IfCondition GreaterThan(y, 1008) ThenBlock: { sit = 1 }
+        IfCondition EqualTo(sit, 1) ThenBlock: { Ent_Kill(id) }
+    }
+}
+
+Function.Galaga_CountFoes {
+    Output: Integer
+    Body: {
+        n = 0
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                IfCondition EqualTo(Galaga_IsFoe(Ent_Get(i, EField.KIND)), 1) ThenBlock: {
+                    n = Add(n, 1)
+                }
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(n)
+    }
+}
+
+Function.Galaga_Put {
+    Input: slot: Integer
+    Input: kind: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessThan(slot, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(slot, Form.n) ThenBlock: { ReturnValue(0) }
+        hx = Form_Get(slot, 1)
+        hy = Form_Get(slot, 2)
+        id = Ent_Spawn(kind, hx, hy)
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(0) }
+        w = 48
+        h = 48
+        hp = 1
+        IfCondition EqualTo(kind, Kind.SCOUT) ThenBlock: {
+            w = 36
+            h = 36
+        }
+        IfCondition EqualTo(kind, Kind.DART) ThenBlock: {
+            w = 44
+            h = 40
+        }
+        IfCondition EqualTo(kind, Kind.BOSS) ThenBlock: { hp = 2 }
+        IfCondition EqualTo(kind, Kind.HEAVY) ThenBlock: {
+            w = 60
+            h = 52
+            hp = 2
+            IfCondition GreaterEqual(Arcade.wave, 7) ThenBlock: { hp = 3 }
+        }
+        IfCondition EqualTo(kind, Kind.FLAG) ThenBlock: {
+            w = 72
+            h = 60
+            hp = 3
+        }
+        plate = Galaga_PlateFor(kind)
+        small = 0
+        IfCondition EqualTo(kind, Kind.BEE) ThenBlock: { small = 1 }
+        IfCondition EqualTo(kind, Kind.SCOUT) ThenBlock: { small = 1 }
+        IfCondition EqualTo(kind, Kind.DART) ThenBlock: { small = 1 }
+        IfCondition EqualTo(kind, Kind.BUTTER) ThenBlock: { small = 1 }
+        IfCondition EqualTo(small, 1) ThenBlock: {
+            Gen.nsmall = Add(Gen.nsmall, 1)
+            IfCondition EqualTo(plate, 1) ThenBlock: {
+                IfCondition GreaterEqual(Multiply(Gen.psmall, 3), Gen.nsmall) ThenBlock: {
+                    plate = 0
+                }
+                ElseBlock: {
+                    Gen.psmall = Add(Gen.psmall, 1)
+                }
+            }
+        }
+        Ent_Set(id, EField.W, w)
+        Ent_Set(id, EField.H, h)
+        Ent_Set(id, EField.HP, hp)
+        Ent_Set(id, EField.ARM, plate)
+        Ent_Set(id, EField.ARM0, plate)
+        Form_Place(slot, id)
+        cv = Form_Get(slot, 3)
+        sx = Gen_CvGet(cv, 6)
+        sy = Gen_CvGet(cv, 7)
+        off = Gen_CvGet(cv, 5)
+        shift = Multiply(Modulo(off, 4), 14)
+        g = Gen_CvGet(cv, 0)
+        IfCondition GreaterEqual(g, 6) ThenBlock: {
+            sx = Add(sx, shift)
+        }
+        ElseBlock: {
+            sy = Add(sy, shift)
+        }
+        glive = Ent_Alive(Arcade.gate)
+        IfCondition EqualTo(glive, 1) ThenBlock: {
+            gk = Ent_Get(Arcade.gate, EField.KIND)
+            IfCondition EqualTo(gk, Kind.GATE) ThenBlock: {
+                sx = Ent_Get(Arcade.gate, EField.X)
+                sy = Ent_Get(Arcade.gate, EField.Y)
+                jitter = Multiply(Modulo(off, 5), 10)
+                sx = Add(sx, Subtract(jitter, 20))
+                sy = Add(sy, Multiply(Modulo(off, 3), 8))
+            }
+        }
+        Ent_Set(id, EField.X, sx)
+        Ent_Set(id, EField.Y, sy)
+        seq = Gen_CvGet(cv, 1)
+        nprof = Gen_CvGet(cv, 2)
+        dir = Gen_CvGet(cv, 3)
+        Path_ApplyEnter(id, seq, nprof, dir)
+        delay = Gen_CvGet(cv, 4)
+        delay = Add(delay, Multiply(off, 10))
+        Ent_Set(id, EField.ACC, delay)
+        Gen_CvSet(cv, 5, Add(off, 1))
+        ReturnValue(1)
+    }
+}
+
+Function.Galaga_PutBand {
+    Input: band: Integer
+    Output: Integer
+    Body: {
+        n = 0
+        i = 0
+        WhileLoop LessThan(i, Form.n) {
+            k = GetByte(Gen.mask, i)
+            IfCondition GreaterThan(k, 0) ThenBlock: {
+                b = Form_Get(i, 3)
+                IfCondition EqualTo(b, band) ThenBlock: {
+                    add = Galaga_Put(i, k)
+                    n = Add(n, add)
+                }
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(n)
+    }
+}
+
+Function.Galaga_GroupTick {
+    Body: {
+        IfCondition GreaterEqual(Arcade.grp, Arcade.gn) ThenBlock: { ReturnValue(0) }
+        still = Galaga_Entering()
+        IfCondition EqualTo(still, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(Arcade.gwait, 0) ThenBlock: {
+            Arcade.gwait = Subtract(Arcade.gwait, 1)
+            ReturnValue(0)
+        }
+        add = Galaga_PutBand(Arcade.grp)
+        Arcade.grp = Add(Arcade.grp, 1)
+        IfCondition EqualTo(add, 0) ThenBlock: {
+            Arcade.gwait = 0
+        }
+        ElseBlock: {
+            Arcade.gwait = 45
+            Galaga_MaybeCap()
+        }
+    }
+}
+
+Function.Galaga_DropKind {
+    Input: kind: Integer
+    Input: plated: Integer
+    Output: Integer
+    Body: {
+        IfCondition GreaterThan(plated, 0) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.HEAVY) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.FLAG) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.BOSS) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.CAP) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.QUEEN) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Galaga_DropCount {
+    Input: typ: Integer
+    Output: Integer
+    Body: {
+        n = 0
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                IfCondition EqualTo(Ent_Get(i, EField.KIND), Kind.DROP) ThenBlock: {
+                    IfCondition EqualTo(Ent_Get(i, EField.ST), typ) ThenBlock: {
+                        n = Add(n, 1)
+                    }
+                }
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(n)
+    }
+}
+
+Function.Galaga_Drop {
+    Input: x: Integer
+    Input: y: Integer
+    Input: kind: Integer
+    Input: plated: Integer
+    Body: {
+        ok = Galaga_DropKind(kind, plated)
+        IfCondition EqualTo(ok, 0) ThenBlock: { ReturnValue(0) }
+        roll = Arc_Range(10)
+        IfCondition NotEqual(roll, 0) ThenBlock: { ReturnValue(0) }
+        typ = Drop.SHIELD
+        roll = Arc_Range(20)
+        IfCondition LessThan(roll, 3) ThenBlock: { typ = Drop.LIFE }
+        IfCondition GreaterEqual(roll, 17) ThenBlock: { typ = Drop.NUGGET }
+        IfCondition EqualTo(typ, Drop.LIFE) ThenBlock: {
+            n1 = Galaga_DropCount(Drop.LIFE)
+            IfCondition GreaterThan(n1, 0) ThenBlock: { typ = Drop.SHIELD }
+            IfCondition GreaterEqual(Arcade.lives, 5) ThenBlock: { typ = Drop.SHIELD }
+        }
+        IfCondition EqualTo(typ, Drop.SHIELD) ThenBlock: {
+            nsh = Galaga_DropCount(Drop.SHIELD)
+            IfCondition GreaterThan(nsh, 0) ThenBlock: { typ = Drop.NUGGET }
+        }
+        id = Ent_Spawn(Kind.DROP, x, y)
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(0) }
+        Ent_Set(id, EField.ST, typ)
+        Ent_Set(id, EField.VY, 3)
+        Ent_Set(id, EField.W, 28)
+        Ent_Set(id, EField.H, 28)
+        Ent_Set(id, EField.VIEW, 0)
+    }
+}
+
+Function.Galaga_GiveLife {
+    Body: {
+        IfCondition LessThan(Arcade.lives, 5) ThenBlock: {
+            Arcade.lives = Add(Arcade.lives, 1)
+        }
+        Arcade.ext = 90
+        Sfx_Emit(SfxCode.WAVE)
+    }
+}
+
+Function.Galaga_GivePart {
+    Body: {
+        IfCondition GreaterEqual(Arcade.hd, 10) ThenBlock: { ReturnValue(0) }
+        Arcade.hd = Add(Arcade.hd, 1)
+        Arcade.got = 150
+        Sfx_Emit(SfxCode.WAVE)
+    }
+}
+
+Function.Galaga_AddScore {
+    Input: n: Integer
+    Body: {
+        Arcade.score = Add(Arcade.score, n)
+        WhileLoop GreaterEqual(Arcade.score, Arcade.next1) {
+            Arcade.next1 = Add(Arcade.next1, 40000)
+            Galaga_GiveLife()
+        }
+    }
+}
+
+Function.Galaga_Regen {
+    Body: {
+        IfCondition EqualTo(Ent_Alive(Arcade.player), 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(Arcade.spips, 2) ThenBlock: {
+            Arcade.sht = 0
+            ReturnValue(0)
+        }
+        Arcade.sht = Add(Arcade.sht, 1)
+        need = 132
+        IfCondition EqualTo(Arcade.spips, 0) ThenBlock: { need = 240 }
+        IfCondition GreaterEqual(Arcade.sht, need) ThenBlock: {
+            Arcade.spips = Add(Arcade.spips, 1)
+            Arcade.sht = 0
+            Sfx_Emit(SfxCode.HIT)
+        }
+    }
+}
+
+Function.Galaga_Hurt {
+    Output: Integer
+    Body: {
+        IfCondition GreaterThan(Arcade.spips, 0) ThenBlock: {
+            Arcade.spips = Subtract(Arcade.spips, 1)
+            Arcade.sht = 0
+            World.shake = Add(World.shake, 3)
+            Sfx_Emit(SfxCode.HIT)
+            ReturnValue(0)
+        }
+        ReturnValue(1)
+    }
+}
+
+Function.Galaga_PlateFor {
+    Input: kind: Integer
+    Output: Integer
+    Body: {
+        w = Arcade.wave
+        decade = Divide(Subtract(w, 1), 10)
+        tier = Modulo(Subtract(w, 1), 10)
+        chance = 0
+        small = 0
+        IfCondition EqualTo(kind, Kind.BEE) ThenBlock: { small = 1 }
+        IfCondition EqualTo(kind, Kind.SCOUT) ThenBlock: { small = 1 }
+        IfCondition EqualTo(kind, Kind.DART) ThenBlock: { small = 1 }
+        IfCondition EqualTo(kind, Kind.BUTTER) ThenBlock: { small = 1 }
+        IfCondition EqualTo(small, 1) ThenBlock: {
+            need = 6
+            IfCondition GreaterEqual(decade, 1) ThenBlock: { need = 4 }
+            IfCondition GreaterEqual(tier, need) ThenBlock: {
+                chance = Add(10, Multiply(decade, 7))
+                IfCondition GreaterThan(chance, 40) ThenBlock: { chance = 40 }
+            }
+        }
+        IfCondition EqualTo(kind, Kind.BOSS) ThenBlock: {
+            IfCondition GreaterEqual(tier, 3) ThenBlock: {
+                chance = Add(10, Multiply(decade, 8))
+                IfCondition GreaterThan(chance, 55) ThenBlock: { chance = 55 }
+            }
+        }
+        IfCondition EqualTo(kind, Kind.HEAVY) ThenBlock: {
+            IfCondition GreaterEqual(tier, 3) ThenBlock: {
+                chance = Add(18, Multiply(decade, 10))
+                IfCondition GreaterThan(chance, 70) ThenBlock: { chance = 70 }
+            }
+        }
+        IfCondition EqualTo(kind, Kind.FLAG) ThenBlock: {
+            IfCondition GreaterEqual(tier, 3) ThenBlock: {
+                chance = Add(22, Multiply(decade, 10))
+                IfCondition GreaterThan(chance, 75) ThenBlock: { chance = 75 }
+            }
+        }
+        IfCondition LessEqual(chance, 0) ThenBlock: { ReturnValue(0) }
+        roll = Arc_Range(100)
+        IfCondition LessThan(roll, chance) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Galaga_BossWave {
+    Output: Integer
+    Body: {
+        IfCondition LessThan(Arcade.wave, 10) ThenBlock: { ReturnValue(0) }
+        m = Modulo(Arcade.wave, 10)
+        IfCondition EqualTo(m, 0) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Galaga_Jit {
+    Input: v: Integer
+    Output: Integer
+    Body: {
+        j = Subtract(Arc_Range(51), 25)
+        v = Add(v, j)
+        IfCondition LessThan(v, 18) ThenBlock: { v = 18 }
+        IfCondition GreaterThan(v, 255) ThenBlock: { v = 255 }
+        ReturnValue(v)
+    }
+}
+
+Function.Galaga_QueenPal {
+    Body: {
+        p = Arc_Range(6)
+        IfCondition EqualTo(p, 0) ThenBlock: {
+            Queen.br = 32
+            Queen.bg = 148
+            Queen.bb = 98
+            Queen.wr = 14
+            Queen.wg = 68
+            Queen.wb = 52
+            Queen.gr = 110
+            Queen.gg = 255
+            Queen.gb = 186
+            Queen.ar = 48
+            Queen.ag = 186
+            Queen.ab = 118
+        }
+        IfCondition EqualTo(p, 1) ThenBlock: {
+            Queen.br = 198
+            Queen.bg = 158
+            Queen.bb = 36
+            Queen.wr = 118
+            Queen.wg = 78
+            Queen.wb = 18
+            Queen.gr = 255
+            Queen.gg = 228
+            Queen.gb = 118
+            Queen.ar = 216
+            Queen.ag = 176
+            Queen.ab = 58
+        }
+        IfCondition EqualTo(p, 2) ThenBlock: {
+            Queen.br = 138
+            Queen.bg = 68
+            Queen.bb = 198
+            Queen.wr = 58
+            Queen.wg = 28
+            Queen.wb = 108
+            Queen.gr = 218
+            Queen.gg = 138
+            Queen.gb = 255
+            Queen.ar = 168
+            Queen.ag = 88
+            Queen.ab = 216
+        }
+        IfCondition EqualTo(p, 3) ThenBlock: {
+            Queen.br = 188
+            Queen.bg = 38
+            Queen.bb = 48
+            Queen.wr = 88
+            Queen.wg = 18
+            Queen.wb = 28
+            Queen.gr = 255
+            Queen.gg = 98
+            Queen.gb = 108
+            Queen.ar = 208
+            Queen.ag = 58
+            Queen.ab = 68
+        }
+        IfCondition EqualTo(p, 4) ThenBlock: {
+            Queen.br = 28
+            Queen.bg = 168
+            Queen.bb = 188
+            Queen.wr = 12
+            Queen.wg = 78
+            Queen.wb = 98
+            Queen.gr = 138
+            Queen.gg = 255
+            Queen.gb = 255
+            Queen.ar = 48
+            Queen.ag = 196
+            Queen.ab = 208
+        }
+        IfCondition EqualTo(p, 5) ThenBlock: {
+            Queen.br = 178
+            Queen.bg = 88
+            Queen.bb = 38
+            Queen.wr = 88
+            Queen.wg = 38
+            Queen.wb = 18
+            Queen.gr = 255
+            Queen.gg = 176
+            Queen.gb = 98
+            Queen.ar = 198
+            Queen.ag = 108
+            Queen.ab = 48
+        }
+        Queen.br = Galaga_Jit(Queen.br)
+        Queen.bg = Galaga_Jit(Queen.bg)
+        Queen.bb = Galaga_Jit(Queen.bb)
+        Queen.wr = Galaga_Jit(Queen.wr)
+        Queen.wg = Galaga_Jit(Queen.wg)
+        Queen.wb = Galaga_Jit(Queen.wb)
+        Queen.gr = Galaga_Jit(Queen.gr)
+        Queen.gg = Galaga_Jit(Queen.gg)
+        Queen.gb = Galaga_Jit(Queen.gb)
+        Queen.ar = Galaga_Jit(Queen.ar)
+        Queen.ag = Galaga_Jit(Queen.ag)
+        Queen.ab = Galaga_Jit(Queen.ab)
+    }
+}
+
+Function.Galaga_QueenKids {
+    Output: Integer
+    Body: {
+        n = 0
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                slot = Ent_Get(i, EField.SLOT)
+                IfCondition LessThan(slot, 0) ThenBlock: {
+                    k = Ent_Get(i, EField.KIND)
+                    ok = 0
+                    IfCondition EqualTo(k, Kind.BEE) ThenBlock: { ok = 1 }
+                    IfCondition EqualTo(k, Kind.SCOUT) ThenBlock: { ok = 1 }
+                    IfCondition EqualTo(ok, 1) ThenBlock: { n = Add(n, 1) }
+                }
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(n)
+    }
+}
+
+Function.Galaga_SpawnQueen {
+    Output: Integer
+    Body: {
+        Galaga_QueenPal()
+        qx = 512
+        qy = 150
+        glive = Ent_Alive(Arcade.gate)
+        IfCondition EqualTo(glive, 1) ThenBlock: {
+            qx = Ent_Get(Arcade.gate, EField.X)
+            qy = Ent_Get(Arcade.gate, EField.Y)
+        }
+        id = Ent_Spawn(Kind.QUEEN, qx, qy)
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(0) }
+        qn = Divide(Arcade.wave, 10)
+        IfCondition LessThan(qn, 1) ThenBlock: { qn = 1 }
+        IfCondition GreaterThan(qn, 10) ThenBlock: { qn = 10 }
+        hp = Add(72, Multiply(qn, 16))
+        arm = Add(5, qn)
+        IfCondition GreaterThan(arm, 10) ThenBlock: { arm = 10 }
+        wait = Subtract(88, Multiply(qn, 5))
+        IfCondition LessThan(wait, 42) ThenBlock: { wait = 42 }
+        shot = Subtract(96, Multiply(qn, 4))
+        IfCondition LessThan(shot, 50) ThenBlock: { shot = 50 }
+        Ent_Set(id, EField.W, 140)
+        Ent_Set(id, EField.H, 120)
+        Ent_Set(id, EField.HP, hp)
+        Ent_Set(id, EField.ARM, arm)
+        Ent_Set(id, EField.ARM0, arm)
+        Ent_Set(id, EField.ST, Est.HUNT)
+        Ent_Set(id, EField.VX, 3)
+        Ent_Set(id, EField.VY, 0)
+        Ent_Set(id, EField.ACC, wait)
+        Ent_Set(id, EField.FR, shot)
+        Ent_Set(id, EField.SLOT, -1)
+        Ent_Set(id, EField.VIEW, View.FRONT)
+        Ent_Set(id, EField.LIFE, 0)
+        Queen.id = id
+        Queen.hp0 = hp
+        Queen.emit = 0
+        Queen.shot = 0
+        Sfx_Emit(SfxCode.QUEEN)
+        ReturnValue(1)
+    }
+}
+
+Function.Galaga_QueenTick {
+    Input: id: Integer
+    Body: {
+        x = Ent_Get(id, EField.X)
+        vx = Ent_Get(id, EField.VX)
+        x = Add(x, vx)
+        IfCondition LessThan(x, 190) ThenBlock: {
+            x = 190
+            vx = 3
+        }
+        IfCondition GreaterThan(x, 834) ThenBlock: {
+            x = 834
+            vx = Subtract(0, 3)
+        }
+        Ent_Set(id, EField.X, x)
+        Ent_Set(id, EField.VX, vx)
+        ang = Modulo(Arcade.t, 256)
+        si = Divide(ang, 16)
+        bob = Path_STab(si)
+        bob = Divide(bob, 12)
+        Ent_Set(id, EField.Y, Add(158, bob))
+        acc = Ent_Get(id, EField.ACC)
+        acc = Subtract(acc, 1)
+        IfCondition LessEqual(acc, 0) ThenBlock: {
+            Queen.emit = 1
+            qn = Divide(Arcade.wave, 10)
+            acc = Subtract(88, Multiply(qn, 5))
+            IfCondition LessThan(acc, 42) ThenBlock: { acc = 42 }
+        }
+        Ent_Set(id, EField.ACC, acc)
+        fr = Ent_Get(id, EField.FR)
+        fr = Subtract(fr, 1)
+        IfCondition LessEqual(fr, 0) ThenBlock: {
+            Queen.shot = 1
+            qn = Divide(Arcade.wave, 10)
+            fr = Subtract(96, Multiply(qn, 4))
+            IfCondition LessThan(fr, 50) ThenBlock: { fr = 50 }
+        }
+        Ent_Set(id, EField.FR, fr)
+        Ent_Set(id, EField.VIEW, View.FRONT)
+    }
+}
+
+Function.Galaga_QueenAct {
+    Body: {
+        IfCondition LessThan(Queen.id, 0) ThenBlock: { ReturnValue(0) }
+        live = Ent_Alive(Queen.id)
+        IfCondition EqualTo(live, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Arcade.grp, Arcade.gn) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Queen.emit, 1) ThenBlock: {
+            Queen.emit = 0
+            kids = Galaga_QueenKids()
+            qn = Divide(Arcade.wave, 10)
+            cap = Add(4, qn)
+            IfCondition GreaterThan(cap, 10) ThenBlock: { cap = 10 }
+            IfCondition LessThan(kids, cap) ThenBlock: {
+                k = Kind.BEE
+                rk = Arc_Range(2)
+                IfCondition EqualTo(rk, 1) ThenBlock: { k = Kind.SCOUT }
+                qx = Ent_Get(Queen.id, EField.X)
+                qy = Ent_Get(Queen.id, EField.Y)
+                qy = Add(qy, 70)
+                cid = Ent_Spawn(k, qx, qy)
+                IfCondition GreaterEqual(cid, 0) ThenBlock: {
+                    Ent_Set(cid, EField.W, 40)
+                    Ent_Set(cid, EField.H, 40)
+                    Ent_Set(cid, EField.SLOT, -1)
+                    Path_Build(cid)
+                }
+            }
+        }
+        IfCondition EqualTo(Queen.shot, 1) ThenBlock: {
+            Queen.shot = 0
+            qx = Ent_Get(Queen.id, EField.X)
+            qy = Ent_Get(Queen.id, EField.Y)
+            qy = Add(qy, 60)
+            sid = Ent_Spawn(Kind.EBULLET, qx, qy)
+            IfCondition GreaterEqual(sid, 0) ThenBlock: {
+                qn = Divide(Arcade.wave, 10)
+                vy = Add(3, Divide(qn, 4))
+                Ent_Set(sid, EField.VY, vy)
+                Ent_Set(sid, EField.W, 26)
+                Ent_Set(sid, EField.H, 42)
+                Ent_Set(sid, EField.VIEW, 0)
+                Sfx_Emit(SfxCode.ESHOT)
+            }
+        }
+    }
+}
+
+Function.Galaga_Fill {
+    Body: {
+        Form_Reset()
+        Gen.psmall = 0
+        Gen.nsmall = 0
+        Queen.id = -1
+        Gen_Build()
+        n = Galaga_PutBand(0)
+        bw = Galaga_BossWave()
+        IfCondition EqualTo(bw, 1) ThenBlock: {
+            qn = Galaga_SpawnQueen()
+            n = Add(n, qn)
+            Arcade.pat = 20
+        }
+        Arcade.left = n
+        Arcade.grp = 1
+        Arcade.gn = Gen.convoys
+        Arcade.gwait = 40
+        Galaga_MaybeCap()
+    }
+}
+
+Function.Galaga_CapCount {
+    Output: Integer
+    Body: {
+        n = 0
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                IfCondition EqualTo(Ent_Get(i, EField.KIND), Kind.CAP) ThenBlock: {
+                    n = Add(n, 1)
+                }
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(n)
+    }
+}
+
+Function.Galaga_MaybeCap {
+    Body: {
+        IfCondition LessThan(Arcade.wave, 5) ThenBlock: { ReturnValue(0) }
+        n = Galaga_CapCount()
+        IfCondition GreaterThan(n, 0) ThenBlock: { ReturnValue(0) }
+        roll = Arc_Range(3)
+        IfCondition NotEqual(roll, 0) ThenBlock: { ReturnValue(0) }
+        i = 0
+        pick = -1
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                k = Ent_Get(i, EField.KIND)
+                ok = 0
+                IfCondition EqualTo(k, Kind.HEAVY) ThenBlock: { ok = 1 }
+                IfCondition EqualTo(k, Kind.FLAG) ThenBlock: { ok = 1 }
+                IfCondition EqualTo(k, Kind.BOSS) ThenBlock: { ok = 1 }
+                IfCondition EqualTo(ok, 1) ThenBlock: { pick = i }
+            }
+            i = Add(i, 1)
+        }
+        IfCondition LessThan(pick, 0) ThenBlock: { ReturnValue(0) }
+        Ent_Set(pick, EField.KIND, Kind.CAP)
+        Ent_Set(pick, EField.W, 64)
+        Ent_Set(pick, EField.H, 56)
+        Ent_Set(pick, EField.HP, 3)
+        Ent_Set(pick, EField.LIFE, 0)
+        Ent_Set(pick, EField.VIEW, View.FRONT)
+    }
+}
+
+Function.Galaga_CapRescue {
+    Input: id: Integer
+    Body: {
+        carry = Ent_Get(id, EField.LIFE)
+        IfCondition EqualTo(carry, 1) ThenBlock: {
+            IfCondition EqualTo(Arcade.dual, 0) ThenBlock: {
+                Arcade.dual = 1
+            }
+            Galaga_GiveLife()
+            Arcade.held = -1
+            IfCondition EqualTo(Ent_Alive(Arcade.player), 1) ThenBlock: {
+                Ent_Set(Arcade.player, EField.W, 80)
+            }
+        }
+    }
+}
+
+Function.Galaga_DoCapture {
+    Input: id: Integer
+    Body: {
+        IfCondition EqualTo(Ent_Alive(Arcade.player), 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessEqual(Arcade.lives, 1) ThenBlock: {
+            Boom_Spawn(Ent_Get(Arcade.player, EField.X), Ent_Get(Arcade.player, EField.Y))
+            Sfx_Emit(SfxCode.DEATH)
+            Ent_Kill(Arcade.player)
+            Arcade.lives = 0
+            Arcade.dual = 0
+            Arcade.mode = Mode.DEAD
+            Arcade.dive_cd = 50
+            Ent_Set(id, EField.ST, Est.HUNT)
+            ReturnValue(0)
+        }
+        Arcade.dual = 0
+        Arcade.held = id
+        cy = Ent_Get(id, EField.Y)
+        Ent_Set(id, EField.Y, Subtract(cy, 70))
+        Ent_Set(id, EField.LIFE, 1)
+        Ent_Set(id, EField.ST, Est.FLEE)
+        Ent_Set(id, EField.VY, Subtract(0, 3))
+        Ent_Set(id, EField.VIEW, View.BACK)
+        Sfx_Emit(SfxCode.ESHOT)
+        Ent_Kill(Arcade.player)
+        Arcade.lives = Subtract(Arcade.lives, 1)
+        Galaga_Player()
+        Arcade.spips = 0
+        Arcade.sht = 0
+        Arcade.inv = 120
+        Arcade.grab = 50
+        Ent_Set(Arcade.player, EField.W, 56)
+        Sfx_Emit(SfxCode.HIT)
+    }
+}
+
+Function.Galaga_CapTick {
+    Input: id: Integer
+    Body: {
+        st = Ent_Get(id, EField.ST)
+        IfCondition EqualTo(st, Est.ENTER) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(st, Est.DIVE) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(st, Est.RETURN) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(st, Est.FORM) ThenBlock: {
+            acc = Ent_Get(id, EField.ACC)
+            IfCondition LessEqual(acc, 0) ThenBlock: {
+                Ent_Set(id, EField.ACC, Add(90, Arc_Range(50)))
+            }
+            ElseBlock: {
+                acc = Subtract(acc, 1)
+                Ent_Set(id, EField.ACC, acc)
+                IfCondition EqualTo(acc, 0) ThenBlock: {
+                    Ent_Set(id, EField.ST, Est.HUNT)
+                    Ent_Set(id, EField.VIEW, View.FRONT)
+                }
+            }
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(st, Est.HUNT) ThenBlock: {
+            x = Ent_Get(id, EField.X)
+            y = Ent_Get(id, EField.Y)
+            IfCondition EqualTo(Ent_Alive(Arcade.player), 1) ThenBlock: {
+                px = Ent_Get(Arcade.player, EField.X)
+                py = Ent_Get(Arcade.player, EField.Y)
+                IfCondition LessThan(x, px) ThenBlock: { x = Add(x, 7) }
+                IfCondition GreaterThan(x, px) ThenBlock: { x = Subtract(x, 7) }
+                ty = Subtract(py, 88)
+                IfCondition LessThan(ty, 200) ThenBlock: { ty = 200 }
+                IfCondition LessThan(y, ty) ThenBlock: { y = Add(y, 6) }
+                IfCondition GreaterThan(y, ty) ThenBlock: { y = Subtract(y, 5) }
+                dx = Subtract(x, px)
+                IfCondition LessThan(dx, 0) ThenBlock: { dx = Subtract(0, dx) }
+                dy = Subtract(ty, y)
+                IfCondition LessThan(dy, 0) ThenBlock: { dy = Subtract(0, dy) }
+                IfCondition LessThan(dx, 36) ThenBlock: {
+                    IfCondition LessThan(dy, 28) ThenBlock: {
+                        Ent_Set(id, EField.ST, Est.BEAM)
+                        Ent_Set(id, EField.ACC, 55)
+                        Sfx_Emit(SfxCode.ESHOT)
+                    }
+                }
+            }
+            Ent_Set(id, EField.X, x)
+            Ent_Set(id, EField.Y, y)
+            Ent_Set(id, EField.VIEW, View.FRONT)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(st, Est.BEAM) ThenBlock: {
+            acc = Ent_Get(id, EField.ACC)
+            acc = Subtract(acc, 1)
+            Ent_Set(id, EField.ACC, acc)
+            x = Ent_Get(id, EField.X)
+            y = Ent_Get(id, EField.Y)
+            IfCondition EqualTo(Ent_Alive(Arcade.player), 1) ThenBlock: {
+                px = Ent_Get(Arcade.player, EField.X)
+                py = Ent_Get(Arcade.player, EField.Y)
+                IfCondition LessThan(x, px) ThenBlock: { x = Add(x, 9) }
+                IfCondition GreaterThan(x, px) ThenBlock: { x = Subtract(x, 9) }
+                ty = Subtract(py, 80)
+                IfCondition LessThan(y, ty) ThenBlock: { y = Add(y, 4) }
+                IfCondition GreaterThan(y, ty) ThenBlock: { y = Subtract(y, 4) }
+                Ent_Set(id, EField.X, x)
+                Ent_Set(id, EField.Y, y)
+            }
+            IfCondition LessEqual(acc, 0) ThenBlock: {
+                lock = 0
+                IfCondition EqualTo(Ent_Alive(Arcade.player), 1) ThenBlock: {
+                    px = Ent_Get(Arcade.player, EField.X)
+                    py = Ent_Get(Arcade.player, EField.Y)
+                    dx = Subtract(x, px)
+                    IfCondition LessThan(dx, 0) ThenBlock: { dx = Subtract(0, dx) }
+                    dy = Subtract(py, y)
+                    IfCondition LessThan(dx, 72) ThenBlock: {
+                        IfCondition GreaterThan(dy, 20) ThenBlock: {
+                            IfCondition LessThan(dy, 180) ThenBlock: { lock = 1 }
+                        }
+                    }
+                }
+                IfCondition EqualTo(lock, 1) ThenBlock: {
+                    Galaga_DoCapture(id)
+                }
+                ElseBlock: {
+                    Ent_Set(id, EField.ST, Est.HUNT)
+                    Ent_Set(id, EField.ACC, 40)
+                }
+            }
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(st, Est.FLEE) ThenBlock: {
+            y = Ent_Get(id, EField.Y)
+            y = Add(y, Ent_Get(id, EField.VY))
+            Ent_Set(id, EField.Y, y)
+            Ent_Set(id, EField.VIEW, View.BACK)
+            IfCondition LessThan(y, -80) ThenBlock: {
+                Arcade.held = -1
+                Ent_Kill(id)
+                Arcade.left = Subtract(Arcade.left, 1)
+            }
+        }
+    }
+}
+
+Function.Galaga_EnsureGate {
+    Output: Integer
+    Body: {
+        glive = Ent_Alive(Arcade.gate)
+        IfCondition EqualTo(glive, 1) ThenBlock: {
+            gk = Ent_Get(Arcade.gate, EField.KIND)
+            IfCondition EqualTo(gk, Kind.GATE) ThenBlock: {
+                ReturnValue(Arcade.gate)
+            }
+        }
+        id = Ent_Spawn(Kind.GATE, 512, 310)
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(-1) }
+        Ent_Set(id, EField.W, 88)
+        Ent_Set(id, EField.H, 88)
+        Ent_Set(id, EField.FR, 0)
+        Ent_Set(id, EField.ST, 0)
+        Ent_Set(id, EField.HP, 99)
+        Ent_Set(id, EField.SLOT, -1)
+        Arcade.gate = id
+        ReturnValue(id)
+    }
+}
+
+Function.Galaga_Wipe {
+    Body: {
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                k = Ent_Get(i, EField.KIND)
+                keep = 0
+                IfCondition EqualTo(k, Kind.PLAYER) ThenBlock: { keep = 1 }
+                IfCondition EqualTo(k, Kind.GATE) ThenBlock: { keep = 1 }
+                IfCondition EqualTo(keep, 0) ThenBlock: { Ent_Kill(i) }
+            }
+            i = Add(i, 1)
+        }
+        Queen.id = -1
+    }
+}
+
+Function.Galaga_WarpBegin {
+    Body: {
+        Galaga_EnsureGate()
+        Arcade.mode = Mode.WARP
+        Arcade.warp = 1
+        Arcade.wt = 80
+        Arcade.need = 1
+        Arcade.pause = 0
+        plive = Ent_Alive(Arcade.player)
+        IfCondition EqualTo(plive, 1) ThenBlock: {
+            Ent_Set(Arcade.player, EField.FL, Add(EFlag.ALIVE, EFlag.VIS))
+            Ent_Set(Arcade.player, EField.VIEW, View.FRONT)
+        }
+        Sfx_Emit(SfxCode.START)
+        bw = Galaga_BossWave()
+        IfCondition EqualTo(bw, 0) ThenBlock: {
+            Sfx_Emit(SfxCode.BGM)
+        }
+    }
+}
+
+Function.Galaga_WarpTick {
+    Body: {
+        glive = Ent_Alive(Arcade.gate)
+        IfCondition EqualTo(glive, 1) ThenBlock: {
+            fr = Ent_Get(Arcade.gate, EField.FR)
+            fr = Add(fr, 1)
+            IfCondition GreaterThan(fr, 7) ThenBlock: { fr = 0 }
+            Ent_Set(Arcade.gate, EField.FR, fr)
+        }
+        IfCondition EqualTo(Arcade.warp, 1) ThenBlock: {
+            plive = Ent_Alive(Arcade.player)
+            IfCondition EqualTo(plive, 1) ThenBlock: {
+                IfCondition EqualTo(glive, 1) ThenBlock: {
+                    gx = Ent_Get(Arcade.gate, EField.X)
+                    gy = Ent_Get(Arcade.gate, EField.Y)
+                    x = Ent_Get(Arcade.player, EField.X)
+                    y = Ent_Get(Arcade.player, EField.Y)
+                    IfCondition LessThan(x, gx) ThenBlock: { x = Add(x, 9) }
+                    IfCondition GreaterThan(x, gx) ThenBlock: { x = Subtract(x, 9) }
+                    IfCondition GreaterThan(y, gy) ThenBlock: { y = Subtract(y, 12) }
+                    IfCondition LessThan(y, gy) ThenBlock: { y = Add(y, 8) }
+                    Ent_Set(Arcade.player, EField.X, x)
+                    Ent_Set(Arcade.player, EField.Y, y)
+                    Ent_Set(Arcade.player, EField.VIEW, View.FRONT)
+                    dx = Subtract(x, gx)
+                    IfCondition LessThan(dx, 0) ThenBlock: { dx = Subtract(0, dx) }
+                    dy = Subtract(y, gy)
+                    IfCondition LessThan(dy, 0) ThenBlock: { dy = Subtract(0, dy) }
+                    IfCondition LessThan(dx, 18) ThenBlock: {
+                        IfCondition LessThan(dy, 18) ThenBlock: {
+                            Arcade.wt = 1
+                        }
+                    }
+                }
+            }
+            Arcade.wt = Subtract(Arcade.wt, 1)
+            IfCondition LessEqual(Arcade.wt, 0) ThenBlock: {
+                plive = Ent_Alive(Arcade.player)
+                IfCondition EqualTo(plive, 1) ThenBlock: {
+                    Ent_Set(Arcade.player, EField.FL, EFlag.ALIVE)
+                }
+                Arcade.warp = 2
+                Arcade.wt = 16
+            }
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Arcade.warp, 2) ThenBlock: {
+            IfCondition EqualTo(Arcade.need, 1) ThenBlock: {
+                Galaga_Wipe()
+                Path_Init()
+                Galaga_Fill()
+                plive = Ent_Alive(Arcade.player)
+                IfCondition EqualTo(plive, 1) ThenBlock: {
+                    Ent_Set(Arcade.player, EField.X, 512)
+                    Ent_Set(Arcade.player, EField.Y, 920)
+                    Ent_Set(Arcade.player, EField.FL, EFlag.ALIVE)
+                    Ent_Set(Arcade.player, EField.VIEW, View.TOP)
+                }
+                Arcade.need = 0
+            }
+            Arcade.wt = Subtract(Arcade.wt, 1)
+            IfCondition LessEqual(Arcade.wt, 0) ThenBlock: {
+                Arcade.warp = 3
+                Arcade.wt = 140
+            }
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Arcade.warp, 3) ThenBlock: {
+            Path_FormBob()
+            Form_Tick()
+            Galaga_Move()
+            Galaga_QueenAct()
+            Boom_Tick()
+            Arcade.wt = Subtract(Arcade.wt, 1)
+            still = Galaga_Entering()
+            IfCondition EqualTo(still, 0) ThenBlock: {
+                IfCondition LessThan(Arcade.wt, 90) ThenBlock: {
+                    Arcade.wt = 0
+                }
+            }
+            IfCondition LessEqual(Arcade.wt, 0) ThenBlock: {
+                plive = Ent_Alive(Arcade.player)
+                IfCondition EqualTo(plive, 1) ThenBlock: {
+                    Ent_Set(Arcade.player, EField.FL, Add(EFlag.ALIVE, EFlag.VIS))
+                    Ent_Set(Arcade.player, EField.X, 512)
+                    Ent_Set(Arcade.player, EField.Y, 920)
+                    Arcade.inv = 90
+                    Arcade.spips = 2
+                }
+                Arcade.mode = Mode.PLAY
+                Arcade.warp = 0
+                Arcade.dive_cd = Subtract(115, Multiply(Arcade.agg, 5))
+                IfCondition LessThan(Arcade.dive_cd, 14) ThenBlock: { Arcade.dive_cd = 14 }
+            }
+        }
+    }
+}
+
+Function.Galaga_Start {
+    Body: {
+        Galaga_WarpBegin()
+    }
+}
+
+Function.Galaga_Init {
+    Body: {
+        Arcade.score = 0
+        Arcade.lives = 3
+        Arcade.wave = 1
+        Arcade.next1 = 20000
+        Arcade.ext = 0
+        Arcade.dual = 0
+        Arcade.held = -1
+        Arcade.inv = 0
+        Arcade.grab = 0
+        Arcade.gate = -1
+        Arcade.warp = 0
+        Arcade.wt = 0
+        Arcade.grp = 0
+        Arcade.gn = 0
+        Arcade.gwait = 0
+        Arcade.hd = 0
+        Arcade.got = 0
+        Queen.id = -1
+        Arcade.mode = Mode.TITLE
+        Path_Init()
+        Ent_Clear()
+        Form_Reset()
+        Galaga_Player()
+        Ent_Set(Arcade.player, EField.Y, 820)
+        Galaga_EnsureGate()
+        Arcade.ct = 0
+        Sfx_Emit(SfxCode.TITLE)
+    }
+}
+
+Function.Galaga_Shots {
+    Output: Integer
+    Body: {
+        n = 0
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                IfCondition EqualTo(Ent_Get(i, EField.KIND), Kind.PBULLET) ThenBlock: {
+                    n = Add(n, 1)
+                }
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(n)
+    }
+}
+
+Function.Galaga_Fire {
+    Body: {
+        IfCondition LessThan(Arcade.player, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(Arcade.fire_cd, 0) ThenBlock: { ReturnValue(0) }
+        cap = 6
+        IfCondition EqualTo(Arcade.dual, 1) ThenBlock: { cap = 8 }
+        IfCondition GreaterEqual(Galaga_Shots(), cap) ThenBlock: { ReturnValue(0) }
+        px = Ent_Get(Arcade.player, EField.X)
+        py = Ent_Get(Arcade.player, EField.Y)
+        id = Ent_Spawn(Kind.PBULLET, px, Subtract(py, 40))
+        IfCondition GreaterEqual(id, 0) ThenBlock: {
+            Ent_Set(id, EField.VY, Subtract(0, 32))
+            Ent_Set(id, EField.W, 16)
+            Ent_Set(id, EField.H, 32)
+            Ent_Set(id, EField.VIEW, 0)
+            Arcade.fire_cd = 5
+            Sfx_Emit(SfxCode.SHOT)
+        }
+        IfCondition EqualTo(Arcade.dual, 1) ThenBlock: {
+            id2 = Ent_Spawn(Kind.PBULLET, Add(px, 22), Subtract(py, 40))
+            IfCondition GreaterEqual(id2, 0) ThenBlock: {
+                Ent_Set(id2, EField.VY, Subtract(0, 32))
+                Ent_Set(id2, EField.W, 16)
+                Ent_Set(id2, EField.H, 32)
+                Ent_Set(id2, EField.VIEW, 0)
+            }
+        }
+    }
+}
+
+Function.Galaga_EShots {
+    Output: Integer
+    Body: {
+        n = 0
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                IfCondition EqualTo(Ent_Get(i, EField.KIND), Kind.EBULLET) ThenBlock: {
+                    n = Add(n, 1)
+                }
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(n)
+    }
+}
+
+Function.Galaga_EnemyShot {
+    Input: src: Integer
+    Body: {
+        cap = Add(2, Divide(Arcade.agg, 2))
+        IfCondition GreaterThan(cap, 8) ThenBlock: { cap = 8 }
+        IfCondition GreaterEqual(Galaga_EShots(), cap) ThenBlock: { ReturnValue(0) }
+        id = Ent_Spawn(Kind.EBULLET, Ent_Get(src, EField.X), Add(Ent_Get(src, EField.Y), 30))
+        IfCondition GreaterEqual(id, 0) ThenBlock: {
+            Ent_Set(id, EField.VY, Add(4, Divide(Arcade.agg, 2)))
+            Ent_Set(id, EField.W, 16)
+            Ent_Set(id, EField.H, 28)
+            Sfx_Emit(SfxCode.ESHOT)
+        }
+    }
+}
+
+Function.Galaga_Steer {
+    Body: {
+        id = Arcade.player
+        IfCondition EqualTo(Ent_Alive(id), 0) ThenBlock: { ReturnValue(0) }
+        x = Ent_Get(id, EField.X)
+        spd = Add(10, Divide(Arcade.agg, 2))
+        IfCondition GreaterThan(spd, 20) ThenBlock: { spd = 20 }
+        IfCondition EqualTo(Key.l, 1) ThenBlock: { x = Subtract(x, spd) }
+        IfCondition EqualTo(Key.r, 1) ThenBlock: { x = Add(x, spd) }
+        IfCondition LessThan(x, 40) ThenBlock: { x = 40 }
+        IfCondition GreaterThan(x, 984) ThenBlock: { x = 984 }
+        Ent_Set(id, EField.X, x)
+        view = View.TOP
+        IfCondition EqualTo(Key.l, 1) ThenBlock: { view = View.SIDE }
+        IfCondition EqualTo(Key.r, 1) ThenBlock: { view = View.SIDE }
+        Ent_Set(id, EField.VIEW, view)
+        IfCondition EqualTo(Key.f, 1) ThenBlock: { Galaga_Fire() }
+    }
+}
+
+Function.Galaga_Move {
+    Body: {
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                k = Ent_Get(i, EField.KIND)
+                IfCondition EqualTo(k, Kind.GATE) ThenBlock: {
+                    IfCondition EqualTo(Modulo(Arcade.t, 3), 0) ThenBlock: {
+                        fr = Ent_Get(i, EField.FR)
+                        fr = Add(fr, 1)
+                        IfCondition GreaterThan(fr, 7) ThenBlock: { fr = 0 }
+                        Ent_Set(i, EField.FR, fr)
+                    }
+                }
+                IfCondition EqualTo(k, Kind.DROP) ThenBlock: {
+                    Ent_Set(i, EField.Y, Add(Ent_Get(i, EField.Y), Ent_Get(i, EField.VY)))
+                    IfCondition GreaterThan(Ent_Get(i, EField.Y), 1040) ThenBlock: {
+                        Ent_Kill(i)
+                    }
+                }
+                IfCondition Or(EqualTo(k, Kind.PBULLET), EqualTo(k, Kind.EBULLET)) ThenBlock: {
+                    Ent_Set(i, EField.X, Add(Ent_Get(i, EField.X), Ent_Get(i, EField.VX)))
+                    Ent_Set(i, EField.Y, Add(Ent_Get(i, EField.Y), Ent_Get(i, EField.VY)))
+                    IfCondition Or(LessThan(Ent_Get(i, EField.Y), 0), GreaterThan(Ent_Get(i, EField.Y), 1040)) ThenBlock: {
+                        Ent_Kill(i)
+                    }
+                }
+                IfCondition EqualTo(Galaga_IsFoe(k), 1) ThenBlock: {
+                    st = Ent_Get(i, EField.ST)
+                    IfCondition EqualTo(st, Est.ENTER) ThenBlock: {
+                        acc = Ent_Get(i, EField.ACC)
+                        IfCondition GreaterThan(acc, 0) ThenBlock: {
+                            Ent_Set(i, EField.ACC, Subtract(acc, 1))
+                        }
+                        ElseBlock: {
+                            done = Path_Tick(i)
+                            IfCondition EqualTo(done, 1) ThenBlock: {
+                                slot = Ent_Get(i, EField.SLOT)
+                                okslot = Galaga_SlotOk(slot)
+                                IfCondition EqualTo(okslot, 0) ThenBlock: {
+                                    Ent_Kill(i)
+                                }
+                                ElseBlock: {
+                                    tx = Form_Get(slot, 1)
+                                    tx = Add(tx, Form.bobx)
+                                    ty = Form_Get(slot, 2)
+                                    ty = Add(ty, Form.boby)
+                                    Ent_Set(i, EField.X, tx)
+                                    Ent_Set(i, EField.Y, ty)
+                                    Ent_Set(i, EField.ST, Est.FORM)
+                                    Ent_Set(i, EField.VIEW, View.TOP)
+                                }
+                            }
+                        }
+                    }
+                    IfCondition EqualTo(st, Est.DIVE) ThenBlock: {
+                        done = Path_Tick(i)
+                        IfCondition GreaterThan(Ent_Get(i, EField.ACC), 0) ThenBlock: {
+                            Ent_Set(i, EField.ACC, Subtract(Ent_Get(i, EField.ACC), 1))
+                        }
+                        ElseBlock: {
+                            y = Ent_Get(i, EField.Y)
+                            IfCondition And(GreaterThan(y, 280), LessThan(y, 780)) ThenBlock: {
+                                want = 0
+                                IfCondition EqualTo(k, Kind.BOSS) ThenBlock: { want = 1 }
+                                IfCondition EqualTo(k, Kind.FLAG) ThenBlock: { want = 1 }
+                                IfCondition EqualTo(k, Kind.HEAVY) ThenBlock: { want = 1 }
+                                IfCondition EqualTo(Arc_Range(4), 0) ThenBlock: { want = 1 }
+                                IfCondition EqualTo(want, 1) ThenBlock: { Galaga_EnemyShot(i) }
+                                Ent_Set(i, EField.ACC, 80)
+                            }
+                        }
+                        IfCondition EqualTo(done, 1) ThenBlock: {
+                            slot = Ent_Get(i, EField.SLOT)
+                            okslot = Galaga_SlotOk(slot)
+                            IfCondition EqualTo(okslot, 0) ThenBlock: {
+                                Ent_Kill(i)
+                            }
+                            ElseBlock: {
+                                Ent_Set(i, EField.ST, Est.RETURN)
+                                Ent_Set(i, EField.VY, Subtract(0, 7))
+                                y = Ent_Get(i, EField.Y)
+                                IfCondition GreaterThan(y, 1040) ThenBlock: {
+                                    Ent_Set(i, EField.Y, 1040)
+                                }
+                            }
+                        }
+                    }
+                    IfCondition EqualTo(st, Est.RETURN) ThenBlock: {
+                        slot = Ent_Get(i, EField.SLOT)
+                        okslot = Galaga_SlotOk(slot)
+                        IfCondition EqualTo(okslot, 0) ThenBlock: {
+                            Ent_Kill(i)
+                        }
+                        ElseBlock: {
+                            tx = Add(Form_Get(slot, 1), Form.bobx)
+                            ty = Add(Form_Get(slot, 2), Form.boby)
+                            x = Ent_Get(i, EField.X)
+                            y = Ent_Get(i, EField.Y)
+                            IfCondition LessThan(x, tx) ThenBlock: { x = Add(x, 6) }
+                            IfCondition GreaterThan(x, tx) ThenBlock: { x = Subtract(x, 6) }
+                            y = Add(y, Ent_Get(i, EField.VY))
+                            Ent_Set(i, EField.X, x)
+                            Ent_Set(i, EField.Y, y)
+                            Ent_Set(i, EField.VIEW, View.BACK)
+                            dx = Subtract(x, tx)
+                            dy = Subtract(y, ty)
+                            IfCondition LessThan(dx, 0) ThenBlock: { dx = Subtract(0, dx) }
+                            IfCondition LessThan(dy, 0) ThenBlock: { dy = Subtract(0, dy) }
+                            IfCondition And(LessThan(dx, 10), LessThan(dy, 10)) ThenBlock: {
+                                Ent_Set(i, EField.ST, Est.FORM)
+                                Ent_Set(i, EField.VIEW, View.TOP)
+                            }
+                        }
+                    }
+                    still = Ent_Alive(i)
+                    IfCondition EqualTo(still, 1) ThenBlock: {
+                        Galaga_ClipFoe(i)
+                    }
+                    still = Ent_Alive(i)
+                    IfCondition EqualTo(still, 1) ThenBlock: {
+                        IfCondition EqualTo(k, Kind.CAP) ThenBlock: {
+                            Galaga_CapTick(i)
+                        }
+                        IfCondition EqualTo(k, Kind.QUEEN) ThenBlock: {
+                            Galaga_QueenTick(i)
+                        }
+                    }
+                }
+            }
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Galaga_Value {
+    Input: kind: Integer
+    Input: diving: Integer
+    Output: Integer
+    Body: {
+        v = 50
+        IfCondition EqualTo(kind, Kind.SCOUT) ThenBlock: { v = 40 }
+        IfCondition EqualTo(kind, Kind.BUTTER) ThenBlock: { v = 80 }
+        IfCondition EqualTo(kind, Kind.DART) ThenBlock: { v = 100 }
+        IfCondition EqualTo(kind, Kind.BOSS) ThenBlock: { v = 150 }
+        IfCondition EqualTo(kind, Kind.HEAVY) ThenBlock: { v = 200 }
+        IfCondition EqualTo(kind, Kind.FLAG) ThenBlock: { v = 400 }
+        IfCondition EqualTo(kind, Kind.CAP) ThenBlock: { v = 350 }
+        IfCondition EqualTo(kind, Kind.QUEEN) ThenBlock: { v = 2500 }
+        IfCondition EqualTo(diving, 1) ThenBlock: { v = Multiply(v, 2) }
+        ReturnValue(v)
+    }
+}
+
+Function.Galaga_Hits {
+    Body: {
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                IfCondition EqualTo(Ent_Get(i, EField.KIND), Kind.PBULLET) ThenBlock: {
+                    j = 0
+                    WhileLoop LessThan(j, Ent.n) {
+                        IfCondition EqualTo(Ent_Alive(j), 1) ThenBlock: {
+                            k = Ent_Get(j, EField.KIND)
+                            IfCondition EqualTo(Galaga_IsFoe(k), 1) ThenBlock: {
+                                IfCondition EqualTo(Ent_Hit(i, j), 1) ThenBlock: {
+                                    Ent_Kill(i)
+                                    IfCondition EqualTo(k, Kind.CAP) ThenBlock: {
+                                        carry = Ent_Get(j, EField.LIFE)
+                                        IfCondition EqualTo(carry, 1) ThenBlock: {
+                                            IfCondition GreaterThan(Arcade.grab, 0) ThenBlock: {
+                                                j = Ent.n
+                                            }
+                                            ElseBlock: {
+                                                val = Galaga_Value(k, 1)
+                                                Galaga_AddScore(val)
+                                                Galaga_CapRescue(j)
+                                                Ent_Kill(j)
+                                                Arcade.left = Subtract(Arcade.left, 1)
+                                                j = Ent.n
+                                            }
+                                        }
+                                        ElseBlock: {
+                                            IfCondition EqualTo(Ent_Get(j, EField.ST), Est.BEAM) ThenBlock: {
+                                                Ent_Set(j, EField.ST, Est.HUNT)
+                                                Ent_Set(j, EField.ACC, 70)
+                                            }
+                                        }
+                                    }
+                                    IfCondition EqualTo(Ent_Alive(j), 0) ThenBlock: {
+                                        j = Ent.n
+                                    }
+                                    ElseBlock: {
+                                        arm = Ent_Get(j, EField.ARM)
+                                        IfCondition GreaterThan(arm, 0) ThenBlock: {
+                                            Ent_Set(j, EField.ARM, Subtract(arm, 1))
+                                            Sfx_Emit(SfxCode.HIT)
+                                        }
+                                        ElseBlock: {
+                                            Ent_Set(j, EField.HP, Subtract(Ent_Get(j, EField.HP), 1))
+                                            IfCondition LessEqual(Ent_Get(j, EField.HP), 0) ThenBlock: {
+                                                diving = 0
+                                                IfCondition EqualTo(Ent_Get(j, EField.ST), Est.DIVE) ThenBlock: { diving = 1 }
+                                                IfCondition EqualTo(Ent_Get(j, EField.ST), Est.ENTER) ThenBlock: { diving = 1 }
+                                                val = Galaga_Value(k, diving)
+                                                Galaga_AddScore(val)
+                                                dx = Ent_Get(j, EField.X)
+                                                dy = Ent_Get(j, EField.Y)
+                                                plated = Ent_Get(j, EField.ARM0)
+                                                Boom_Spawn(dx, dy)
+                                                Galaga_Drop(dx, dy, k, plated)
+                                                IfCondition EqualTo(k, Kind.QUEEN) ThenBlock: {
+                                                    Queen.id = -1
+                                                    Galaga_GivePart()
+                                                }
+                                                Ent_Kill(j)
+                                                Arcade.left = Subtract(Arcade.left, 1)
+                                            }
+                                            ElseBlock: {
+                                                Sfx_Emit(SfxCode.HIT)
+                                            }
+                                        }
+                                        j = Ent.n
+                                    }
+                                }
+                            }
+                        }
+                        j = Add(j, 1)
+                    }
+                }
+            }
+            i = Add(i, 1)
+        }
+        IfCondition EqualTo(Ent_Alive(Arcade.player), 1) ThenBlock: {
+            i = 0
+            WhileLoop LessThan(i, Ent.n) {
+                IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                    k = Ent_Get(i, EField.KIND)
+                    IfCondition EqualTo(k, Kind.DROP) ThenBlock: {
+                        IfCondition EqualTo(Ent_Hit(Arcade.player, i), 1) ThenBlock: {
+                            typ = Ent_Get(i, EField.ST)
+                            IfCondition EqualTo(typ, Drop.SHIELD) ThenBlock: {
+                                IfCondition GreaterEqual(Arcade.spips, 2) ThenBlock: {
+                                    Galaga_AddScore(80)
+                                }
+                                ElseBlock: {
+                                    Arcade.spips = 2
+                                    Arcade.sht = 0
+                                }
+                            }
+                            IfCondition EqualTo(typ, Drop.NUGGET) ThenBlock: {
+                                Galaga_AddScore(200)
+                            }
+                            IfCondition EqualTo(typ, Drop.LIFE) ThenBlock: {
+                                Galaga_GiveLife()
+                            }
+                            IfCondition NotEqual(typ, Drop.LIFE) ThenBlock: {
+                                Sfx_Emit(SfxCode.HIT)
+                            }
+                            Ent_Kill(i)
+                        }
+                    }
+                    hit = 0
+                    IfCondition EqualTo(k, Kind.EBULLET) ThenBlock: { hit = 1 }
+                    IfCondition EqualTo(Galaga_IsFoe(k), 1) ThenBlock: { hit = 1 }
+                    IfCondition EqualTo(hit, 1) ThenBlock: {
+                        IfCondition EqualTo(Ent_Hit(Arcade.player, i), 1) ThenBlock: {
+                            IfCondition EqualTo(k, Kind.CAP) ThenBlock: {
+                                IfCondition LessEqual(Arcade.inv, 0) ThenBlock: {
+                                    carry = Ent_Get(i, EField.LIFE)
+                                    IfCondition EqualTo(carry, 1) ThenBlock: {
+                                        IfCondition LessEqual(Arcade.grab, 0) ThenBlock: {
+                                            Galaga_CapRescue(i)
+                                            Ent_Kill(i)
+                                            Arcade.left = Subtract(Arcade.left, 1)
+                                        }
+                                    }
+                                    ElseBlock: {
+                                        Boom_Spawn(Ent_Get(i, EField.X), Ent_Get(i, EField.Y))
+                                        Ent_Kill(i)
+                                        Arcade.left = Subtract(Arcade.left, 1)
+                                    }
+                                }
+                            }
+                            ElseBlock: {
+                            IfCondition GreaterThan(Arcade.inv, 0) ThenBlock: {
+                                IfCondition EqualTo(k, Kind.EBULLET) ThenBlock: { Ent_Kill(i) }
+                            }
+                            ElseBlock: {
+                            dead = Galaga_Hurt()
+                            IfCondition EqualTo(k, Kind.EBULLET) ThenBlock: { Ent_Kill(i) }
+                            IfCondition EqualTo(dead, 1) ThenBlock: {
+                                Boom_Spawn(Ent_Get(Arcade.player, EField.X), Ent_Get(Arcade.player, EField.Y))
+                                Sfx_Emit(SfxCode.DEATH)
+                                Ent_Kill(Arcade.player)
+                                Arcade.lives = Subtract(Arcade.lives, 1)
+                                Arcade.mode = Mode.DEAD
+                                Arcade.dive_cd = 50
+                                i = Ent.n
+                            }
+                            ElseBlock: {
+                                IfCondition EqualTo(Galaga_IsFoe(k), 1) ThenBlock: {
+                                    IfCondition NotEqual(k, Kind.EBULLET) ThenBlock: {
+                                        Boom_Spawn(Ent_Get(i, EField.X), Ent_Get(i, EField.Y))
+                                        Ent_Kill(i)
+                                        Arcade.left = Subtract(Arcade.left, 1)
+                                    }
+                                }
+                            }
+                            }
+                            }
+                        }
+                    }
+                }
+                i = Add(i, 1)
+            }
+        }
+    }
+}
+
+Function.Galaga_Entering {
+    Output: Integer
+    Body: {
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                IfCondition EqualTo(Ent_Get(i, EField.ST), Est.ENTER) ThenBlock: {
+                    ReturnValue(1)
+                }
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Galaga_Dives {
+    Body: {
+        still = Galaga_Entering()
+        IfCondition EqualTo(still, 1) ThenBlock: {
+            ReturnValue(0)
+        }
+        IfCondition LessThan(Arcade.grp, Arcade.gn) ThenBlock: {
+            ReturnValue(0)
+        }
+        IfCondition GreaterThan(Arcade.dive_cd, 0) ThenBlock: {
+            Arcade.dive_cd = Subtract(Arcade.dive_cd, 1)
+            ReturnValue(0)
+        }
+        id = Form_Pick()
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ent_Get(id, EField.KIND), Kind.CAP) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ent_Get(id, EField.KIND), Kind.QUEEN) ThenBlock: { ReturnValue(0) }
+        Path_Build(id)
+        IfCondition GreaterEqual(Arcade.agg, 6) ThenBlock: {
+            IfCondition EqualTo(Arc_Range(3), 0) ThenBlock: {
+                id2 = Form_Pick()
+                IfCondition GreaterEqual(id2, 0) ThenBlock: { Path_Build(id2) }
+            }
+        }
+        IfCondition GreaterEqual(Arcade.agg, 12) ThenBlock: {
+            IfCondition EqualTo(Arc_Range(2), 0) ThenBlock: {
+                id3 = Form_Pick()
+                IfCondition GreaterEqual(id3, 0) ThenBlock: { Path_Build(id3) }
+            }
+        }
+        Arcade.dive_cd = Subtract(115, Multiply(Arcade.agg, 5))
+        IfCondition LessThan(Arcade.dive_cd, 14) ThenBlock: { Arcade.dive_cd = 14 }
+    }
+}
+
+Function.Galaga_Tick {
+    Body: {
+        held = Set_Tick()
+        IfCondition EqualTo(held, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Arcade.mode, Mode.TITLE) ThenBlock: {
+            glive = Ent_Alive(Arcade.gate)
+            IfCondition EqualTo(glive, 1) ThenBlock: {
+                fr = Divide(Arcade.t, 4)
+                fr = Modulo(fr, 8)
+                Ent_Set(Arcade.gate, EField.FR, fr)
+            }
+            Arcade.ct = Add(Arcade.ct, 1)
+            IfCondition GreaterEqual(Arcade.ct, 18000) ThenBlock: { Arcade.ct = 0 }
+            go = Set_Start()
+            IfCondition EqualTo(go, 1) ThenBlock: { Galaga_WarpBegin() }
+            Arcade.sk = Key.s
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Arcade.mode, Mode.HOME) ThenBlock: {
+            glive = Ent_Alive(Arcade.gate)
+            IfCondition EqualTo(glive, 1) ThenBlock: {
+                fr = Divide(Arcade.t, 4)
+                fr = Modulo(fr, 8)
+                Ent_Set(Arcade.gate, EField.FR, fr)
+            }
+            go = Set_Start()
+            IfCondition EqualTo(go, 1) ThenBlock: { Galaga_Init() }
+            Arcade.sk = Key.s
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Arcade.mode, Mode.WARP) ThenBlock: {
+            Galaga_WarpTick()
+            Arcade.sk = Key.s
+            ReturnValue(0)
+        }
+        IfCondition GreaterThan(Arcade.ext, 0) ThenBlock: {
+            Arcade.ext = Subtract(Arcade.ext, 1)
+        }
+        IfCondition GreaterThan(Arcade.inv, 0) ThenBlock: {
+            Arcade.inv = Subtract(Arcade.inv, 1)
+        }
+        IfCondition GreaterThan(Arcade.grab, 0) ThenBlock: {
+            Arcade.grab = Subtract(Arcade.grab, 1)
+        }
+        IfCondition GreaterThan(Arcade.got, 0) ThenBlock: {
+            Arcade.got = Subtract(Arcade.got, 1)
+        }
+        IfCondition EqualTo(Arcade.pause, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Arcade.mode, Mode.DEAD) ThenBlock: {
+            Arcade.dive_cd = Subtract(Arcade.dive_cd, 1)
+            go = Set_Start()
+            IfCondition Or(EqualTo(go, 1), LessEqual(Arcade.dive_cd, 0)) ThenBlock: {
+                IfCondition LessEqual(Arcade.lives, 0) ThenBlock: {
+                    Galaga_Init()
+                }
+                ElseBlock: {
+                    Arcade.mode = Mode.PLAY
+                    Arcade.dual = 0
+                    Galaga_Player()
+                    Arcade.dive_cd = 70
+                }
+            }
+            Arcade.sk = Key.s
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Arcade.mode, Mode.WAVE) ThenBlock: {
+            Arcade.dive_cd = Subtract(Arcade.dive_cd, 1)
+            Galaga_Move()
+            Galaga_Hits()
+            go = Set_Start()
+            IfCondition Or(EqualTo(go, 1), LessEqual(Arcade.dive_cd, 0)) ThenBlock: {
+                IfCondition GreaterEqual(Arcade.hd, 10) ThenBlock: {
+                    Arcade.mode = Mode.HOME
+                    Sfx_Emit(SfxCode.TITLE)
+                }
+                ElseBlock: {
+                    Arcade.wave = Add(Arcade.wave, 1)
+                    Galaga_WarpBegin()
+                }
+            }
+            Arcade.sk = Key.s
+            ReturnValue(0)
+        }
+        IfCondition GreaterThan(Arcade.fire_cd, 0) ThenBlock: {
+            Arcade.fire_cd = Subtract(Arcade.fire_cd, 1)
+        }
+        Galaga_Steer()
+        Galaga_Regen()
+        Path_FormBob()
+        Form_Tick()
+        Galaga_GroupTick()
+        Galaga_Dives()
+        Galaga_Move()
+        Galaga_QueenAct()
+        Boom_Tick()
+        Galaga_Hits()
+        Arcade.left = Galaga_CountFoes()
+        IfCondition EqualTo(Arcade.mode, Mode.PLAY) ThenBlock: {
+            IfCondition EqualTo(Arcade.left, 0) ThenBlock: {
+                IfCondition GreaterEqual(Arcade.grp, Arcade.gn) ThenBlock: {
+                    Arcade.mode = Mode.WAVE
+                    Arcade.dive_cd = 50
+                    Sfx_Emit(SfxCode.WAVE)
+                }
+                ElseBlock: {
+                    IfCondition GreaterThan(Arcade.gwait, 12) ThenBlock: {
+                        Arcade.gwait = 12
+                    }
+                }
+            }
+        }
+        Arcade.sk = Key.s
+    }
+}

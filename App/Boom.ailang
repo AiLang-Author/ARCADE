@@ -1,0 +1,77 @@
+// App/Boom.ailang — RNG explosion clip picker + shard spray.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+Import.App.State
+Import.App.Entity
+Import.App.Assets
+Import.App.Sfx
+
+Function.Boom_Spawn {
+    Input: x: Integer
+    Input: y: Integer
+    Output: Integer
+    Body: {
+        style = Arc_Range(4)
+        id = Ent_Spawn(Kind.BOOM, x, y)
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(-1) }
+        Ent_Set(id, EField.ST, style)
+        Ent_Set(id, EField.FR, 0)
+        Ent_Set(id, EField.ACC, 0)
+        Ent_Set(id, EField.LIFE, 16)
+        Ent_Set(id, EField.W, 64)
+        Ent_Set(id, EField.H, 64)
+        Ent_Set(id, EField.VIEW, 0)
+        n = Add(4, Arc_Range(6))
+        i = 0
+        WhileLoop LessThan(i, n) {
+            sh = Ent_Spawn(Kind.SHARD, x, y)
+            IfCondition GreaterEqual(sh, 0) ThenBlock: {
+                Ent_Set(sh, EField.ST, style)
+                Ent_Set(sh, EField.FR, Arc_Range(8))
+                Ent_Set(sh, EField.VX, Subtract(Arc_Range(17), 8))
+                Ent_Set(sh, EField.VY, Subtract(Arc_Range(17), 8))
+                Ent_Set(sh, EField.LIFE, Add(8, Arc_Range(10)))
+                Ent_Set(sh, EField.W, 24)
+                Ent_Set(sh, EField.H, 24)
+            }
+            i = Add(i, 1)
+        }
+        World.shake = Add(World.shake, 4)
+        Sfx_Emit(SfxCode.BOOM)
+        ReturnValue(id)
+    }
+}
+
+Function.Boom_Tick {
+    Body: {
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                k = Ent_Get(i, EField.KIND)
+                IfCondition EqualTo(k, Kind.BOOM) ThenBlock: {
+                    Ent_Set(i, EField.ACC, Add(Ent_Get(i, EField.ACC), 1))
+                    IfCondition GreaterEqual(Ent_Get(i, EField.ACC), 2) ThenBlock: {
+                        Ent_Set(i, EField.ACC, 0)
+                        Ent_Set(i, EField.FR, Add(Ent_Get(i, EField.FR), 1))
+                    }
+                    Ent_Set(i, EField.LIFE, Subtract(Ent_Get(i, EField.LIFE), 1))
+                    IfCondition Or(LessEqual(Ent_Get(i, EField.LIFE), 0), GreaterEqual(Ent_Get(i, EField.FR), 8)) ThenBlock: {
+                        Ent_Kill(i)
+                    }
+                }
+                IfCondition EqualTo(k, Kind.SHARD) ThenBlock: {
+                    Ent_Set(i, EField.X, Add(Ent_Get(i, EField.X), Ent_Get(i, EField.VX)))
+                    Ent_Set(i, EField.Y, Add(Ent_Get(i, EField.Y), Ent_Get(i, EField.VY)))
+                    Ent_Set(i, EField.LIFE, Subtract(Ent_Get(i, EField.LIFE), 1))
+                    IfCondition LessEqual(Ent_Get(i, EField.LIFE), 0) ThenBlock: {
+                        Ent_Kill(i)
+                    }
+                }
+            }
+            i = Add(i, 1)
+        }
+        IfCondition GreaterThan(World.shake, 0) ThenBlock: {
+            World.shake = Subtract(World.shake, 1)
+        }
+    }
+}

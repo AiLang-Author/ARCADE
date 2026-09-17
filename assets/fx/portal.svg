@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 64">
+  <!-- 8 frames of a space tear, 64px each -->
+  <g transform="translate(0,0)">
+    <ellipse cx="32" cy="32" rx="22" ry="28" fill="#140828"/>
+    <ellipse cx="32" cy="32" rx="16" ry="22" fill="#3a1468"/>
+    <ellipse cx="32" cy="32" rx="8" ry="14" fill="#7a28c8"/>
+    <ellipse cx="32" cy="32" rx="3" ry="8" fill="#e8f0ff"/>
+    <path d="M32,8 Q40,32 32,56 Q24,32 32,8" fill="#5ce0ff" opacity="0.7"/>
+  </g>
+  <g transform="translate(64,0)">
+    <ellipse cx="32" cy="32" rx="24" ry="26" fill="#180830"/>
+    <ellipse cx="32" cy="32" rx="17" ry="20" fill="#481878"/>
+    <ellipse cx="32" cy="32" rx="9" ry="13" fill="#8a30d8"/>
+    <ellipse cx="32" cy="32" rx="4" ry="7" fill="#ffffff"/>
+    <path d="M20,18 Q32,28 44,18 Q32,40 20,46 Q32,36 44,46 Q32,28 20,18" fill="#7af0ff" opacity="0.55"/>
+  </g>
+  <g transform="translate(128,0)">
+    <ellipse cx="32" cy="32" rx="26" ry="24" fill="#100420"/>
+    <ellipse cx="32" cy="32" rx="18" ry="18" fill="#501888"/>
+    <ellipse cx="32" cy="32" rx="10" ry="12" fill="#a040e8"/>
+    <ellipse cx="32" cy="32" rx="4" ry="6" fill="#e8ffff"/>
+    <ellipse cx="32" cy="32" rx="2" ry="10" fill="#5ce0ff"/>
+  </g>
+  <g transform="translate(192,0)">
+    <ellipse cx="32" cy="32" rx="28" ry="22" fill="#200838"/>
+    <ellipse cx="32" cy="32" rx="20" ry="16" fill="#5a2098"/>
+    <ellipse cx="32" cy="32" rx="11" ry="10" fill="#c060ff"/>
+    <ellipse cx="32" cy="32" rx="5" ry="5" fill="#ffffff"/>
+    <path d="M32,6 L36,32 L32,58 L28,32 Z" fill="#b8ffff" opacity="0.8"/>
+  </g>
+  <g transform="translate(256,0)">
+    <ellipse cx="32" cy="32" rx="26" ry="28" fill="#0c0418"/>
+    <ellipse cx="32" cy="32" rx="18" ry="22" fill="#3a1070"/>
+    <ellipse cx="32" cy="32" rx="8" ry="16" fill="#8828d0"/>
+    <ellipse cx="32" cy="32" rx="3" ry="9" fill="#f0ffff"/>
+    <path d="M14,32 Q32,12 50,32 Q32,52 14,32" fill="#4ad8ff" opacity="0.6"/>
+  </g>
+  <g transform="translate(320,0)">
+    <ellipse cx="32" cy="32" rx="24" ry="30" fill="#180828"/>
+    <ellipse cx="32" cy="32" rx="16" ry="24" fill="#441870"/>
+    <ellipse cx="32" cy="32" rx="7" ry="15" fill="#9838e0"/>
+    <ellipse cx="32" cy="32" rx="2" ry="8" fill="#ffffff"/>
+    <path d="M32,4 Q48,32 32,60 Q16,32 32,4" fill="#80f0ff" opacity="0.7"/>
+  </g>
+  <g transform="translate(384,0)">
+    <ellipse cx="32" cy="32" rx="22" ry="28" fill="#220840"/>
+    <ellipse cx="32" cy="32" rx="15" ry="21" fill="#5c20a0"/>
+    <ellipse cx="32" cy="32" rx="8" ry="13" fill="#b050ff"/>
+    <ellipse cx="32" cy="32" rx="4" ry="7" fill="#e8ffff"/>
+    <circle cx="32" cy="32" r="3" fill="#ffffff"/>
+  </g>
+  <g transform="translate(448,0)">
+    <ellipse cx="32" cy="32" rx="20" ry="26" fill="#100420"/>
+    <ellipse cx="32" cy="32" rx="13" ry="18" fill="#381060"/>
+    <ellipse cx="32" cy="32" rx="6" ry="11" fill="#7020b8"/>
+    <ellipse cx="32" cy="32" rx="2" ry="6" fill="#c0e8ff"/>
+    <path d="M32,10 Q38,32 32,54 Q26,32 32,10" fill="#5ce0ff" opacity="0.85"/>
+  </g>
+</svg>

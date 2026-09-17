@@ -1,0 +1,5 @@
+VIF vector fonts for the HUD. Rasterized on demand at a size derived from
+the window (VFont_UseSize). Same files CAD/ECU/HalCodeGTK use.
+
+- AlteixSans.vif
+- DejaVuSans.vif

@@ -1,0 +1,583 @@
+// Game/Paths.ailang — dive paths assembled from RNG-mixed profiles.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+Import.App.State
+Import.App.Entity
+Import.App.Formation
+
+FixedPool.PKind {
+    "LOOP_L": Initialize=0
+    "LOOP_R": Initialize=1
+    "WEAVE":  Initialize=2
+    "SWOOP":  Initialize=3
+    "HOOK_L": Initialize=4
+    "HOOK_R": Initialize=5
+    "SPIRAL": Initialize=6
+    "PLUNGE": Initialize=7
+    "DRIFT":  Initialize=8
+    "HAMMER": Initialize=9
+    "CORK":   Initialize=10
+    "SKIM":   Initialize=11
+    "HOME":   Initialize=12
+}
+
+FixedPool.Path {
+    "tab": Initialize=0, CanChange=True
+    "ok":  Initialize=0, CanChange=True
+    "ox":  Initialize=0, CanChange=True
+    "oy":  Initialize=0, CanChange=True
+    "x":   Initialize=0, CanChange=True
+    "y":   Initialize=0, CanChange=True
+    "t":   Initialize=0, CanChange=True
+    "k":   Initialize=0, CanChange=True
+    "d":   Initialize=0, CanChange=True
+    "a":   Initialize=0, CanChange=True
+    "r":   Initialize=0, CanChange=True
+    "s":   Initialize=0, CanChange=True
+    "c":   Initialize=0, CanChange=True
+    "yo":  Initialize=0, CanChange=True
+    "d2r": Initialize=0, CanChange=True
+    "fzero": Initialize=0, CanChange=True
+    "fsix": Initialize=0, CanChange=True
+    "f120": Initialize=0, CanChange=True
+    "fx":  Initialize=0, CanChange=True
+    "fy":  Initialize=0, CanChange=True
+    "ftmp": Initialize=0, CanChange=True
+    "fs":  Initialize=0, CanChange=True
+    "fc":  Initialize=0, CanChange=True
+    "sign": Initialize=0, CanChange=True
+    "fone": Initialize=0, CanChange=True
+}
+
+Function.Path_Init {
+    Output: Integer
+    Body: {
+        Path.ok = 1
+        Path.fzero = Float_FromInt(0)
+        Path.fone = Float_FromInt(1)
+        Path.fsix = Float_FromInt(6)
+        Path.f120 = Float_FromInt(120)
+        Path.ftmp = Float_FromInt(180)
+        Path.d2r = Float_Div(0x400921FB54442D18, Path.ftmp)
+        ReturnValue(1)
+    }
+}
+
+Function.Path_STab {
+    Input: i: Integer
+    Output: Integer
+    Body: {
+        WhileLoop LessThan(i, 0) {
+            i = Add(i, 16)
+        }
+        i = Modulo(i, 16)
+        IfCondition EqualTo(i, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(i, 1) ThenBlock: { ReturnValue(98) }
+        IfCondition EqualTo(i, 2) ThenBlock: { ReturnValue(181) }
+        IfCondition EqualTo(i, 3) ThenBlock: { ReturnValue(237) }
+        IfCondition EqualTo(i, 4) ThenBlock: { ReturnValue(256) }
+        IfCondition EqualTo(i, 5) ThenBlock: { ReturnValue(237) }
+        IfCondition EqualTo(i, 6) ThenBlock: { ReturnValue(181) }
+        IfCondition EqualTo(i, 7) ThenBlock: { ReturnValue(98) }
+        IfCondition EqualTo(i, 8) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(i, 9) ThenBlock: { ReturnValue(Subtract(0, 98)) }
+        IfCondition EqualTo(i, 10) ThenBlock: { ReturnValue(Subtract(0, 181)) }
+        IfCondition EqualTo(i, 11) ThenBlock: { ReturnValue(Subtract(0, 237)) }
+        IfCondition EqualTo(i, 12) ThenBlock: { ReturnValue(Subtract(0, 256)) }
+        IfCondition EqualTo(i, 13) ThenBlock: { ReturnValue(Subtract(0, 237)) }
+        IfCondition EqualTo(i, 14) ThenBlock: { ReturnValue(Subtract(0, 181)) }
+        ReturnValue(Subtract(0, 98))
+    }
+}
+
+Function.Path_S8 {
+    Input: ang: Integer
+    Output: Integer
+    Body: {
+        WhileLoop LessThan(ang, 0) {
+            ang = Add(ang, 256)
+        }
+        ang = Modulo(ang, 256)
+        i = Divide(ang, 16)
+        ReturnValue(Path_STab(i))
+    }
+}
+
+Function.Path_FormBob {
+    Body: {
+        IfCondition EqualTo(Path.ok, 0) ThenBlock: { Path_Init() }
+        a = Arcade.t
+        IfCondition LessThan(a, 0) ThenBlock: { a = 0 }
+        Path.a = Modulo(a, 360)
+        Path.r = 14
+        Path_XY()
+        Form.bobx = Divide(Path.c, 2)
+        a = Multiply(a, 2)
+        Path.a = Modulo(a, 360)
+        Path.r = 10
+        Path_XY()
+        Form.boby = Divide(Path.yo, 2)
+    }
+}
+
+Function.Path_Dur {
+    Input: kind: Integer
+    Output: Integer
+    Body: {
+        d = 40
+        IfCondition EqualTo(kind, PKind.LOOP_L) ThenBlock: { d = 36 }
+        IfCondition EqualTo(kind, PKind.LOOP_R) ThenBlock: { d = 36 }
+        IfCondition EqualTo(kind, PKind.WEAVE) ThenBlock: { d = 48 }
+        IfCondition EqualTo(kind, PKind.SWOOP) ThenBlock: { d = 44 }
+        IfCondition EqualTo(kind, PKind.HOOK_L) ThenBlock: { d = 28 }
+        IfCondition EqualTo(kind, PKind.HOOK_R) ThenBlock: { d = 28 }
+        IfCondition EqualTo(kind, PKind.SPIRAL) ThenBlock: { d = 50 }
+        IfCondition EqualTo(kind, PKind.PLUNGE) ThenBlock: { d = 36 }
+        IfCondition EqualTo(kind, PKind.DRIFT) ThenBlock: { d = 32 }
+        IfCondition EqualTo(kind, PKind.HAMMER) ThenBlock: { d = 40 }
+        IfCondition EqualTo(kind, PKind.CORK) ThenBlock: { d = 48 }
+        IfCondition EqualTo(kind, PKind.SKIM) ThenBlock: { d = 40 }
+        IfCondition EqualTo(kind, PKind.HOME) ThenBlock: { d = 48 }
+        ReturnValue(d)
+    }
+}
+
+Function.Path_Pick {
+    Output: Integer
+    Body: {
+        r = Arc_Range(16)
+        IfCondition LessThan(r, 2) ThenBlock: { ReturnValue(PKind.LOOP_L) }
+        IfCondition LessThan(r, 4) ThenBlock: { ReturnValue(PKind.LOOP_R) }
+        IfCondition LessThan(r, 6) ThenBlock: { ReturnValue(PKind.WEAVE) }
+        IfCondition LessThan(r, 8) ThenBlock: { ReturnValue(PKind.SWOOP) }
+        IfCondition LessThan(r, 9) ThenBlock: { ReturnValue(PKind.HOOK_L) }
+        IfCondition LessThan(r, 10) ThenBlock: { ReturnValue(PKind.HOOK_R) }
+        IfCondition LessThan(r, 11) ThenBlock: { ReturnValue(PKind.SPIRAL) }
+        IfCondition LessThan(r, 12) ThenBlock: { ReturnValue(PKind.DRIFT) }
+        IfCondition LessThan(r, 13) ThenBlock: { ReturnValue(PKind.CORK) }
+        IfCondition LessThan(r, 14) ThenBlock: { ReturnValue(PKind.SKIM) }
+        IfCondition EqualTo(r, 14) ThenBlock: { ReturnValue(PKind.HAMMER) }
+        ReturnValue(PKind.PLUNGE)
+    }
+}
+
+Function.Path_PickEnter {
+    Output: Integer
+    Body: {
+        r = Arc_Range(8)
+        IfCondition EqualTo(r, 0) ThenBlock: { ReturnValue(PKind.LOOP_L) }
+        IfCondition EqualTo(r, 1) ThenBlock: { ReturnValue(PKind.LOOP_R) }
+        IfCondition EqualTo(r, 2) ThenBlock: { ReturnValue(PKind.SWOOP) }
+        IfCondition EqualTo(r, 3) ThenBlock: { ReturnValue(PKind.HOOK_L) }
+        IfCondition EqualTo(r, 4) ThenBlock: { ReturnValue(PKind.HOOK_R) }
+        IfCondition EqualTo(r, 5) ThenBlock: { ReturnValue(PKind.WEAVE) }
+        IfCondition EqualTo(r, 6) ThenBlock: { ReturnValue(PKind.CORK) }
+        ReturnValue(PKind.SKIM)
+    }
+}
+
+Function.Path_Build {
+    Input: id: Integer
+    Body: {
+        Path_Init()
+        n = Add(3, Arc_Range(3))
+        IfCondition GreaterThan(n, 5) ThenBlock: { n = 5 }
+        seq = 0
+        mul = 1
+        i = 0
+        WhileLoop LessThan(i, n) {
+            p = Path_Pick()
+            IfCondition EqualTo(i, Subtract(n, 1)) ThenBlock: {
+                IfCondition EqualTo(Arc_Range(2), 0) ThenBlock: { p = PKind.PLUNGE }
+            }
+            IfCondition GreaterThan(p, 11) ThenBlock: { p = PKind.WEAVE }
+            seq = Add(seq, Multiply(p, mul))
+            mul = Multiply(mul, 16)
+            i = Add(i, 1)
+        }
+        seq = Add(seq, Multiply(n, 16777216))
+        dir = 1
+        IfCondition EqualTo(Ent_Alive(Arcade.player), 1) ThenBlock: {
+            IfCondition LessThan(Ent_Get(Arcade.player, EField.X), Ent_Get(id, EField.X)) ThenBlock: {
+                dir = 0
+            }
+        }
+        IfCondition EqualTo(dir, 1) ThenBlock: {
+            seq = Add(seq, 268435456)
+        }
+        Ent_Set(id, EField.SHEET, seq)
+        Ent_Set(id, EField.FR, 0)
+        Ent_Set(id, EField.LIFE, 0)
+        Ent_Set(id, EField.ST, Est.DIVE)
+        Ent_Set(id, EField.VX, Ent_Get(id, EField.X))
+        Ent_Set(id, EField.VY, Ent_Get(id, EField.Y))
+        Ent_Set(id, EField.ACC, 24)
+        Ent_Set(id, EField.VIEW, View.FRONT)
+    }
+}
+
+Function.Path_BuildEnter {
+    Input: id: Integer
+    Body: {
+        Path_Init()
+        n = Add(2, Arc_Range(2))
+        IfCondition GreaterThan(n, 4) ThenBlock: { n = 4 }
+        seq = 0
+        mul = 1
+        i = 0
+        WhileLoop LessThan(i, n) {
+            p = Path_PickEnter()
+            bit = Multiply(p, mul)
+            seq = Add(seq, bit)
+            mul = Multiply(mul, 16)
+            i = Add(i, 1)
+        }
+        bit = Multiply(PKind.HOME, mul)
+        seq = Add(seq, bit)
+        nseg = Add(n, 1)
+        bit = Multiply(nseg, 16777216)
+        seq = Add(seq, bit)
+        dir = 1
+        sx = Ent_Get(id, EField.X)
+        sy = Ent_Get(id, EField.Y)
+        IfCondition GreaterThan(sx, 512) ThenBlock: {
+            dir = 0
+        }
+        IfCondition EqualTo(dir, 1) ThenBlock: {
+            seq = Add(seq, 268435456)
+        }
+        Ent_Set(id, EField.SHEET, seq)
+        Ent_Set(id, EField.FR, 0)
+        Ent_Set(id, EField.LIFE, 0)
+        Ent_Set(id, EField.ST, Est.ENTER)
+        Ent_Set(id, EField.VX, sx)
+        Ent_Set(id, EField.VY, sy)
+        Ent_Set(id, EField.VIEW, View.FRONT)
+    }
+}
+
+Function.Path_ApplyEnter {
+    Input: id: Integer
+    Input: seq: Integer
+    Input: nprof: Integer
+    Input: dir: Integer
+    Body: {
+        Path_Init()
+        IfCondition LessThan(nprof, 1) ThenBlock: { nprof = 2 }
+        IfCondition GreaterThan(nprof, 4) ThenBlock: { nprof = 4 }
+        mul = 1
+        i = 0
+        WhileLoop LessThan(i, nprof) {
+            mul = Multiply(mul, 16)
+            i = Add(i, 1)
+        }
+        bit = Multiply(PKind.HOME, mul)
+        seq = Add(seq, bit)
+        nseg = Add(nprof, 1)
+        bit = Multiply(nseg, 16777216)
+        seq = Add(seq, bit)
+        IfCondition EqualTo(dir, 1) ThenBlock: {
+            seq = Add(seq, 268435456)
+        }
+        sx = Ent_Get(id, EField.X)
+        sy = Ent_Get(id, EField.Y)
+        Ent_Set(id, EField.SHEET, seq)
+        Ent_Set(id, EField.FR, 0)
+        Ent_Set(id, EField.LIFE, 0)
+        Ent_Set(id, EField.ST, Est.ENTER)
+        Ent_Set(id, EField.VX, sx)
+        Ent_Set(id, EField.VY, sy)
+        Ent_Set(id, EField.VIEW, View.FRONT)
+    }
+}
+
+Function.Path_KindAt {
+    Input: seq: Integer
+    Input: segi: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessThan(segi, 0) ThenBlock: { segi = 0 }
+        IfCondition GreaterThan(segi, 6) ThenBlock: { segi = 6 }
+        sh = 1
+        IfCondition EqualTo(segi, 1) ThenBlock: { sh = 16 }
+        IfCondition EqualTo(segi, 2) ThenBlock: { sh = 256 }
+        IfCondition EqualTo(segi, 3) ThenBlock: { sh = 4096 }
+        IfCondition EqualTo(segi, 4) ThenBlock: { sh = 65536 }
+        IfCondition EqualTo(segi, 5) ThenBlock: { sh = 1048576 }
+        IfCondition EqualTo(segi, 0) ThenBlock: {
+            ReturnValue(BitwiseAnd(seq, 15))
+        }
+        ReturnValue(BitwiseAnd(Divide(seq, sh), 15))
+    }
+}
+
+Function.Path_FSin {
+    Body: {
+        d = Path.a
+        WhileLoop LessThan(d, 0) {
+            d = Add(d, 360)
+        }
+        d = Modulo(d, 360)
+        Path.sign = 1
+        IfCondition GreaterEqual(d, 180) ThenBlock: {
+            Path.sign = Subtract(0, 1)
+            d = Subtract(d, 180)
+        }
+        IfCondition GreaterThan(d, 90) ThenBlock: {
+            d = Subtract(180, d)
+        }
+        Path.fx = Float_FromInt(d)
+        Path.fx = Float_Mul(Path.fx, Path.d2r)
+        Path.ftmp = Float_Mul(Path.fx, Path.fx)
+        Path.fc = Float_Mul(Path.ftmp, Path.fx)
+        Path.fc = Float_Div(Path.fc, Path.fsix)
+        Path.fs = Float_Sub(Path.fx, Path.fc)
+        Path.fc = Float_Mul(Path.ftmp, Path.fx)
+        Path.fc = Float_Mul(Path.fc, Path.ftmp)
+        Path.fc = Float_Div(Path.fc, Path.f120)
+        Path.fs = Float_Add(Path.fs, Path.fc)
+        IfCondition EqualTo(Path.sign, Subtract(0, 1)) ThenBlock: {
+            Path.fs = Float_Sub(Path.fzero, Path.fs)
+        }
+    }
+}
+
+Function.Path_XY {
+    Body: {
+        IfCondition EqualTo(Path.ok, 0) ThenBlock: { Path_Init() }
+        Path_FSin()
+        Path.ftmp = Float_FromInt(Path.r)
+        Path.ftmp = Float_Mul(Path.ftmp, Path.fs)
+        Path.yo = Float_ToInt(Path.ftmp)
+        Path.a = Add(Path.a, 90)
+        Path_FSin()
+        Path.ftmp = Float_FromInt(Path.r)
+        Path.ftmp = Float_Mul(Path.ftmp, Path.fs)
+        Path.c = Float_ToInt(Path.ftmp)
+        Path.a = Subtract(Path.a, 90)
+    }
+}
+
+Function.Path_Eval {
+    Body: {
+        Path.x = Path.ox
+        Path.y = Path.oy
+        Path.d = 1
+        seq = Ent_Get(Path.s, EField.SHEET)
+        fr = Ent_Get(Path.s, EField.FR)
+        bit = Divide(seq, 268435456)
+        bit = BitwiseAnd(bit, 1)
+        IfCondition EqualTo(bit, 0) ThenBlock: {
+            Path.d = Subtract(0, 1)
+        }
+        Path.k = Path_KindAt(seq, fr)
+        Path.t = Ent_Get(Path.s, EField.LIFE)
+        IfCondition GreaterThan(Path.k, 12) ThenBlock: { Path.k = PKind.WEAVE }
+        IfCondition EqualTo(Path.k, PKind.LOOP_L) ThenBlock: {
+            Path.r = 70
+            Path.a = Multiply(Path.t, 10)
+            Path_XY()
+            Path.x = Add(Path.ox, Path.c)
+            Path.y = Add(Path.oy, Path.yo)
+        }
+        IfCondition EqualTo(Path.k, PKind.LOOP_R) ThenBlock: {
+            Path.r = 70
+            ang = Multiply(Path.t, 10)
+            Path.a = Subtract(0, ang)
+            Path_XY()
+            Path.x = Add(Path.ox, Path.c)
+            Path.y = Add(Path.oy, Path.yo)
+        }
+        IfCondition EqualTo(Path.k, PKind.WEAVE) ThenBlock: {
+            Path.x = Multiply(Path.d, Path.t)
+            Path.x = Multiply(Path.x, 4)
+            Path.x = Add(Path.ox, Path.x)
+            Path.a = Multiply(Path.t, 14)
+            Path.r = 48
+            Path_XY()
+            Path.y = Multiply(Path.t, 5)
+            Path.y = Add(Path.oy, Path.y)
+            Path.y = Add(Path.y, Path.yo)
+        }
+        IfCondition EqualTo(Path.k, PKind.SWOOP) ThenBlock: {
+            Path.r = 110
+            Path.a = Multiply(Path.t, 8)
+            Path_XY()
+            Path.y = Add(Path.oy, Path.yo)
+            Path.c = Subtract(Path.r, Path.c)
+            Path.c = Multiply(Path.d, Path.c)
+            Path.x = Add(Path.ox, Path.c)
+        }
+        IfCondition EqualTo(Path.k, PKind.HOOK_L) ThenBlock: {
+            Path.r = 90
+            Path.a = Multiply(Path.t, 4)
+            Path_XY()
+            Path.x = Subtract(Path.ox, Path.yo)
+            tmp = Add(Path.oy, Path.c)
+            Path.y = Subtract(tmp, Path.r)
+        }
+        IfCondition EqualTo(Path.k, PKind.HOOK_R) ThenBlock: {
+            Path.r = 90
+            Path.a = Multiply(Path.t, 4)
+            Path_XY()
+            Path.x = Add(Path.ox, Path.yo)
+            tmp = Add(Path.oy, Path.c)
+            Path.y = Subtract(tmp, Path.r)
+        }
+        IfCondition EqualTo(Path.k, PKind.SPIRAL) ThenBlock: {
+            Path.r = Subtract(90, Path.t)
+            IfCondition LessThan(Path.r, 24) ThenBlock: { Path.r = 24 }
+            Path.a = Multiply(Path.t, 16)
+            Path_XY()
+            Path.x = Add(Path.ox, Path.c)
+            Path.y = Add(Path.oy, Path.yo)
+            Path.y = Add(Path.y, Path.t)
+        }
+        IfCondition EqualTo(Path.k, PKind.PLUNGE) ThenBlock: {
+            Path.y = Multiply(Path.t, 8)
+            Path.y = Add(Path.oy, Path.y)
+            Path.a = Multiply(Path.t, 11)
+            Path.r = 32
+            Path_XY()
+            Path.x = Add(Path.ox, Path.yo)
+            IfCondition EqualTo(Ent_Alive(Arcade.player), 1) ThenBlock: {
+                px = Ent_Get(Arcade.player, EField.X)
+                IfCondition LessThan(Path.x, px) ThenBlock: { Path.x = Add(Path.x, 4) }
+                IfCondition GreaterThan(Path.x, px) ThenBlock: { Path.x = Subtract(Path.x, 4) }
+            }
+        }
+        IfCondition EqualTo(Path.k, PKind.DRIFT) ThenBlock: {
+            Path.x = Multiply(Path.d, Path.t)
+            Path.x = Multiply(Path.x, 6)
+            Path.x = Add(Path.ox, Path.x)
+            Path.a = Multiply(Path.t, 8)
+            Path.r = 28
+            Path_XY()
+            Path.y = Multiply(Path.t, 2)
+            Path.y = Add(Path.oy, Path.y)
+            Path.y = Add(Path.y, Path.yo)
+        }
+        IfCondition EqualTo(Path.k, PKind.HAMMER) ThenBlock: {
+            Path.x = Multiply(2, Path.t)
+            Path.x = Multiply(Path.d, Path.x)
+            Path.x = Add(Path.ox, Path.x)
+            Path.fx = Float_FromInt(Path.t)
+            Path.fy = Float_Mul(Path.fx, Path.fx)
+            Path.ftmp = Float_FromInt(18)
+            Path.fy = Float_Div(Path.fy, Path.ftmp)
+            drop = Float_ToInt(Path.fy)
+            Path.y = Add(Path.oy, drop)
+        }
+        IfCondition EqualTo(Path.k, PKind.CORK) ThenBlock: {
+            Path.r = 42
+            Path.a = Multiply(Path.t, 14)
+            Path.a = Add(Path.a, 64)
+            Path_XY()
+            Path.x = Add(Path.ox, Path.c)
+            Path.a = Multiply(Path.t, 14)
+            Path_XY()
+            Path.y = Add(Path.oy, Path.c)
+            dy = Multiply(Path.t, 2)
+            Path.y = Add(Path.y, dy)
+        }
+        IfCondition EqualTo(Path.k, PKind.SKIM) ThenBlock: {
+            Path.x = Multiply(Path.d, Path.t)
+            Path.x = Multiply(Path.x, 5)
+            Path.x = Add(Path.ox, Path.x)
+            Path.a = Multiply(Path.t, 6)
+            Path.r = 70
+            Path_XY()
+            Path.y = Divide(Path.t, 2)
+            Path.y = Add(Path.oy, Path.y)
+            Path.y = Add(Path.y, Path.yo)
+        }
+        IfCondition EqualTo(Path.k, PKind.HOME) ThenBlock: {
+            slot = Ent_Get(Path.s, EField.SLOT)
+            okslot = 1
+            IfCondition LessThan(slot, 0) ThenBlock: { okslot = 0 }
+            IfCondition GreaterEqual(slot, Form.n) ThenBlock: { okslot = 0 }
+            IfCondition EqualTo(okslot, 0) ThenBlock: {
+                Path.x = Path.ox
+                Path.y = Path.oy
+            }
+            ElseBlock: {
+                tx = Form_Get(slot, 1)
+                tx = Add(tx, Form.bobx)
+                ty = Form_Get(slot, 2)
+                ty = Add(ty, Form.boby)
+                Path.fx = Float_FromInt(Path.t)
+                Path.ftmp = Float_FromInt(48)
+                Path.fx = Float_Div(Path.fx, Path.ftmp)
+                Path.fy = Float_Sub(Path.fone, Path.fx)
+                Path.fy = Float_Mul(Path.fy, Path.fy)
+                Path.fx = Float_Sub(Path.fone, Path.fy)
+                dx = Subtract(tx, Path.ox)
+                Path.fy = Float_FromInt(dx)
+                Path.fy = Float_Mul(Path.fy, Path.fx)
+                nx = Float_ToInt(Path.fy)
+                Path.x = Add(Path.ox, nx)
+                dy = Subtract(ty, Path.oy)
+                Path.fy = Float_FromInt(dy)
+                Path.fy = Float_Mul(Path.fy, Path.fx)
+                ny = Float_ToInt(Path.fy)
+                Path.y = Add(Path.oy, ny)
+            }
+        }
+    }
+}
+
+Function.Path_Tick {
+    Input: id: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(1) }
+        Path.s = id
+        seq = Ent_Get(id, EField.SHEET)
+        nseg = Divide(seq, 16777216)
+        nseg = BitwiseAnd(nseg, 7)
+        IfCondition LessThan(nseg, 1) ThenBlock: { nseg = 3 }
+        IfCondition GreaterThan(nseg, 5) ThenBlock: { nseg = 5 }
+        st = Ent_Get(id, EField.ST)
+        IfCondition EqualTo(Ent_Get(id, EField.LIFE), 0) ThenBlock: {
+            Ent_Set(id, EField.VX, Ent_Get(id, EField.X))
+            Ent_Set(id, EField.VY, Ent_Get(id, EField.Y))
+        }
+        Path.ox = Ent_Get(id, EField.VX)
+        Path.oy = Ent_Get(id, EField.VY)
+        Path_Eval()
+        ox = Ent_Get(id, EField.X)
+        Ent_Set(id, EField.X, Path.x)
+        Ent_Set(id, EField.Y, Path.y)
+        view = View.FRONT
+        dx = Subtract(Path.x, ox)
+        IfCondition GreaterThan(dx, 3) ThenBlock: { view = View.SIDE }
+        IfCondition LessThan(dx, Subtract(0, 3)) ThenBlock: { view = View.SIDE }
+        Ent_Set(id, EField.VIEW, view)
+        t = Add(Ent_Get(id, EField.LIFE), 1)
+        fr = Ent_Get(id, EField.FR)
+        kind = Path_KindAt(seq, fr)
+        dur = Path_Dur(kind)
+        IfCondition GreaterEqual(t, dur) ThenBlock: {
+            Ent_Set(id, EField.FR, Add(Ent_Get(id, EField.FR), 1))
+            Ent_Set(id, EField.LIFE, 0)
+            IfCondition GreaterEqual(Ent_Get(id, EField.FR), nseg) ThenBlock: {
+                ReturnValue(1)
+            }
+            IfCondition NotEqual(st, Est.ENTER) ThenBlock: {
+                IfCondition GreaterThan(Path.y, 940) ThenBlock: {
+                    ReturnValue(1)
+                }
+            }
+        }
+        ElseBlock: {
+            Ent_Set(id, EField.LIFE, t)
+            IfCondition NotEqual(st, Est.ENTER) ThenBlock: {
+                IfCondition GreaterThan(Path.y, 960) ThenBlock: {
+                    ReturnValue(1)
+                }
+            }
+        }
+        ReturnValue(0)
+    }
+}

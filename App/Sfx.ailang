@@ -1,0 +1,72 @@
+// App/Sfx.ailang — event ring for the host mixer. Kernel does not play audio.
+// /dev/shm/arcade_app/sfx.bin : le32 write-index, 4 pad, 64 event bytes.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+Import.App.State
+
+FixedPool.SfxCode {
+    "NONE":  Initialize=0
+    "SHOT":  Initialize=1
+    "ESHOT": Initialize=2
+    "BOOM":  Initialize=3
+    "HIT":   Initialize=4
+    "DEATH": Initialize=5
+    "WAVE":  Initialize=6
+    "START": Initialize=7
+    "BGM":   Initialize=8
+    "QUIET": Initialize=9
+    "TITLE": Initialize=10
+    "QUEEN": Initialize=11
+}
+
+FixedPool.Sfx {
+    "buf":     Initialize=0, CanChange=True
+    "w":       Initialize=0, CanChange=True
+    "flushed": Initialize=0, CanChange=True
+    "fd":      Initialize=0, CanChange=True
+    "ok":      Initialize=0, CanChange=True
+}
+
+Function.Sfx_Init {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Sfx.ok, 1) ThenBlock: { ReturnValue(1) }
+        Sfx.buf = Allocate(72)
+        IfCondition EqualTo(Sfx.buf, 0) ThenBlock: { ReturnValue(0) }
+        MemorySet(Sfx.buf, 0, 72)
+        Sfx.w = 0
+        Sfx.flushed = 0
+        Sfx.ok = 1
+        ReturnValue(1)
+    }
+}
+
+Function.Sfx_Emit {
+    Input: code: Integer
+    Body: {
+        IfCondition LessEqual(code, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Sfx.ok, 0) ThenBlock: {
+            ok = Sfx_Init()
+            IfCondition EqualTo(ok, 0) ThenBlock: { ReturnValue(0) }
+        }
+        i = Modulo(Sfx.w, 64)
+        SetByte(Sfx.buf, Add(8, i), code)
+        Sfx.w = Add(Sfx.w, 1)
+        Arc_LE32(Sfx.buf, 0, Sfx.w)
+    }
+}
+
+Function.Sfx_Flush {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Sfx.ok, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Sfx.w, Sfx.flushed) ThenBlock: { ReturnValue(1) }
+        Sfx.fd = SystemCall(2, "/dev/shm/arcade_app/sfx.bin", 577, 420)
+        IfCondition LessThan(Sfx.fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(1, Sfx.fd, Sfx.buf, 72)
+        SystemCall(3, Sfx.fd)
+        Sfx.flushed = Sfx.w
+        ReturnValue(1)
+    }
+}
