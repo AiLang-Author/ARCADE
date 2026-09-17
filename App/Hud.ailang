@@ -1,0 +1,523 @@
+// App/Hud.ailang — native VFont, bitmap fallback, scales with the window.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.Display.Render.Framebuffer
+LibraryImport.Display.Render.Fonts
+Import.App.State
+Import.App.World
+Import.App.Entity
+
+Function.Hud_Init {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(VFont_Init(), 0) ThenBlock: {
+            FB_FontInit()
+            Arcade.font_ok = 0
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(VFont_LoadVIF("fonts/AlteixSans.vif"), 0) ThenBlock: {
+            IfCondition EqualTo(VFont_LoadVIF("fonts/DejaVuSans.vif"), 0) ThenBlock: {
+                FB_FontInit()
+                Arcade.font_ok = 0
+                ReturnValue(0)
+            }
+        }
+        Arcade.font_ok = 1
+        Arcade.fsize = 18
+        VFont_UseSize(Arcade.fsize)
+        Hud_CrawlLoad()
+        ReturnValue(1)
+    }
+}
+
+FixedPool.Crawl {
+    "buf": Initialize=0, CanChange=True
+    "off": Initialize=0, CanChange=True
+    "n":   Initialize=0, CanChange=True
+    "ok":  Initialize=0, CanChange=True
+}
+
+Function.Hud_CrawlLoad {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Crawl.ok, 1) ThenBlock: { ReturnValue(1) }
+        Crawl.buf = Allocate(4096)
+        Crawl.off = Allocate(640)
+        IfCondition EqualTo(Crawl.buf, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Crawl.off, 0) ThenBlock: { ReturnValue(0) }
+        MemorySet(Crawl.buf, 0, 4096)
+        MemorySet(Crawl.off, 0, 640)
+        fd = SystemCall(2, "assets/music/lyrics", 0, 0)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        n = SystemCall(0, fd, Crawl.buf, 4095)
+        SystemCall(3, fd)
+        IfCondition LessThan(n, 1) ThenBlock: { ReturnValue(0) }
+        SetByte(Crawl.buf, n, 0)
+        i = 0
+        WhileLoop LessThan(i, n) {
+            c = GetByte(Crawl.buf, i)
+            IfCondition EqualTo(c, 13) ThenBlock: { SetByte(Crawl.buf, i, 10) }
+            i = Add(i, 1)
+        }
+        i = 0
+        start = 0
+        ln = 0
+        WhileLoop LessEqual(i, n) {
+            c = 10
+            IfCondition LessThan(i, n) ThenBlock: { c = GetByte(Crawl.buf, i) }
+            cut = 0
+            IfCondition EqualTo(c, 10) ThenBlock: { cut = 1 }
+            IfCondition EqualTo(i, n) ThenBlock: { cut = 1 }
+            IfCondition EqualTo(cut, 1) ThenBlock: {
+                IfCondition LessThan(ln, 80) ThenBlock: {
+                    slot = Multiply(ln, 8)
+                    slot = Add(Crawl.off, slot)
+                    StoreValue(slot, start)
+                    ln = Add(ln, 1)
+                }
+                start = Add(i, 1)
+            }
+            i = Add(i, 1)
+        }
+        Crawl.n = ln
+        Crawl.ok = 1
+        ReturnValue(1)
+    }
+}
+
+Function.Hud_Neon {
+    Input: i: Integer
+    Output: Integer
+    Body: {
+        s = Divide(Arcade.t, 5)
+        s = Add(s, i)
+        s = Modulo(s, 6)
+        r = 255
+        g = 40
+        b = 80
+        IfCondition EqualTo(s, 1) ThenBlock: {
+            r = 255
+            g = 150
+            b = 20
+        }
+        IfCondition EqualTo(s, 2) ThenBlock: {
+            r = 255
+            g = 255
+            b = 50
+        }
+        IfCondition EqualTo(s, 3) ThenBlock: {
+            r = 40
+            g = 255
+            b = 90
+        }
+        IfCondition EqualTo(s, 4) ThenBlock: {
+            r = 40
+            g = 190
+            b = 255
+        }
+        IfCondition EqualTo(s, 5) ThenBlock: {
+            r = 230
+            g = 50
+            b = 255
+        }
+        col = Arc_RGBA(r, g, b)
+        ReturnValue(col)
+    }
+}
+
+Function.Hud_Marquee {
+    Body: {
+        IfCondition EqualTo(Arcade.font_ok, 0) ThenBlock: { ReturnValue(0) }
+        ts = Divide(World.fh, 8)
+        IfCondition LessThan(ts, 28) ThenBlock: { ts = 28 }
+        IfCondition GreaterThan(ts, 72) ThenBlock: { ts = 72 }
+        VFont_UseSize(ts)
+        IfCondition EqualTo(World.font, 0) ThenBlock: { World.font = Allocate(32) }
+        SetByte(World.font, 0, 77)
+        SetByte(World.font, 1, 0)
+        cw = VFont_MeasureWidth(World.font, 1)
+        IfCondition LessThan(cw, ts) ThenBlock: { cw = ts }
+        fat = Divide(ts, 14)
+        IfCondition LessThan(fat, 2) ThenBlock: { fat = 2 }
+        cell = Add(cw, fat)
+        gap = cw
+        tot = Multiply(cell, 9)
+        tot = Add(tot, gap)
+        x0 = Subtract(World.fw, tot)
+        x0 = Divide(x0, 2)
+        IfCondition LessThan(x0, 4) ThenBlock: { x0 = 4 }
+        y0 = Divide(World.fh, 12)
+        blk = Arc_RGBA(0, 0, 0)
+        i = 0
+        x = x0
+        WhileLoop LessThan(i, 10) {
+            ch = 32
+            IfCondition EqualTo(i, 0) ThenBlock: { ch = 78 }
+            IfCondition EqualTo(i, 1) ThenBlock: { ch = 79 }
+            IfCondition EqualTo(i, 2) ThenBlock: { ch = 87 }
+            IfCondition EqualTo(i, 3) ThenBlock: { ch = 65 }
+            IfCondition EqualTo(i, 4) ThenBlock: { ch = 89 }
+            IfCondition EqualTo(i, 5) ThenBlock: { ch = 32 }
+            IfCondition EqualTo(i, 6) ThenBlock: { ch = 72 }
+            IfCondition EqualTo(i, 7) ThenBlock: { ch = 79 }
+            IfCondition EqualTo(i, 8) ThenBlock: { ch = 77 }
+            IfCondition EqualTo(i, 9) ThenBlock: { ch = 69 }
+            IfCondition EqualTo(ch, 32) ThenBlock: {
+                x = Add(x, gap)
+            }
+            ElseBlock: {
+                col = Hud_Neon(i)
+                SetByte(World.font, 0, ch)
+                SetByte(World.font, 1, 0)
+                sx = Add(x, fat)
+                sy = Add(y0, fat)
+                Hud_Text(sx, sy, World.font, 1, blk)
+                d2 = Multiply(fat, 2)
+                sx = Add(x, d2)
+                sy = Add(y0, d2)
+                Hud_Text(sx, sy, World.font, 1, blk)
+                xm = Subtract(x, fat)
+                ym = Subtract(y0, fat)
+                xp = Add(x, fat)
+                yp = Add(y0, fat)
+                Hud_Text(xm, y0, World.font, 1, col)
+                Hud_Text(xp, y0, World.font, 1, col)
+                Hud_Text(x, ym, World.font, 1, col)
+                Hud_Text(x, yp, World.font, 1, col)
+                Hud_Text(x, y0, World.font, 1, col)
+                x = Add(x, cell)
+            }
+            i = Add(i, 1)
+        }
+        VFont_UseSize(Arcade.fsize)
+    }
+}
+
+Function.Hud_Crawl {
+    Body: {
+        IfCondition EqualTo(Crawl.ok, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessEqual(Crawl.n, 0) ThenBlock: { ReturnValue(0) }
+        gx = Divide(World.fw, 2)
+        gy = Divide(World.fh, 3)
+        gid = Arcade.gate
+        alive = Ent_Alive(gid)
+        IfCondition EqualTo(alive, 1) ThenBlock: {
+            ex = Ent_Get(gid, EField.X)
+            ey = Ent_Get(gid, EField.Y)
+            gx = World_X(ex)
+            gy = World_Y(ey)
+        }
+        fs = Arcade.fsize
+        lh = Add(fs, 10)
+        span = Multiply(Crawl.n, lh)
+        span = Add(span, World.fh)
+        span = Add(span, lh)
+        dur = 18000
+        ct = Arcade.ct
+        IfCondition GreaterEqual(ct, dur) ThenBlock: { ct = 0 }
+        tmp = Multiply(ct, span)
+        scroll = Divide(tmp, dur)
+        bot = Subtract(World.fh, Multiply(fs, 3))
+        gold = Arc_RGBA(255, 220, 90)
+        i = 0
+        WhileLoop LessThan(i, Crawl.n) {
+            slot = Multiply(i, 8)
+            slot = Add(Crawl.off, slot)
+            start = Dereference(slot)
+            p = start
+            ln = 0
+            go = 1
+            WhileLoop EqualTo(go, 1) {
+                c = GetByte(Crawl.buf, p)
+                IfCondition EqualTo(c, 0) ThenBlock: { go = 0 }
+                IfCondition EqualTo(c, 10) ThenBlock: { go = 0 }
+                IfCondition EqualTo(go, 1) ThenBlock: {
+                    ln = Add(ln, 1)
+                    p = Add(p, 1)
+                    IfCondition GreaterThan(ln, 48) ThenBlock: { go = 0 }
+                }
+            }
+            y = Multiply(i, lh)
+            y = Add(World.fh, y)
+            y = Subtract(y, scroll)
+            IfCondition GreaterThan(ln, 0) ThenBlock: {
+                IfCondition LessThan(y, bot) ThenBlock: {
+                    IfCondition GreaterThan(y, gy) ThenBlock: {
+                        range = Subtract(bot, gy)
+                        IfCondition LessThan(range, 1) ThenBlock: { range = 1 }
+                        d = Subtract(bot, y)
+                        tmp = Multiply(d, 240)
+                        fall = Divide(tmp, range)
+                        sc = Subtract(256, fall)
+                        IfCondition LessThan(sc, 20) ThenBlock: { sc = 0 }
+                        IfCondition GreaterThan(sc, 256) ThenBlock: { sc = 256 }
+                        IfCondition GreaterThan(sc, 0) ThenBlock: {
+                            sz = Multiply(fs, sc)
+                            sz = Divide(sz, 256)
+                            IfCondition LessThan(sz, 8) ThenBlock: { sz = 8 }
+                            VFont_UseSize(sz)
+                            ptr = Add(Crawl.buf, start)
+                            tw = VFont_MeasureWidth(ptr, ln)
+                            half = Divide(tw, 2)
+                            x0 = Subtract(gx, half)
+                            suck = Subtract(256, sc)
+                            dy = Subtract(gy, y)
+                            tmp = Multiply(dy, suck)
+                            py = Add(y, Divide(tmp, 480))
+                            Hud_Text(x0, py, ptr, ln, gold)
+                        }
+                    }
+                }
+            }
+            i = Add(i, 1)
+        }
+        VFont_UseSize(Arcade.fsize)
+    }
+}
+
+Function.Hud_Resize {
+    Body: {
+        sz = Divide(World.fh, 28)
+        IfCondition LessThan(sz, 12) ThenBlock: { sz = 12 }
+        IfCondition GreaterThan(sz, 48) ThenBlock: { sz = 48 }
+        IfCondition And(EqualTo(Arcade.font_ok, 1), NotEqual(sz, Arcade.fsize)) ThenBlock: {
+            Arcade.fsize = sz
+            VFont_UseSize(sz)
+        }
+    }
+}
+
+Function.Hud_ItoA {
+    Input: buf: Address
+    Input: n: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessThan(n, 0) ThenBlock: { n = 0 }
+        IfCondition EqualTo(n, 0) ThenBlock: {
+            SetByte(buf, 0, 48)
+            SetByte(buf, 1, 0)
+            ReturnValue(1)
+        }
+        t = Add(buf, 16)
+        k = 0
+        WhileLoop GreaterThan(n, 0) {
+            SetByte(t, k, Add(48, Modulo(n, 10)))
+            k = Add(k, 1)
+            n = Divide(n, 10)
+        }
+        i = 0
+        WhileLoop LessThan(i, k) {
+            SetByte(buf, i, GetByte(t, Subtract(Subtract(k, 1), i)))
+            i = Add(i, 1)
+        }
+        SetByte(buf, k, 0)
+        ReturnValue(k)
+    }
+}
+
+Function.Hud_Text {
+    Input: x: Integer
+    Input: y: Integer
+    Input: s: Address
+    Input: n: Integer
+    Input: col: Integer
+    Body: {
+        IfCondition And(EqualTo(Arcade.font_ok, 1), NotEqual(World.surf, 0)) ThenBlock: {
+            VFont_DrawString(World.surf, s, n, x, y, col)
+        }
+        ElseBlock: {
+            FB_DrawString(x, y, s, col, 0)
+        }
+    }
+}
+
+Function.Hud_Pip {
+    Input: x: Integer
+    Input: y: Integer
+    Input: w: Integer
+    Input: h: Integer
+    Input: on: Integer
+    Input: rgb: Integer
+    Body: {
+        IfCondition LessThan(w, 4) ThenBlock: { w = 4 }
+        IfCondition LessThan(h, 4) ThenBlock: { h = 4 }
+        c = FB_RGB(22, 30, 46)
+        IfCondition EqualTo(on, 1) ThenBlock: { c = rgb }
+        FB_FillRectFast(x, y, w, h, c)
+    }
+}
+
+Function.Hud_Play {
+    Body: {
+        fs = Arcade.fsize
+        y = Subtract(World.fh, Add(fs, 10))
+        IfCondition LessThan(y, 4) ThenBlock: { y = 4 }
+        n = Hud_ItoA(World.font, Arcade.score)
+        scol = Arc_RGBA(255, 230, 90)
+        Hud_Text(12, y, World.font, n, scol)
+        sh = Divide(fs, 2)
+        IfCondition LessThan(sh, 8) ThenBlock: { sh = 8 }
+        sw = Add(fs, 12)
+        gap = 4
+        cx = Divide(World.fw, 2)
+        halfg = Divide(gap, 2)
+        off = Add(sw, halfg)
+        sx = Subtract(cx, off)
+        on0 = 0
+        IfCondition GreaterEqual(Arcade.spips, 1) ThenBlock: { on0 = 1 }
+        cyan = FB_RGB(70, 220, 255)
+        Hud_Pip(sx, y, sw, sh, on0, cyan)
+        step = Add(sw, gap)
+        sx2 = Add(sx, step)
+        on1 = 0
+        IfCondition GreaterEqual(Arcade.spips, 2) ThenBlock: { on1 = 1 }
+        Hud_Pip(sx2, y, sw, sh, on1, cyan)
+        lw = Subtract(fs, 2)
+        IfCondition LessThan(lw, 8) ThenBlock: { lw = 8 }
+        lh = sh
+        lstep = Add(lw, 3)
+        lspan = Multiply(lstep, 5)
+        lspan = Add(lspan, 12)
+        lx = Subtract(World.fw, lspan)
+        gold = FB_RGB(255, 210, 70)
+        i = 0
+        WhileLoop LessThan(i, 5) {
+            on = 0
+            IfCondition LessThan(i, Arcade.lives) ThenBlock: { on = 1 }
+            Hud_Pip(lx, y, lw, lh, on, gold)
+            lx = Add(lx, lstep)
+            i = Add(i, 1)
+        }
+        dw = Divide(fs, 2)
+        IfCondition LessThan(dw, 6) ThenBlock: { dw = 6 }
+        IfCondition GreaterThan(dw, 10) ThenBlock: { dw = 10 }
+        dh = Divide(sh, 2)
+        IfCondition LessThan(dh, 4) ThenBlock: { dh = 4 }
+        dstep = Add(dw, 2)
+        tot = Multiply(dstep, 10)
+        rest = Subtract(World.fw, tot)
+        dx = Divide(rest, 2)
+        dpad = Add(dh, 6)
+        dy = Subtract(y, dpad)
+        IfCondition LessThan(dy, 2) ThenBlock: { dy = 2 }
+        ice = FB_RGB(90, 210, 255)
+        i = 0
+        WhileLoop LessThan(i, 10) {
+            on = 0
+            IfCondition LessThan(i, Arcade.hd) ThenBlock: { on = 1 }
+            Hud_Pip(dx, dy, dw, dh, on, ice)
+            dx = Add(dx, dstep)
+            i = Add(i, 1)
+        }
+        IfCondition GreaterEqual(Queen.id, 0) ThenBlock: {
+            qlive = Ent_Alive(Queen.id)
+            IfCondition EqualTo(qlive, 1) ThenBlock: {
+                qhp = Ent_Get(Queen.id, EField.HP)
+                qmax = Queen.hp0
+                IfCondition LessThan(qmax, 1) ThenBlock: { qmax = 1 }
+                bw = Divide(World.fw, 2)
+                bx = Divide(World.fw, 4)
+                bh = 6
+                back = FB_RGB(40, 18, 12)
+                FB_FillRectFast(bx, 8, bw, bh, back)
+                tmp = Multiply(bw, qhp)
+                fw = Divide(tmp, qmax)
+                IfCondition LessThan(fw, 0) ThenBlock: { fw = 0 }
+                IfCondition GreaterThan(fw, bw) ThenBlock: { fw = bw }
+                IfCondition GreaterThan(fw, 0) ThenBlock: {
+                    qcol = FB_RGB(255, 140, 70)
+                    FB_FillRectFast(bx, 8, fw, bh, qcol)
+                }
+            }
+        }
+    }
+}
+
+Function.Hud_Settings {
+    Body: {
+        fs = Arcade.fsize
+        y0 = Divide(World.fh, 5)
+        x0 = Divide(World.fw, 8)
+        Hud_Text(x0, y0, "PAUSE", 5, Arc_RGBA(255, 255, 255))
+        y1 = Add(y0, Multiply(fs, 2))
+        mc = Arc_RGBA(140, 160, 180)
+        IfCondition EqualTo(Arcade.sel, 0) ThenBlock: { mc = Arc_RGBA(255, 255, 255) }
+        Hud_Text(x0, y1, "MUSIC", 5, mc)
+        y2 = Add(y1, Multiply(fs, 2))
+        sc = Arc_RGBA(140, 160, 180)
+        IfCondition EqualTo(Arcade.sel, 1) ThenBlock: { sc = Arc_RGBA(255, 255, 255) }
+        Hud_Text(x0, y2, "SFX", 3, sc)
+        pw = Divide(fs, 2)
+        IfCondition LessThan(pw, 8) ThenBlock: { pw = 8 }
+        ph = Divide(fs, 2)
+        IfCondition LessThan(ph, 8) ThenBlock: { ph = 8 }
+        pstep = Add(pw, 3)
+        span = Multiply(fs, 6)
+        bx = Add(x0, span)
+        cyan = FB_RGB(70, 220, 255)
+        gold = FB_RGB(255, 200, 80)
+        i = 0
+        px = bx
+        WhileLoop LessThan(i, 10) {
+            on = 0
+            IfCondition LessThan(i, Arcade.mv) ThenBlock: { on = 1 }
+            Hud_Pip(px, y1, pw, ph, on, cyan)
+            px = Add(px, pstep)
+            i = Add(i, 1)
+        }
+        i = 0
+        px = bx
+        WhileLoop LessThan(i, 10) {
+            on = 0
+            IfCondition LessThan(i, Arcade.sv) ThenBlock: { on = 1 }
+            Hud_Pip(px, y2, pw, ph, on, gold)
+            px = Add(px, pstep)
+            i = Add(i, 1)
+        }
+        y3 = Add(y2, Multiply(fs, 3))
+        Hud_Text(x0, y3, "ARROWS CHANGE", 13, Arc_RGBA(160, 180, 200))
+        y4 = Add(y3, fs)
+        Hud_Text(x0, y4, "P OR ENTER RESUME", 17, Arc_RGBA(160, 180, 200))
+    }
+}
+
+Function.Hud_Draw {
+    Body: {
+        Hud_Resize()
+        IfCondition EqualTo(World.font, 0) ThenBlock: { World.font = Allocate(32) }
+        play = 0
+        IfCondition EqualTo(Arcade.mode, Mode.PLAY) ThenBlock: { play = 1 }
+        IfCondition EqualTo(Arcade.mode, Mode.WARP) ThenBlock: { play = 1 }
+        IfCondition EqualTo(Arcade.mode, Mode.DEAD) ThenBlock: { play = 1 }
+        IfCondition EqualTo(Arcade.mode, Mode.WAVE) ThenBlock: { play = 1 }
+        IfCondition EqualTo(play, 1) ThenBlock: { Hud_Play() }
+        IfCondition EqualTo(Arcade.mode, Mode.TITLE) ThenBlock: {
+            Hud_Crawl()
+            Hud_Marquee()
+            x0 = Divide(World.fw, 8)
+            by = Subtract(World.fh, Multiply(Arcade.fsize, 2))
+            IfCondition LessThan(by, 8) ThenBlock: { by = 8 }
+            Hud_Text(x0, by, "ENTER", 5, Arc_RGBA(255, 255, 255))
+            by2 = Subtract(World.fh, Arcade.fsize)
+            IfCondition LessThan(by2, 8) ThenBlock: { by2 = 8 }
+            Hud_Text(x0, by2, "P SETTINGS", 10, Arc_RGBA(180, 200, 220))
+        }
+        IfCondition GreaterThan(Arcade.got, 0) ThenBlock: {
+            Hud_Text(Divide(World.fw, 5), Divide(World.fh, 3), "DRIVE PART", 10, Arc_RGBA(80, 255, 220))
+        }
+        IfCondition EqualTo(Arcade.mode, Mode.HOME) ThenBlock: {
+            y0 = Divide(World.fh, 4)
+            Hud_Text(Divide(World.fw, 8), y0, "HYPERDRIVE ONLINE", 17, Arc_RGBA(80, 255, 220))
+            Hud_Text(Divide(World.fw, 8), Add(y0, Multiply(Arcade.fsize, 2)), "GET HOME", 8, Arc_RGBA(80, 255, 180))
+            Hud_Text(Divide(World.fw, 8), Add(y0, Multiply(Arcade.fsize, 4)), "ENTER", 5, Arc_RGBA(255, 255, 255))
+        }
+        IfCondition EqualTo(Arcade.pause, 1) ThenBlock: { Hud_Settings() }
+        IfCondition EqualTo(Arcade.mode, Mode.DEAD) ThenBlock: {
+            Hud_Text(Divide(World.fw, 3), Divide(World.fh, 2), "READY", 5, Arc_RGBA(255, 220, 80))
+        }
+        IfCondition EqualTo(Arcade.mode, Mode.WAVE) ThenBlock: {
+            Hud_Text(Divide(World.fw, 3), Divide(World.fh, 2), "CLEAR", 5, Arc_RGBA(80, 255, 140))
+        }
+    }
+}

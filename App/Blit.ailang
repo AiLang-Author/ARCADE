@@ -1,0 +1,189 @@
+// App/Blit.ailang — span blit: skip pa=0, MemoryCopy (SSE2) opaque runs.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Display.Render.DSurface
+Import.App.State
+Import.App.World
+
+FixedPool.Blit {
+    "src":   Initialize=0, CanChange=True
+    "sdata": Initialize=0, CanChange=True
+    "ddata": Initialize=0, CanChange=True
+    "sp":    Initialize=0, CanChange=True
+    "dp":    Initialize=0, CanChange=True
+    "sw":    Initialize=0, CanChange=True
+    "sh":    Initialize=0, CanChange=True
+    "dw":    Initialize=0, CanChange=True
+    "dh":    Initialize=0, CanChange=True
+    "sx":    Initialize=0, CanChange=True
+    "sy":    Initialize=0, CanChange=True
+    "dx":    Initialize=0, CanChange=True
+    "dy":    Initialize=0, CanChange=True
+    "w":     Initialize=0, CanChange=True
+    "h":     Initialize=0, CanChange=True
+    "row":   Initialize=0, CanChange=True
+    "col":   Initialize=0, CanChange=True
+    "run":   Initialize=0, CanChange=True
+    "srow":  Initialize=0, CanChange=True
+    "drow":  Initialize=0, CanChange=True
+    "off":   Initialize=0, CanChange=True
+    "pix":   Initialize=0, CanChange=True
+    "pa":    Initialize=0, CanChange=True
+    "n":     Initialize=0, CanChange=True
+    "tint":  Initialize=0, CanChange=True
+}
+
+Function.Blit_Clip {
+    Output: Integer
+    Body: {
+        IfCondition LessThan(Blit.sx, 0) ThenBlock: {
+            Blit.w = Add(Blit.w, Blit.sx)
+            Blit.dx = Subtract(Blit.dx, Blit.sx)
+            Blit.sx = 0
+        }
+        IfCondition LessThan(Blit.sy, 0) ThenBlock: {
+            Blit.h = Add(Blit.h, Blit.sy)
+            Blit.dy = Subtract(Blit.dy, Blit.sy)
+            Blit.sy = 0
+        }
+        Blit.n = Add(Blit.sx, Blit.w)
+        IfCondition GreaterThan(Blit.n, Blit.sw) ThenBlock: {
+            Blit.w = Subtract(Blit.sw, Blit.sx)
+        }
+        Blit.n = Add(Blit.sy, Blit.h)
+        IfCondition GreaterThan(Blit.n, Blit.sh) ThenBlock: {
+            Blit.h = Subtract(Blit.sh, Blit.sy)
+        }
+        IfCondition LessThan(Blit.dx, 0) ThenBlock: {
+            Blit.w = Add(Blit.w, Blit.dx)
+            Blit.sx = Subtract(Blit.sx, Blit.dx)
+            Blit.dx = 0
+        }
+        IfCondition LessThan(Blit.dy, 0) ThenBlock: {
+            Blit.h = Add(Blit.h, Blit.dy)
+            Blit.sy = Subtract(Blit.sy, Blit.dy)
+            Blit.dy = 0
+        }
+        Blit.n = Add(Blit.dx, Blit.w)
+        IfCondition GreaterThan(Blit.n, Blit.dw) ThenBlock: {
+            Blit.w = Subtract(Blit.dw, Blit.dx)
+        }
+        Blit.n = Add(Blit.dy, Blit.h)
+        IfCondition GreaterThan(Blit.n, Blit.dh) ThenBlock: {
+            Blit.h = Subtract(Blit.dh, Blit.dy)
+        }
+        IfCondition LessEqual(Blit.w, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessEqual(Blit.h, 0) ThenBlock: { ReturnValue(0) }
+        ReturnValue(1)
+    }
+}
+
+Function.Blit_TintRow {
+    Body: {
+        Blit.col = 0
+        WhileLoop LessThan(Blit.col, Blit.w) {
+            Blit.off = Multiply(Blit.col, 4)
+            Blit.pa = GetByte(Blit.srow, Add(Blit.off, 3))
+            IfCondition GreaterThan(Blit.pa, 0) ThenBlock: {
+                b = GetByte(Blit.srow, Blit.off)
+                g = GetByte(Blit.srow, Add(Blit.off, 1))
+                r = GetByte(Blit.srow, Add(Blit.off, 2))
+                b = Add(Divide(b, 2), 88)
+                g = Add(Divide(g, 2), 90)
+                r = Add(Divide(r, 2), 92)
+                SetByte(Blit.drow, Blit.off, b)
+                SetByte(Blit.drow, Add(Blit.off, 1), g)
+                SetByte(Blit.drow, Add(Blit.off, 2), r)
+                SetByte(Blit.drow, Add(Blit.off, 3), Blit.pa)
+            }
+            Blit.col = Add(Blit.col, 1)
+        }
+    }
+}
+
+Function.Blit_Row {
+    Body: {
+        IfCondition EqualTo(Blit.tint, 1) ThenBlock: {
+            Blit_TintRow()
+            ReturnValue(0)
+        }
+        Blit.col = 0
+        WhileLoop LessThan(Blit.col, Blit.w) {
+            Blit.off = Multiply(Blit.col, 4)
+            Blit.off = Add(Blit.off, 3)
+            Blit.pa = GetByte(Blit.srow, Blit.off)
+            IfCondition EqualTo(Blit.pa, 0) ThenBlock: {
+                Blit.col = Add(Blit.col, 1)
+            }
+            ElseBlock: {
+                IfCondition EqualTo(Blit.pa, 255) ThenBlock: {
+                    Blit.run = Blit.col
+                    Blit.col = Add(Blit.col, 1)
+                    WhileLoop LessThan(Blit.col, Blit.w) {
+                        Blit.off = Multiply(Blit.col, 4)
+                        Blit.off = Add(Blit.off, 3)
+                        Blit.pa = GetByte(Blit.srow, Blit.off)
+                        IfCondition NotEqual(Blit.pa, 255) ThenBlock: {
+                            BreakLoop
+                        }
+                        Blit.col = Add(Blit.col, 1)
+                    }
+                    Blit.n = Subtract(Blit.col, Blit.run)
+                    Blit.off = Multiply(Blit.run, 4)
+                    Blit.pa = Add(Blit.drow, Blit.off)
+                    Blit.pix = Add(Blit.srow, Blit.off)
+                    Blit.n = Multiply(Blit.n, 4)
+                    MemoryCopy(Blit.pa, Blit.pix, Blit.n)
+                }
+                ElseBlock: {
+                    Blit.col = Add(Blit.col, 1)
+                }
+            }
+        }
+    }
+}
+
+Function.Blit_Cell {
+    Input: src: Integer
+    Input: sx: Integer
+    Input: sy: Integer
+    Input: w: Integer
+    Input: h: Integer
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(src, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(World.surf, 0) ThenBlock: { ReturnValue(0) }
+        Blit.src = src
+        Blit.sdata = Surface_GetData(src)
+        Blit.ddata = Surface_GetData(World.surf)
+        IfCondition EqualTo(Blit.sdata, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Blit.ddata, 0) ThenBlock: { ReturnValue(0) }
+        Blit.sp = Surface_GetPitch(src)
+        Blit.dp = Surface_GetPitch(World.surf)
+        Blit.sw = Surface_GetWidth(src)
+        Blit.sh = Surface_GetHeight(src)
+        Blit.dw = Surface_GetWidth(World.surf)
+        Blit.dh = Surface_GetHeight(World.surf)
+        Blit.sx = sx
+        Blit.sy = sy
+        Blit.w = w
+        Blit.h = h
+        IfCondition EqualTo(Blit_Clip(), 0) ThenBlock: { ReturnValue(0) }
+        Blit.row = 0
+        WhileLoop LessThan(Blit.row, Blit.h) {
+            Blit.off = Add(Blit.sy, Blit.row)
+            Blit.off = Multiply(Blit.off, Blit.sp)
+            Blit.n = Multiply(Blit.sx, 4)
+            Blit.srow = Add(Blit.sdata, Blit.off)
+            Blit.srow = Add(Blit.srow, Blit.n)
+            Blit.off = Add(Blit.dy, Blit.row)
+            Blit.off = Multiply(Blit.off, Blit.dp)
+            Blit.n = Multiply(Blit.dx, 4)
+            Blit.drow = Add(Blit.ddata, Blit.off)
+            Blit.drow = Add(Blit.drow, Blit.n)
+            Blit_Row()
+            Blit.row = Add(Blit.row, 1)
+        }
+        ReturnValue(1)
+    }
+}

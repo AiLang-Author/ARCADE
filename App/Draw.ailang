@@ -1,0 +1,403 @@
+// App/Draw.ailang — compose one frame into the window framebuffer.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Display.Render.Framebuffer
+Import.App.State
+Import.App.World
+Import.App.Entity
+Import.App.Assets
+Import.App.Star
+Import.App.Hud
+Import.Game.Paths
+
+FixedPool.DrawFx {
+    "step": Initialize=6, CanChange=True
+}
+
+Function.Draw_Frame {
+    Body: {
+        FB_FillRectFast(0, 0, World.fw, World.fh, FB_RGB(6, 10, 28))
+        Star_Draw()
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                Gfx_DrawEnt(i)
+            }
+            i = Add(i, 1)
+        }
+        Draw_Queen()
+        Draw_Gate()
+        Draw_Plate()
+        Draw_Beam()
+        Draw_Drops()
+        Draw_Shield()
+        Hud_Draw()
+    }
+}
+
+Function.Draw_Mix {
+    Input: a: Integer
+    Input: b: Integer
+    Input: br: Integer
+    Output: Integer
+    Body: {
+        d = Subtract(b, a)
+        tmp = Multiply(d, br)
+        d = Divide(tmp, 255)
+        v = Add(a, d)
+        ReturnValue(v)
+    }
+}
+
+Function.Draw_Gate {
+    Body: {
+        glive = Ent_Alive(Arcade.gate)
+        IfCondition EqualTo(glive, 0) ThenBlock: { ReturnValue(0) }
+        gk = Ent_Get(Arcade.gate, EField.KIND)
+        IfCondition EqualTo(gk, Kind.GATE) ThenBlock: {
+            ex = Ent_Get(Arcade.gate, EField.X)
+            ey = Ent_Get(Arcade.gate, EField.Y)
+            px = World_X(ex)
+            py = World_Y(ey)
+            br = Draw_ShieldBr(0)
+            cr = Divide(br, 2)
+            cg = Divide(br, 4)
+            col = Arc_RGBA(cr, cg, br)
+            r0 = Add(Divide(World.cell, 2), 10)
+            ry = Add(r0, 8)
+            Draw_Oval(px, py, r0, ry, col)
+            br = Draw_ShieldBr(2)
+            cr = Divide(br, 3)
+            col = Arc_RGBA(cr, br, 255)
+            r1 = Add(r0, 12)
+            ry = Add(r1, 6)
+            Draw_Oval(px, py, r1, ry, col)
+        }
+    }
+}
+
+Function.Draw_Queen {
+    Body: {
+        IfCondition LessThan(Queen.id, 0) ThenBlock: { ReturnValue(0) }
+        live = Ent_Alive(Queen.id)
+        IfCondition EqualTo(live, 0) ThenBlock: { ReturnValue(0) }
+        ex = Ent_Get(Queen.id, EField.X)
+        ey = Ent_Get(Queen.id, EField.Y)
+        px = World_X(ex)
+        py = World_Y(ey)
+        c = World.cell
+        IfCondition LessThan(c, 16) ThenBlock: { c = 16 }
+        DrawFx.step = 12
+        p0 = Draw_ShieldBr(0)
+        p1 = Draw_ShieldBr(1)
+        p2 = Draw_ShieldBr(2)
+        wr = Draw_Mix(Queen.wr, Queen.gr, p1)
+        wg = Draw_Mix(Queen.wg, Queen.gg, p1)
+        wb = Draw_Mix(Queen.wb, Queen.gb, p1)
+        wcol = Arc_RGBA(wr, wg, wb)
+        wx = Multiply(c, 2)
+        wy = c
+        lx = Subtract(px, c)
+        rx = Add(px, c)
+        Draw_Oval(lx, py, wx, wy, wcol)
+        Draw_Oval(rx, py, wx, wy, wcol)
+        h = Divide(p0, 3)
+        br = Draw_Mix(Queen.br, Queen.gr, h)
+        bg = Draw_Mix(Queen.bg, Queen.gg, h)
+        bb = Draw_Mix(Queen.bb, Queen.gb, h)
+        bcol = Arc_RGBA(br, bg, bb)
+        tw = Add(c, Divide(c, 2))
+        th = c
+        hx = Divide(tw, 2)
+        hy = Divide(th, 2)
+        bx = Subtract(px, hx)
+        by = Subtract(py, hy)
+        FB_FillRectFast(bx, by, tw, th, bcol)
+        Draw_Oval(px, py, hx, hy, bcol)
+        ar = Draw_Mix(Queen.ar, Queen.gr, p0)
+        ag = Draw_Mix(Queen.ag, Queen.gg, p0)
+        ab = Draw_Mix(Queen.ab, Queen.gb, p0)
+        acol = Arc_RGBA(ar, ag, ab)
+        ay = Add(py, Divide(c, 2))
+        arx = Divide(c, 2)
+        Draw_Oval(px, ay, arx, c, acol)
+        ar = Draw_Mix(Queen.ar, 255, p2)
+        ag = Draw_Mix(Queen.ag, 255, p2)
+        ab = Draw_Mix(Queen.ab, 255, p2)
+        acol = Arc_RGBA(ar, ag, ab)
+        ay2 = Add(ay, Divide(c, 4))
+        arx = Subtract(arx, 6)
+        ary = Subtract(c, 8)
+        Draw_Oval(px, ay2, arx, ary, acol)
+        gr = Draw_Mix(Queen.gr, 255, p1)
+        gg = Draw_Mix(Queen.gg, 255, p1)
+        gb = Draw_Mix(Queen.gb, 255, p1)
+        gcol = Arc_RGBA(gr, gg, gb)
+        gy = Subtract(py, Divide(c, 3))
+        gx = Divide(c, 3)
+        gy2 = Divide(c, 4)
+        Draw_Oval(px, gy, gx, gy2, gcol)
+        DrawFx.step = 6
+    }
+}
+
+Function.Draw_ArcFront {
+    Input: cx: Integer
+    Input: cy: Integer
+    Input: rx: Integer
+    Input: ry: Integer
+    Input: col: Integer
+    Body: {
+        IfCondition LessThan(rx, 2) ThenBlock: { rx = 2 }
+        IfCondition LessThan(ry, 2) ThenBlock: { ry = 2 }
+        IfCondition EqualTo(Path.ok, 0) ThenBlock: { Path_Init() }
+        a = 0
+        WhileLoop LessThan(a, 360) {
+            Path.a = a
+            Path.r = rx
+            Path_XY()
+            x = Add(cx, Path.c)
+            tmp = Multiply(Path.yo, ry)
+            yoff = Divide(tmp, rx)
+            y = Add(cy, yoff)
+            IfCondition GreaterEqual(y, cy) ThenBlock: {
+                FB_SetPixel(x, y, col)
+                FB_SetPixel(Add(x, 1), y, col)
+            }
+            a = Add(a, DrawFx.step)
+        }
+    }
+}
+
+Function.Draw_Beam {
+    Body: {
+        DrawFx.step = 8
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                IfCondition EqualTo(Ent_Get(i, EField.KIND), Kind.CAP) ThenBlock: {
+                    IfCondition EqualTo(Ent_Get(i, EField.ST), Est.BEAM) ThenBlock: {
+                        ex = Ent_Get(i, EField.X)
+                        ey = Ent_Get(i, EField.Y)
+                        px = World_X(ex)
+                        py = World_Y(ey)
+                        acc = Ent_Get(i, EField.ACC)
+                        span = 80
+                        IfCondition EqualTo(Ent_Alive(Arcade.player), 1) ThenBlock: {
+                            pey = Ent_Get(Arcade.player, EField.Y)
+                            pwy = World_Y(pey)
+                            span = Subtract(pwy, py)
+                        }
+                        IfCondition LessThan(span, 28) ThenBlock: { span = 28 }
+                        grow = Subtract(55, acc)
+                        IfCondition LessThan(grow, 4) ThenBlock: { grow = 4 }
+                        ring = 0
+                        WhileLoop LessThan(ring, 3) {
+                            ph = Add(Arcade.t, Multiply(ring, 8))
+                            ph = Modulo(ph, 20)
+                            br = Add(90, Multiply(ph, 8))
+                            IfCondition GreaterThan(br, 255) ThenBlock: { br = 255 }
+                            cg = Divide(br, 6)
+                            cb = Divide(br, 5)
+                            col = Arc_RGBA(br, cg, cb)
+                            part = Add(ring, 1)
+                            ry = Divide(Multiply(span, part), 3)
+                            ry = Divide(Multiply(ry, grow), 55)
+                            rx = Add(Divide(ry, 2), 22)
+                            Draw_ArcFront(px, py, rx, ry, col)
+                            ring = Add(ring, 1)
+                        }
+                    }
+                }
+            }
+            i = Add(i, 1)
+        }
+        DrawFx.step = 6
+    }
+}
+
+Function.Draw_Plate {
+    Body: {
+        DrawFx.step = 10
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                arm = Ent_Get(i, EField.ARM)
+                IfCondition GreaterThan(arm, 0) ThenBlock: {
+                        ex = Ent_Get(i, EField.X)
+                        ey = Ent_Get(i, EField.Y)
+                        px = World_X(ex)
+                        py = World_Y(ey)
+                        arm0 = Ent_Get(i, EField.ARM0)
+                        full = 0
+                        IfCondition EqualTo(arm, arm0) ThenBlock: { full = 1 }
+                        col = Arc_RGBA(140, 148, 158)
+                        IfCondition EqualTo(full, 1) ThenBlock: {
+                            col = Arc_RGBA(200, 206, 214)
+                        }
+                        base = Add(Divide(World.cell, 2), 2)
+                        ry0 = Subtract(base, 2)
+                        Draw_Oval(px, py, base, ry0, col)
+                        IfCondition EqualTo(full, 1) ThenBlock: {
+                            rx = Add(base, 4)
+                            ry = Add(Subtract(base, 2), 2)
+                            col2 = Arc_RGBA(168, 174, 182)
+                            Draw_Oval(px, py, rx, ry, col2)
+                        }
+                    }
+            }
+            i = Add(i, 1)
+        }
+        DrawFx.step = 6
+    }
+}
+
+Function.Draw_Drops {
+    Body: {
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                IfCondition EqualTo(Ent_Get(i, EField.KIND), Kind.DROP) ThenBlock: {
+                    ex = Ent_Get(i, EField.X)
+                    ey = Ent_Get(i, EField.Y)
+                    x = World_X(ex)
+                    y = World_Y(ey)
+                    col = Arc_RGBA(80, 220, 255)
+                    IfCondition EqualTo(Ent_Get(i, EField.ST), Drop.NUGGET) ThenBlock: {
+                        col = Arc_RGBA(255, 200, 60)
+                    }
+                    IfCondition EqualTo(Ent_Get(i, EField.ST), Drop.LIFE) ThenBlock: {
+                        col = Arc_RGBA(80, 255, 140)
+                    }
+                    FB_FillRectFast(Subtract(x, 6), Subtract(y, 6), 12, 12, col)
+                }
+            }
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Draw_Oval {
+    Input: cx: Integer
+    Input: cy: Integer
+    Input: rx: Integer
+    Input: ry: Integer
+    Input: col: Integer
+    Body: {
+        IfCondition LessThan(rx, 2) ThenBlock: { rx = 2 }
+        IfCondition LessThan(ry, 2) ThenBlock: { ry = 2 }
+        IfCondition EqualTo(Path.ok, 0) ThenBlock: { Path_Init() }
+        a = 0
+        WhileLoop LessThan(a, 360) {
+            Path.a = a
+            Path.r = rx
+            Path_XY()
+            x = Add(cx, Path.c)
+            tmp = Multiply(Path.yo, ry)
+            yoff = Divide(tmp, rx)
+            y = Add(cy, yoff)
+            FB_SetPixel(x, y, col)
+            FB_SetPixel(Add(x, 1), y, col)
+            a = Add(a, DrawFx.step)
+        }
+    }
+}
+
+Function.Draw_ShieldBr {
+    Input: ring: Integer
+    Output: Integer
+    Body: {
+        delay = Multiply(ring, 16)
+        ph = Subtract(Arcade.t, delay)
+        WhileLoop LessThan(ph, 0) {
+            ph = Add(ph, 48)
+        }
+        ph = Modulo(ph, 48)
+        br = 40
+        IfCondition LessThan(ph, 10) ThenBlock: {
+            br = Add(40, Multiply(ph, 21))
+        }
+        IfCondition GreaterEqual(ph, 10) ThenBlock: {
+            IfCondition LessThan(ph, 18) ThenBlock: { br = 255 }
+        }
+        IfCondition GreaterEqual(ph, 18) ThenBlock: {
+            IfCondition LessThan(ph, 34) ThenBlock: {
+                fall = Subtract(ph, 18)
+                br = Subtract(255, Multiply(fall, 13))
+            }
+        }
+        IfCondition GreaterEqual(ph, 34) ThenBlock: { br = 40 }
+        IfCondition GreaterThan(br, 255) ThenBlock: { br = 255 }
+        IfCondition LessThan(br, 24) ThenBlock: { br = 24 }
+        ReturnValue(br)
+    }
+}
+
+Function.Draw_ShieldCol {
+    Input: br: Integer
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Arcade.spips, 1) ThenBlock: {
+            br = Divide(br, 2)
+            br = Add(br, 20)
+        }
+        tmp = Multiply(br, 140)
+        tmp = Divide(tmp, 255)
+        cr = Add(28, tmp)
+        tmp = Multiply(br, 165)
+        tmp = Divide(tmp, 255)
+        cg = Add(90, tmp)
+        tmp = Multiply(br, 105)
+        tmp = Divide(tmp, 255)
+        cb = Add(150, tmp)
+        col = Arc_RGBA(cr, cg, cb)
+        ReturnValue(col)
+    }
+}
+
+Function.Draw_Shield {
+    Body: {
+        IfCondition EqualTo(Ent_Alive(Arcade.player), 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessEqual(Arcade.spips, 0) ThenBlock: { ReturnValue(0) }
+        ex = Ent_Get(Arcade.player, EField.X)
+        ey = Ent_Get(Arcade.player, EField.Y)
+        px = World_X(ex)
+        py = World_Y(ey)
+        base = Add(Divide(World.cell, 2), 3)
+        ry0 = Subtract(base, 2)
+        IfCondition EqualTo(Arcade.dual, 1) ThenBlock: {
+            ex2 = Add(ex, 22)
+            px2 = World_X(ex2)
+            mid = Divide(Add(px, px2), 2)
+            gap = Subtract(px2, px)
+            br = Draw_ShieldBr(0)
+            col = Draw_ShieldCol(br)
+            Draw_Oval(px, py, base, ry0, col)
+            br = Draw_ShieldBr(1)
+            col = Draw_ShieldCol(br)
+            Draw_Oval(px2, py, base, ry0, col)
+            IfCondition EqualTo(Arcade.spips, 2) ThenBlock: {
+                br = Draw_ShieldBr(2)
+                col = Draw_ShieldCol(br)
+                wrx = Divide(gap, 2)
+                wrx = Add(wrx, base)
+                wrx = Add(wrx, 12)
+                wry = Add(base, 7)
+                Draw_Oval(mid, py, wrx, wry, col)
+            }
+        }
+        ElseBlock: {
+            nring = 3
+            IfCondition EqualTo(Arcade.spips, 1) ThenBlock: { nring = 2 }
+            ring = 0
+            WhileLoop LessThan(ring, nring) {
+                br = Draw_ShieldBr(ring)
+                col = Draw_ShieldCol(br)
+                rx = Add(base, Multiply(ring, 5))
+                ry = Add(ry0, Multiply(ring, 3))
+                Draw_Oval(px, py, rx, ry, col)
+                ring = Add(ring, 1)
+            }
+        }
+    }
+}

@@ -1,0 +1,173 @@
+// App/Entity.ailang — resolution-independent entity pool.
+// Positions are World units. Blit converts to the current window.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.Display.Render.DSurface
+Import.App.State
+Import.App.World
+Import.App.Blit
+
+FixedPool.Ent {
+    "base": Initialize=0, CanChange=True
+    "cap":  Initialize=512, CanChange=True
+    "n":    Initialize=0, CanChange=True
+    "ok":   Initialize=0, CanChange=True
+}
+
+Function.Ent_Get {
+    Input: id: Integer
+    Input: f: Integer
+    Output: Integer
+    Body: {
+        ReturnValue(Dereference(Add(Ent.base, Add(Multiply(id, 144), Multiply(f, 8)))))
+    }
+}
+
+Function.Ent_Set {
+    Input: id: Integer
+    Input: f: Integer
+    Input: v: Integer
+    Body: {
+        StoreValue(Add(Ent.base, Add(Multiply(id, 144), Multiply(f, 8))), v)
+    }
+}
+
+Function.Ent_Init {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ent.ok, 1) ThenBlock: { ReturnValue(1) }
+        Ent.cap = 512
+        Ent.base = Allocate(Multiply(Ent.cap, 144))
+        IfCondition EqualTo(Ent.base, 0) ThenBlock: { ReturnValue(0) }
+        Ent.n = 0
+        Ent.ok = 1
+        ReturnValue(1)
+    }
+}
+
+Function.Ent_Clear {
+    Body: {
+        Ent.n = 0
+        Arcade.player = -1
+    }
+}
+
+Function.Ent_Spawn {
+    Input: kind: Integer
+    Input: x: Integer
+    Input: y: Integer
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ent.ok, 0) ThenBlock: {
+            IfCondition EqualTo(Ent_Init(), 0) ThenBlock: { ReturnValue(-1) }
+        }
+        id = 0
+        WhileLoop LessThan(id, Ent.n) {
+            IfCondition EqualTo(BitwiseAnd(Ent_Get(id, EField.FL), EFlag.ALIVE), 0) ThenBlock: {
+                BreakLoop
+            }
+            id = Add(id, 1)
+        }
+        IfCondition EqualTo(id, Ent.n) ThenBlock: {
+            IfCondition GreaterEqual(Ent.n, Ent.cap) ThenBlock: { ReturnValue(-1) }
+            Ent.n = Add(Ent.n, 1)
+        }
+        Ent_Set(id, EField.KIND, kind)
+        Ent_Set(id, EField.FL, Add(EFlag.ALIVE, EFlag.VIS))
+        Ent_Set(id, EField.X, x)
+        Ent_Set(id, EField.Y, y)
+        Ent_Set(id, EField.VX, 0)
+        Ent_Set(id, EField.VY, 0)
+        Ent_Set(id, EField.VIEW, View.TOP)
+        Ent_Set(id, EField.FR, 0)
+        Ent_Set(id, EField.HP, 1)
+        Ent_Set(id, EField.ST, Est.FORM)
+        Ent_Set(id, EField.SLOT, -1)
+        Ent_Set(id, EField.W, 48)
+        Ent_Set(id, EField.H, 48)
+        Ent_Set(id, EField.ACC, 0)
+        Ent_Set(id, EField.LIFE, 0)
+        Ent_Set(id, EField.SHEET, 0)
+        Ent_Set(id, EField.ARM, 0)
+        Ent_Set(id, EField.ARM0, 0)
+        ReturnValue(id)
+    }
+}
+
+Function.Ent_Kill {
+    Input: id: Integer
+    Body: {
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(0) }
+        Ent_Set(id, EField.FL, 0)
+        Ent_Set(id, EField.KIND, Kind.NONE)
+    }
+}
+
+Function.Ent_Alive {
+    Input: id: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(id, Ent.n) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(BitwiseAnd(Ent_Get(id, EField.FL), EFlag.ALIVE), 0) ThenBlock: {
+            ReturnValue(0)
+        }
+        ReturnValue(1)
+    }
+}
+
+Function.Ent_Hit {
+    Input: a: Integer
+    Input: b: Integer
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ent_Alive(a), 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ent_Alive(b), 0) ThenBlock: { ReturnValue(0) }
+        ax = Ent_Get(a, EField.X)
+        ay = Ent_Get(a, EField.Y)
+        aw = Divide(Ent_Get(a, EField.W), 2)
+        ah = Divide(Ent_Get(a, EField.H), 2)
+        bx = Ent_Get(b, EField.X)
+        by = Ent_Get(b, EField.Y)
+        bw = Divide(Ent_Get(b, EField.W), 2)
+        bh = Divide(Ent_Get(b, EField.H), 2)
+        IfCondition GreaterThan(Subtract(ax, aw), Add(bx, bw)) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Add(ax, aw), Subtract(bx, bw)) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(Subtract(ay, ah), Add(by, bh)) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Add(ay, ah), Subtract(by, bh)) ThenBlock: { ReturnValue(0) }
+        ReturnValue(1)
+    }
+}
+
+Function.Ent_Blit {
+    Input: id: Integer
+    Input: surf: Integer
+    Input: fw: Integer
+    Input: fh: Integer
+    Input: col: Integer
+    Body: {
+        IfCondition EqualTo(surf, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(World.surf, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(fw, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(fh, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(col, 0) ThenBlock: { col = 0 }
+        sx = Multiply(col, fw)
+        dx = Subtract(World_X(Ent_Get(id, EField.X)), Divide(fw, 2))
+        dy = Subtract(World_Y(Ent_Get(id, EField.Y)), Divide(fh, 2))
+        IfCondition GreaterThan(World.shake, 0) ThenBlock: {
+            dx = Add(dx, Modulo(Arcade.t, 5))
+            dy = Add(dy, Modulo(Multiply(Arcade.t, 3), 5))
+        }
+        Blit.dx = dx
+        Blit.dy = dy
+        Blit.tint = 0
+        arm = Ent_Get(id, EField.ARM)
+        arm0 = Ent_Get(id, EField.ARM0)
+        IfCondition GreaterThan(arm, 0) ThenBlock: {
+            IfCondition EqualTo(arm, arm0) ThenBlock: { Blit.tint = 1 }
+        }
+        Blit_Cell(surf, sx, 0, fw, fh)
+        Blit.tint = 0
+    }
+}

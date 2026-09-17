@@ -1,0 +1,203 @@
+// App/Ipc.ailang — CAD/Paint file protocol, /dev/shm/arcade_app.
+// size.txt is the window. keys.txt is held keys. cmd.txt is quit/pause/start.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.Display.Render.Framebuffer
+Import.App.State
+Import.App.World
+
+Function.Ipc_Ensure {
+    Output: Integer
+    Body: {
+        SystemCall(83, "/dev/shm/arcade_app", 493)
+        ReturnValue(1)
+    }
+}
+
+Function.Ipc_NowMs {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.ts, 0) ThenBlock: { Ipc.ts = Allocate(16) }
+        SystemCall(228, 1, Ipc.ts)
+        ReturnValue(Add(Multiply(Dereference(Ipc.ts), 1000), Divide(Dereference(Add(Ipc.ts, 8)), 1000000)))
+    }
+}
+
+Function.Ipc_Sleep {
+    Input: ms: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.ts, 0) ThenBlock: { Ipc.ts = Allocate(16) }
+        IfCondition LessThan(ms, 1) ThenBlock: { ms = 1 }
+        StoreValue(Ipc.ts, Divide(ms, 1000))
+        StoreValue(Add(Ipc.ts, 8), Multiply(Modulo(ms, 1000), 1000000))
+        SystemCall(35, Ipc.ts, 0)
+    }
+}
+
+Function.Ipc_MapFrame {
+    Output: Integer
+    Body: {
+        Ipc.n = Multiply(FB.pitch, FB.height)
+        IfCondition And(NotEqual(Ipc.map, 0), EqualTo(Ipc.mapsz, Ipc.n)) ThenBlock: {
+            ReturnValue(1)
+        }
+        IfCondition GreaterThan(Ipc.map, 0) ThenBlock: {
+            SystemCall(11, Ipc.map, Ipc.mapsz)
+            Ipc.map = 0
+        }
+        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/frame.raw", 66, 420)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(77, Ipc.fd, Ipc.n)
+        Ipc.map = SystemCall(9, 0, Ipc.n, 3, 1, Ipc.fd, 0)
+        SystemCall(3, Ipc.fd)
+        IfCondition LessThan(Ipc.map, 4096) ThenBlock: {
+            Ipc.map = 0
+            ReturnValue(0)
+        }
+        Ipc.mapsz = Ipc.n
+        ReturnValue(1)
+    }
+}
+
+Function.Ipc_Present {
+    Output: Integer
+    Body: {
+        Ipc_Ensure()
+        IfCondition EqualTo(Ipc.hdr, 0) ThenBlock: { Ipc.hdr = Allocate(16) }
+        Arc_LE32(Ipc.hdr, 0, FB.width)
+        Arc_LE32(Ipc.hdr, 4, FB.height)
+        Arc_LE32(Ipc.hdr, 8, FB.pitch)
+        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/meta.bin", 577, 420)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(1, Ipc.fd, Ipc.hdr, 12)
+        SystemCall(3, Ipc.fd)
+        Ipc.n = Multiply(FB.pitch, FB.height)
+        IfCondition EqualTo(Ipc_MapFrame(), 1) ThenBlock: {
+            Ipc.fd = FB_GetDrawBuffer()
+            MemoryCopy(Ipc.map, Ipc.fd, Ipc.n)
+        }
+        ElseBlock: {
+            Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/frame.tmp", 577, 420)
+            IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+            SystemCall(1, Ipc.fd, FB_GetDrawBuffer(), Ipc.n)
+            SystemCall(3, Ipc.fd)
+            SystemCall(82, "/dev/shm/arcade_app/frame.tmp", "/dev/shm/arcade_app/frame.raw")
+        }
+        Ipc.gen = Add(Ipc.gen, 1)
+        IfCondition EqualTo(Ipc.genb, 0) ThenBlock: { Ipc.genb = Allocate(32) }
+        Ipc.n = 0
+        Ipc.i = Ipc.gen
+        IfCondition LessThan(Ipc.i, 1) ThenBlock: { Ipc.i = 1 }
+        WhileLoop GreaterThan(Ipc.i, 0) {
+            SetByte(Add(Ipc.genb, 16), Ipc.n, Add(48, Modulo(Ipc.i, 10)))
+            Ipc.n = Add(Ipc.n, 1)
+            Ipc.i = Divide(Ipc.i, 10)
+        }
+        Ipc.w = 0
+        WhileLoop LessThan(Ipc.w, Ipc.n) {
+            SetByte(Ipc.genb, Ipc.w, GetByte(Add(Ipc.genb, 16), Subtract(Subtract(Ipc.n, 1), Ipc.w)))
+            Ipc.w = Add(Ipc.w, 1)
+        }
+        SetByte(Ipc.genb, Ipc.n, 10)
+        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/gen.tmp", 577, 420)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(1, Ipc.fd, Ipc.genb, Add(Ipc.n, 1))
+        SystemCall(3, Ipc.fd)
+        SystemCall(82, "/dev/shm/arcade_app/gen.tmp", "/dev/shm/arcade_app/gen.txt")
+        ReturnValue(1)
+    }
+}
+
+Function.Ipc_SkipNum {
+    Input: s: Address
+    Input: off: Integer
+    Output: Integer
+    Body: {
+        Ipc.i = off
+        WhileLoop LessThan(Ipc.i, 96) {
+            Ipc.c = GetByte(s, Ipc.i)
+            IfCondition EqualTo(Ipc.c, 0) ThenBlock: { ReturnValue(Ipc.i) }
+            IfCondition EqualTo(Ipc.c, 32) ThenBlock: { ReturnValue(Add(Ipc.i, 1)) }
+            IfCondition EqualTo(Ipc.c, 10) ThenBlock: { ReturnValue(Ipc.i) }
+            Ipc.i = Add(Ipc.i, 1)
+        }
+        ReturnValue(Ipc.i)
+    }
+}
+
+Function.Ipc_PollSize {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.size, 0) ThenBlock: { Ipc.size = Allocate(64) }
+        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/size.txt", 0, 0)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.n = SystemCall(0, Ipc.fd, Ipc.size, 48)
+        SystemCall(3, Ipc.fd)
+        IfCondition LessEqual(Ipc.n, 0) ThenBlock: { ReturnValue(0) }
+        SetByte(Ipc.size, Ipc.n, 0)
+        Scratch.a = Arc_Atoi(Ipc.size)
+        Ipc.i = Ipc_SkipNum(Ipc.size, 0)
+        Scratch.b = Arc_Atoi(Add(Ipc.size, Ipc.i))
+        IfCondition LessThan(Scratch.a, 32) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Scratch.b, 32) ThenBlock: { ReturnValue(0) }
+        ReturnValue(World_SetSize(Scratch.a, Scratch.b))
+    }
+}
+
+Function.Ipc_PollKeys {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.keys, 0) ThenBlock: { Ipc.keys = Allocate(64) }
+        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/keys.txt", 0, 0)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.n = SystemCall(0, Ipc.fd, Ipc.keys, 48)
+        SystemCall(3, Ipc.fd)
+        IfCondition LessEqual(Ipc.n, 0) ThenBlock: { ReturnValue(0) }
+        SetByte(Ipc.keys, Ipc.n, 0)
+        Ipc.i = 0
+        Key.l = Arc_Atoi(Ipc.keys)
+        Ipc.i = Ipc_SkipNum(Ipc.keys, 0)
+        Key.r = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ipc_SkipNum(Ipc.keys, Ipc.i)
+        Key.u = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ipc_SkipNum(Ipc.keys, Ipc.i)
+        Key.d = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ipc_SkipNum(Ipc.keys, Ipc.i)
+        Key.f = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ipc_SkipNum(Ipc.keys, Ipc.i)
+        Key.s = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ipc_SkipNum(Ipc.keys, Ipc.i)
+        Key.p = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        ReturnValue(1)
+    }
+}
+
+Function.Ipc_PollCmd {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.cmd, 0) ThenBlock: { Ipc.cmd = Allocate(64) }
+        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/cmd.txt", 0, 0)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.n = SystemCall(0, Ipc.fd, Ipc.cmd, 48)
+        SystemCall(3, Ipc.fd)
+        IfCondition LessEqual(Ipc.n, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.c = GetByte(Ipc.cmd, 0)
+        Ipc.fd = SystemCall(2, "/dev/shm/arcade_app/cmd.txt", 577, 420)
+        IfCondition GreaterEqual(Ipc.fd, 0) ThenBlock: { SystemCall(3, Ipc.fd) }
+        IfCondition EqualTo(Ipc.c, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ipc.c, 10) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ipc.c, 113) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(Ipc.c, 81) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(Ipc.c, 112) ThenBlock: { ReturnValue(2) }
+        IfCondition EqualTo(Ipc.c, 115) ThenBlock: { ReturnValue(3) }
+        IfCondition EqualTo(Ipc.c, 114) ThenBlock: {
+            Scratch.a = Arc_Atoi(Add(Ipc.cmd, 1))
+            Ipc.i = Ipc_SkipNum(Ipc.cmd, 1)
+            Scratch.b = Arc_Atoi(Add(Ipc.cmd, Ipc.i))
+            World_SetSize(Scratch.a, Scratch.b)
+            ReturnValue(4)
+        }
+        ReturnValue(0)
+    }
+}

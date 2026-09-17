@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 64">
+  <g transform="translate(0,0)">
+    <ellipse cx="32" cy="32" rx="7.5" ry="2" fill="#fff8e8"/>
+    <ellipse cx="32" cy="32" rx="2" ry="7.5" fill="#fff8e8"/>
+    <polygon points="28.5,27.4 36.6,35.5 35.5,36.6 27.4,28.5" fill="#ffffff"/>
+    <polygon points="27.4,35.5 35.5,27.4 36.6,28.5 28.5,36.6" fill="#ffffff"/>
+    <ellipse cx="32" cy="32" rx="5.5" ry="5.5" fill="#fff8e8"/>
+    <ellipse cx="32" cy="32" rx="3.7" ry="3.7" fill="#ffffff"/>
+    <ellipse cx="32" cy="32" rx="2.1" ry="2.1" fill="#ffffff"/>
+    <ellipse cx="32" cy="32" rx="2.2" ry="2" fill="#ffffff"/>
+  </g>
+  <g transform="translate(64,0)">
+    <ellipse cx="32" cy="32" rx="17.5" ry="3.4" fill="#ffe56a"/>
+    <ellipse cx="32" cy="32" rx="3.4" ry="17.5" fill="#ffe56a"/>
+    <polygon points="23.6,21.6 42.4,40.4 40.4,42.4 21.6,23.6" fill="#fff2a0"/>
+    <polygon points="21.6,40.4 40.4,21.6 42.4,23.6 23.6,42.4" fill="#fff2a0"/>
+    <ellipse cx="32" cy="32" rx="12.2" ry="1.8" fill="#ffffff"/>
+    <ellipse cx="32" cy="32" rx="1.8" ry="12.2" fill="#ffffff"/>
+    <ellipse cx="32" cy="32" rx="12.5" ry="12" fill="#ffe56a"/>
+    <ellipse cx="32" cy="32" rx="9" ry="8.6" fill="#fff2a0"/>
+    <ellipse cx="32" cy="32" rx="5.2" ry="5" fill="#ffffff"/>
+    <ellipse cx="32" cy="32" rx="2.8" ry="2.6" fill="#ffffff"/>
+    <ellipse cx="32" cy="32" rx="3.1" ry="2.8" fill="#ffffff"/>
+  </g>
+  <g transform="translate(128,0)">
+    <ellipse cx="32" cy="32" rx="26.5" ry="4.4" fill="#ffc830"/>
+    <ellipse cx="32" cy="32" rx="4.4" ry="26.5" fill="#ffc830"/>
+    <polygon points="19,16.5 47.5,45 45,47.5 16.5,19" fill="#ffe56a"/>
+    <polygon points="16.5,45 45,16.5 47.5,19 19,47.5" fill="#ffe56a"/>
+    <ellipse cx="32" cy="32" rx="18.5" ry="2.3" fill="#ffffff"/>
+    <ellipse cx="32" cy="32" rx="2.3" ry="18.5" fill="#ffffff"/>
+    <ellipse cx="32" cy="32" rx="19.5" ry="19.5" fill="#ffc830"/>
+    <ellipse cx="32" cy="32" rx="15.2" ry="15.2" fill="#ffe56a"/>
+    <ellipse cx="32" cy="32" rx="9.8" ry="9.8" fill="#fff8d0"/>
+    <ellipse cx="32" cy="32" rx="5.5" ry="5.5" fill="#ffffff"/>
+    <ellipse cx="32" cy="32" rx="2.7" ry="2.7" fill="#ffffff"/>
+    <ellipse cx="32" cy="32" rx="3.5" ry="3.1" fill="#ffffff"/>
+  </g>
+  <g transform="translate(192,0)">
+    <ellipse cx="32" cy="32" rx="27.5" ry="3.9" fill="#ff9a28"/>
+    <ellipse cx="32" cy="32" rx="3.9" ry="27.5" fill="#ff9a28"/>
+    <polygon points="18.4,16.1 47.9,45.6 45.6,47.9 16.1,18.4" fill="#ffc830"/>
+    <polygon points="16.1,45.6 45.6,16.1 47.9,18.4 18.4,47.9" fill="#ffc830"/>
+    <ellipse cx="32" cy="32" rx="19.2" ry="2" fill="#ffe56a"/>
+    <ellipse cx="32" cy="32" rx="2" ry="19.2" fill="#ffe56a"/>
+    <ellipse cx="32" cy="32" rx="23.5" ry="22.6" fill="#ff9a28"/>
+    <ellipse cx="32" cy="32" rx="17.9" ry="17.1" fill="#ffc830"/>
+    <ellipse cx="32" cy="32" rx="11.3" ry="10.8" fill="#ffe56a"/>
+    <ellipse cx="32" cy="32" rx="6.1" ry="5.9" fill="#fff2a0"/>
+    <ellipse cx="32" cy="32" rx="2.8" ry="2.7" fill="#ffffff"/>
+    <ellipse cx="32" cy="32" rx="2.3" ry="2.1" fill="#ffffff"/>
+  </g>
+  <g transform="translate(256,0)">
+    <ellipse cx="32" cy="32" rx="21.5" ry="3.1" fill="#e23b20"/>
+    <ellipse cx="32" cy="32" rx="3.1" ry="21.5" fill="#e23b20"/>
+    <polygon points="21.3,19.5 44.5,42.7 42.7,44.5 19.5,21.3" fill="#ff7a18"/>
+    <polygon points="19.5,42.7 42.7,19.5 44.5,21.3 21.3,44.5" fill="#ff7a18"/>
+    <ellipse cx="32" cy="32" rx="19.5" ry="19.5" fill="#e23b20"/>
+    <ellipse cx="32" cy="32" rx="14" ry="14" fill="#ff7a18"/>
+    <ellipse cx="32" cy="32" rx="8.2" ry="8.2" fill="#ffc830"/>
+    <ellipse cx="32" cy="32" rx="3.9" ry="3.9" fill="#ffe56a"/>
+    <ellipse cx="32" cy="32" rx="1.4" ry="1.2" fill="#ffffff"/>
+  </g>
+  <g transform="translate(320,0)">
+    <ellipse cx="32" cy="32" rx="13.5" ry="2.1" fill="#c42818"/>
+    <ellipse cx="32" cy="32" rx="2.1" ry="13.5" fill="#c42818"/>
+    <polygon points="25.4,24.1 39.9,38.6 38.6,39.9 24.1,25.4" fill="#e23b20"/>
+    <polygon points="24.1,38.6 38.6,24.1 39.9,25.4 25.4,39.9" fill="#e23b20"/>
+    <ellipse cx="32" cy="32" rx="13.5" ry="13" fill="#c42818"/>
+    <ellipse cx="32" cy="32" rx="9.2" ry="8.8" fill="#e23b20"/>
+    <ellipse cx="32" cy="32" rx="4.9" ry="4.7" fill="#ff9a28"/>
+    <ellipse cx="32" cy="32" rx="2.2" ry="2.1" fill="#ffc830"/>
+    <ellipse cx="32" cy="32" rx="1.1" ry="1" fill="#ffe56a"/>
+  </g>
+  <g transform="translate(384,0)">
+    <ellipse cx="32" cy="32" rx="6.5" ry="1.4" fill="#8a2010"/>
+    <ellipse cx="32" cy="32" rx="1.4" ry="6.5" fill="#8a2010"/>
+    <polygon points="28.9,28.1 35.9,35.1 35.1,35.9 28.1,28.9" fill="#c42818"/>
+    <polygon points="28.1,35.1 35.1,28.1 35.9,28.9 28.9,35.9" fill="#c42818"/>
+    <ellipse cx="32" cy="32" rx="7.5" ry="7.5" fill="#8a2010"/>
+    <ellipse cx="32" cy="32" rx="4.7" ry="4.7" fill="#c42818"/>
+    <ellipse cx="32" cy="32" rx="2.2" ry="2.2" fill="#e23b20"/>
+  </g>
+  <g transform="translate(448,0)">
+    <ellipse cx="32" cy="32" rx="2.8" ry="2.7" fill="#5a180c"/>
+    <ellipse cx="32" cy="32" rx="1.5" ry="1.5" fill="#8a2010"/>
+  </g>
+</svg>

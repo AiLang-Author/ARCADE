@@ -1,0 +1,87 @@
+// App/Star.ailang — three-layer starfield in unit space.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.Display.Render.Framebuffer
+Import.App.State
+Import.App.World
+
+FixedPool.Star {
+    "base": Initialize=0, CanChange=True
+    "n":    Initialize=96, CanChange=True
+    "ok":   Initialize=0, CanChange=True
+}
+
+Function.Star_Get {
+    Input: i: Integer
+    Input: f: Integer
+    Output: Integer
+    Body: {
+        ReturnValue(Dereference(Add(Star.base, Add(Multiply(i, 32), Multiply(f, 8)))))
+    }
+}
+
+Function.Star_Set {
+    Input: i: Integer
+    Input: f: Integer
+    Input: v: Integer
+    Body: {
+        StoreValue(Add(Star.base, Add(Multiply(i, 32), Multiply(f, 8))), v)
+    }
+}
+
+Function.Star_Init {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Star.ok, 1) ThenBlock: { ReturnValue(1) }
+        Star.base = Allocate(Multiply(Star.n, 32))
+        IfCondition EqualTo(Star.base, 0) ThenBlock: { ReturnValue(0) }
+        i = 0
+        WhileLoop LessThan(i, Star.n) {
+            Star_Set(i, 0, Modulo(Multiply(Add(i, 17), 73), World.UW))
+            Star_Set(i, 1, Modulo(Multiply(Add(i, 5), 91), World.UH))
+            layer = Modulo(i, 3)
+            Star_Set(i, 2, Add(1, layer))
+            Star_Set(i, 3, layer)
+            i = Add(i, 1)
+        }
+        Star.ok = 1
+        ReturnValue(1)
+    }
+}
+
+Function.Star_Tick {
+    Body: {
+        IfCondition EqualTo(Star.ok, 0) ThenBlock: { ReturnValue(0) }
+        i = 0
+        WhileLoop LessThan(i, Star.n) {
+            y = Add(Star_Get(i, 1), Add(1, Multiply(Star_Get(i, 2), 2)))
+            IfCondition GreaterThan(y, World.UH) ThenBlock: { y = 0 }
+            Star_Set(i, 1, y)
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Star_Draw {
+    Body: {
+        IfCondition EqualTo(Star.ok, 0) ThenBlock: { ReturnValue(0) }
+        i = 0
+        WhileLoop LessThan(i, Star.n) {
+            layer = Star_Get(i, 3)
+            col = Arc_RGBA(80, 90, 120)
+            IfCondition EqualTo(layer, 1) ThenBlock: { col = Arc_RGBA(140, 160, 200) }
+            IfCondition EqualTo(layer, 2) ThenBlock: { col = Arc_RGBA(230, 240, 255) }
+            x = World_X(Star_Get(i, 0))
+            y = World_Y(Star_Get(i, 1))
+            FB_SetPixel(x, y, col)
+            IfCondition GreaterThan(layer, 0) ThenBlock: {
+                FB_SetPixel(Add(x, 1), y, col)
+            }
+            IfCondition EqualTo(layer, 2) ThenBlock: {
+                FB_SetPixel(x, Add(y, 1), col)
+            }
+            i = Add(i, 1)
+        }
+    }
+}

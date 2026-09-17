@@ -1,0 +1,3 @@
+Optional SVG/TVG 8-frame strips (wide viewBox, 8 cells). If a file is
+missing the kernel builds a procedural sheet at the current window cell
+size. Boom_Spawn picks burst / ring / debris / flash with RNG.

@@ -1,0 +1,174 @@
+// App/Set.ailang — pause is the settings screen. Music + SFX volume.
+// Live: /dev/shm/arcade_app/vol.txt   Persist: config/settings.txt
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+Import.App.State
+Import.App.Ipc
+Import.App.Sfx
+
+FixedPool.SetIo {
+    "buf": Initialize=0, CanChange=True
+    "ok":  Initialize=0, CanChange=True
+}
+
+Function.Set_Clamp {
+    Input: v: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessThan(v, 0) ThenBlock: { v = 0 }
+        IfCondition GreaterThan(v, 10) ThenBlock: { v = 10 }
+        ReturnValue(v)
+    }
+}
+
+Function.Set_Put2 {
+    Input: buf: Address
+    Input: off: Integer
+    Input: v: Integer
+    Output: Integer
+    Body: {
+        v = Set_Clamp(v)
+        tens = Divide(v, 10)
+        ones = Modulo(v, 10)
+        SetByte(buf, off, Add(48, tens))
+        SetByte(buf, Add(off, 1), Add(48, ones))
+        ReturnValue(Add(off, 2))
+    }
+}
+
+Function.Set_Save {
+    Body: {
+        IfCondition EqualTo(SetIo.buf, 0) ThenBlock: { SetIo.buf = Allocate(16) }
+        IfCondition EqualTo(SetIo.buf, 0) ThenBlock: { ReturnValue(0) }
+        b = SetIo.buf
+        off = Set_Put2(b, 0, Arcade.mv)
+        SetByte(b, off, 32)
+        off = Add(off, 1)
+        off = Set_Put2(b, off, Arcade.sv)
+        SetByte(b, off, 10)
+        n = Add(off, 1)
+        fd = SystemCall(2, "/dev/shm/arcade_app/vol.txt", 577, 420)
+        IfCondition GreaterEqual(fd, 0) ThenBlock: {
+            SystemCall(1, fd, b, n)
+            SystemCall(3, fd)
+        }
+        SystemCall(83, "config", 493)
+        fd = SystemCall(2, "config/settings.txt", 577, 420)
+        IfCondition GreaterEqual(fd, 0) ThenBlock: {
+            SystemCall(1, fd, b, n)
+            SystemCall(3, fd)
+        }
+    }
+}
+
+Function.Set_Load {
+    Body: {
+        Arcade.mv = 7
+        Arcade.sv = 8
+        IfCondition EqualTo(SetIo.buf, 0) ThenBlock: { SetIo.buf = Allocate(16) }
+        IfCondition EqualTo(SetIo.buf, 0) ThenBlock: {
+            Set_Save()
+            ReturnValue(0)
+        }
+        MemorySet(SetIo.buf, 0, 16)
+        fd = SystemCall(2, "config/settings.txt", 0, 0)
+        IfCondition LessThan(fd, 0) ThenBlock: {
+            Set_Save()
+            ReturnValue(0)
+        }
+        n = SystemCall(0, fd, SetIo.buf, 15)
+        SystemCall(3, fd)
+        IfCondition LessThan(n, 3) ThenBlock: {
+            Set_Save()
+            ReturnValue(0)
+        }
+        SetByte(SetIo.buf, n, 0)
+        Arcade.mv = Set_Clamp(Arc_Atoi(SetIo.buf))
+        i = Ipc_SkipNum(SetIo.buf, 0)
+        Arcade.sv = Set_Clamp(Arc_Atoi(Add(SetIo.buf, i)))
+        Set_Save()
+    }
+}
+
+Function.Set_Bump {
+    Input: d: Integer
+    Body: {
+        IfCondition EqualTo(Arcade.sel, 0) ThenBlock: {
+            v = Add(Arcade.mv, d)
+            Arcade.mv = Set_Clamp(v)
+        }
+        ElseBlock: {
+            v = Add(Arcade.sv, d)
+            Arcade.sv = Set_Clamp(v)
+        }
+        Set_Save()
+        Sfx_Emit(SfxCode.HIT)
+    }
+}
+
+Function.Set_Close {
+    Body: {
+        Arcade.pause = 0
+        Arcade.sw = 18
+        Arcade.sk = 1
+    }
+}
+
+Function.Set_Start {
+    Output: Integer
+    Body: {
+        IfCondition GreaterThan(Arcade.sw, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Key.s, 1) ThenBlock: {
+            IfCondition EqualTo(Arcade.sk, 0) ThenBlock: { ReturnValue(1) }
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Set_Tick {
+    Output: Integer
+    Body: {
+        IfCondition GreaterThan(Arcade.sw, 0) ThenBlock: {
+            Arcade.sw = Subtract(Arcade.sw, 1)
+        }
+        pnow = Key.p
+        IfCondition EqualTo(pnow, 1) ThenBlock: {
+            IfCondition EqualTo(Arcade.pk, 0) ThenBlock: {
+                IfCondition EqualTo(Arcade.pause, 1) ThenBlock: {
+                    Set_Close()
+                }
+                ElseBlock: {
+                    Arcade.pause = 1
+                    Arcade.sel = 0
+                }
+            }
+        }
+        Arcade.pk = pnow
+        IfCondition EqualTo(Arcade.pause, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Key.u, 1) ThenBlock: { Arcade.sel = 0 }
+        IfCondition EqualTo(Key.d, 1) ThenBlock: { Arcade.sel = 1 }
+        IfCondition GreaterThan(Arcade.rw, 0) ThenBlock: {
+            Arcade.rw = Subtract(Arcade.rw, 1)
+        }
+        ElseBlock: {
+            IfCondition EqualTo(Key.l, 1) ThenBlock: {
+                step = Subtract(0, 1)
+                Set_Bump(step)
+                Arcade.rw = 8
+            }
+            IfCondition EqualTo(Key.r, 1) ThenBlock: {
+                Set_Bump(1)
+                Arcade.rw = 8
+            }
+        }
+        snow = Key.s
+        IfCondition EqualTo(snow, 1) ThenBlock: {
+            IfCondition EqualTo(Arcade.sk, 0) ThenBlock: {
+                Set_Close()
+            }
+        }
+        Arcade.sk = snow
+        ReturnValue(1)
+    }
+}

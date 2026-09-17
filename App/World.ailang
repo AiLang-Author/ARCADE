@@ -1,0 +1,108 @@
+// App/World.ailang — playfield is the window.
+// Unit space 1024×1024 maps onto the full framebuffer (stretch, not letterbox).
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.Display.Render.DSurfaceTypes
+LibraryImport.Display.Render.DSurface
+LibraryImport.Display.Render.Framebuffer
+Import.App.State
+
+Function.World_BindFB {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(World.surf, 0) ThenBlock: {
+            World.surf = Allocate(SurfaceConst.HEADER_SIZE)
+        }
+        IfCondition EqualTo(World.surf, 0) ThenBlock: { ReturnValue(0) }
+        buf = FB_GetDrawBuffer()
+        IfCondition EqualTo(buf, 0) ThenBlock: { ReturnValue(0) }
+        StoreValue(Add(World.surf, SurfaceFields.FORMAT), SurfaceFormat.PIXEL_32)
+        StoreValue(Add(World.surf, SurfaceFields.WIDTH), FB.width)
+        StoreValue(Add(World.surf, SurfaceFields.HEIGHT), FB.height)
+        StoreValue(Add(World.surf, SurfaceFields.PITCH), FB.pitch)
+        StoreValue(Add(World.surf, SurfaceFields.DATA), buf)
+        StoreValue(Add(World.surf, SurfaceFields.DATA_SIZE), Multiply(FB.pitch, FB.height))
+        World.fw = FB.width
+        World.fh = FB.height
+        ReturnValue(1)
+    }
+}
+
+Function.World_CellOf {
+    Input: fw: Integer
+    Input: fh: Integer
+    Output: Integer
+    Body: {
+        m = fw
+        IfCondition GreaterThan(fh, 0) ThenBlock: {
+            IfCondition LessThan(fh, m) ThenBlock: { m = fh }
+        }
+        c = Divide(m, 18)
+        IfCondition LessThan(c, 12) ThenBlock: { c = 12 }
+        IfCondition GreaterThan(c, 96) ThenBlock: { c = 96 }
+        ReturnValue(c)
+    }
+}
+
+Function.World_SetSize {
+    Input: w: Integer
+    Input: h: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessThan(w, 320) ThenBlock: { w = 320 }
+        IfCondition LessThan(h, 240) ThenBlock: { h = 240 }
+        IfCondition GreaterThan(w, 2560) ThenBlock: { w = 2560 }
+        IfCondition GreaterThan(h, 1600) ThenBlock: { h = 1600 }
+        IfCondition And(EqualTo(World.ok, 1), And(EqualTo(w, World.fw), EqualTo(h, World.fh))) ThenBlock: {
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(World.ok, 1) ThenBlock: {
+            IfCondition GreaterThan(FB.fb_ptr, 0) ThenBlock: {
+                SystemCall(11, FB.fb_ptr, FB.size)
+                FB.fb_ptr = 0
+            }
+            FB.initialized = 0
+        }
+        IfCondition EqualTo(FB_InitHeadless(w, h), 0) ThenBlock: { ReturnValue(-1) }
+        IfCondition EqualTo(World_BindFB(), 0) ThenBlock: { ReturnValue(-1) }
+        World.cell = World_CellOf(w, h)
+        World.ok = 1
+        Arcade.need = 1
+        ReturnValue(1)
+    }
+}
+
+Function.World_X {
+    Input: u: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessEqual(World.UW, 0) ThenBlock: { ReturnValue(0) }
+        ReturnValue(Divide(Multiply(u, World.fw), World.UW))
+    }
+}
+
+Function.World_Y {
+    Input: u: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessEqual(World.UH, 0) ThenBlock: { ReturnValue(0) }
+        ReturnValue(Divide(Multiply(u, World.fh), World.UH))
+    }
+}
+
+Function.World_SX {
+    Input: u: Integer
+    Output: Integer
+    Body: {
+        ReturnValue(World_X(u))
+    }
+}
+
+Function.World_SY {
+    Input: u: Integer
+    Output: Integer
+    Body: {
+        ReturnValue(World_Y(u))
+    }
+}

@@ -1,0 +1,93 @@
+// arcade_app.ailang — thin runner. Kernel owns the playfield.
+// Host (Gtk) blits /dev/shm/arcade_app/frame.raw (tmpfs — 60fps frames stay off disk).
+//
+// Build: ailang.x arcade_app.ailang arcade_app.x
+// Run:   ./scripts/run_arcade.sh
+//
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.SVG
+LibraryImport.Display.Render.Framebuffer
+LibraryImport.Display.Render.VIF
+LibraryImport.Display.Render.Fonts
+
+Import.App.State
+Import.App.World
+Import.App.Ipc
+Import.App.Sfx
+Import.App.Entity
+Import.App.Blit
+Import.App.Assets
+Import.App.Formation
+Import.App.Boom
+Import.App.Star
+Import.App.Hud
+Import.App.Set
+Import.App.Draw
+Import.Game.Paths
+Import.Game.Gen
+Import.Game.Galaga
+
+Function.DebugLog_Push {
+    Input: tag: Address
+    Input: n: Integer
+    Output: Integer
+    Body: { ReturnValue(0) }
+}
+
+SubRoutine.Main {
+    PrintMessage("arcade: kernel /dev/shm/arcade_app (playfield = window)\n")
+    Ipc_Ensure()
+    Sfx_Init()
+    IfCondition EqualTo(World_SetSize(800, 600), Subtract(0, 1)) ThenBlock: {
+        PrintMessage("FAIL fb\n")
+        SystemCall(60, 1, 0, 0)
+    }
+    Arc_Seed(Ipc_NowMs())
+    Ent_Init()
+    Form_Init()
+    Gen_Init()
+    Star_Init()
+    Gfx_Reload()
+    Hud_Init()
+    Galaga_Init()
+    Set_Load()
+    Arcade.run = 1
+    WhileLoop EqualTo(Arcade.run, 1) {
+        t0 = Ipc_NowMs()
+        Ipc_PollSize()
+        Gfx_Reload()
+        Ipc_PollKeys()
+        hit = Ipc_PollCmd()
+        IfCondition EqualTo(hit, 1) ThenBlock: { Arcade.run = 0 }
+        IfCondition EqualTo(hit, 2) ThenBlock: {
+            IfCondition EqualTo(Arcade.pause, 1) ThenBlock: {
+                Set_Close()
+            }
+            ElseBlock: {
+                Arcade.pause = 1
+                Arcade.sel = 0
+            }
+        }
+        IfCondition EqualTo(hit, 3) ThenBlock: {
+            IfCondition EqualTo(Arcade.mode, Mode.TITLE) ThenBlock: { Galaga_Start() }
+        }
+        IfCondition EqualTo(Arcade.run, 1) ThenBlock: {
+            Arcade.t = Add(Arcade.t, 1)
+            Star_Tick()
+            Galaga_Tick()
+            Draw_Frame()
+            Ipc_Present()
+            Sfx_Flush()
+            dt = Subtract(Ipc_NowMs(), t0)
+            wait = Subtract(16, dt)
+            IfCondition LessThan(wait, 1) ThenBlock: { wait = 1 }
+            IfCondition GreaterThan(wait, 16) ThenBlock: { wait = 16 }
+            Ipc_Sleep(wait)
+        }
+    }
+    PrintMessage("arcade stop\n")
+    SystemCall(60, 0, 0, 0)
+}
+RunTask(Main)

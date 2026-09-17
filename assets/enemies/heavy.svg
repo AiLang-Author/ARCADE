@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64">
+  <g transform="translate(0,0)">
+    <polygon points="2,22 12,18 14,46 2,44" fill="#140820"/>
+    <polygon points="62,22 52,18 50,46 62,44" fill="#140820"/>
+    <polygon points="16,16 32,10 48,16 58,26 58,44 50,54 14,54 6,44 6,26" fill="#140820"/>
+    <polygon points="4,24 13,21 14,44 4,42" fill="#3c1a6e"/>
+    <polygon points="60,24 51,21 50,44 60,42" fill="#3c1a6e"/>
+    <polygon points="5,24 12,22 12,30 5,28" fill="#5a2480"/>
+    <polygon points="59,24 52,22 52,30 59,28" fill="#2a1048"/>
+    <polygon points="16,18 32,12 48,18 56,26 56,42 48,52 16,52 8,42 8,26" fill="#9a48d4"/>
+    <polygon points="16,18 32,12 48,18 46,24 18,24" fill="#c878f0"/>
+    <polygon points="10,40 54,40 48,52 16,52" fill="#3c1a6e"/>
+    <polygon points="8,26 16,26 16,44 8,40" fill="#d4a0ff"/>
+    <polygon points="56,26 48,26 48,44 56,40" fill="#5a2480"/>
+    <polygon points="30,16 34,16 36,48 28,48" fill="#7a34b0"/>
+    <rect x="18" y="8" width="10" height="10" fill="#140820"/>
+    <rect x="36" y="8" width="10" height="10" fill="#140820"/>
+    <rect x="19" y="9" width="8" height="8" fill="#ffc850"/>
+    <rect x="37" y="9" width="8" height="8" fill="#ffc850"/>
+    <rect x="21" y="6" width="4" height="6" fill="#ffe878"/>
+    <rect x="39" y="6" width="4" height="6" fill="#ffe878"/>
+    <rect x="22" y="7" width="2" height="4" fill="#1a0828"/>
+    <rect x="40" y="7" width="2" height="4" fill="#1a0828"/>
+    <polygon points="24,24 40,24 42,34 22,34" fill="#2a1048"/>
+    <polygon points="26,25 38,25 39,32 25,32" fill="#d4a0ff"/>
+    <ellipse cx="32" cy="28" rx="5" ry="3" fill="#1a0828"/>
+    <rect x="6" y="30" width="6" height="5" fill="#ffc850"/>
+    <rect x="52" y="30" width="6" height="5" fill="#ffc850"/>
+    <rect x="7" y="31" width="4" height="3" fill="#1a0828"/>
+    <rect x="53" y="31" width="4" height="3" fill="#1a0828"/>
+    <rect x="22" y="44" width="6" height="6" fill="#5a2480"/>
+    <rect x="36" y="44" width="6" height="6" fill="#5a2480"/>
+  </g>
+  <g transform="translate(64,0)">
+    <polygon points="2,20 14,16 16,48 2,46" fill="#140820"/>
+    <polygon points="62,20 50,16 48,48 62,46" fill="#140820"/>
+    <polygon points="12,10 52,10 58,20 58,50 52,58 12,58 6,50 6,20" fill="#140820"/>
+    <polygon points="4,22 14,18 15,46 4,44" fill="#3c1a6e"/>
+    <polygon points="60,22 50,18 49,46 60,44" fill="#3c1a6e"/>
+    <polygon points="14,12 50,12 56,22 56,48 50,56 14,56 8,48 8,22" fill="#9a48d4"/>
+    <polygon points="14,12 50,12 54,20 10,20" fill="#c878f0"/>
+    <polygon points="10,36 54,36 50,56 14,56" fill="#3c1a6e"/>
+    <polygon points="8,22 14,22 14,46 8,42" fill="#d4a0ff"/>
+    <polygon points="56,22 50,22 50,46 56,42" fill="#5a2480"/>
+    <rect x="24" y="16" width="16" height="10" fill="#2a1048"/>
+    <rect x="26" y="18" width="12" height="6" fill="#ffc850"/>
+    <rect x="6" y="28" width="6" height="6" fill="#ffc850"/>
+    <rect x="52" y="28" width="6" height="6" fill="#ffc850"/>
+    <polygon points="10,42 54,42 56,56 8,56" fill="#2a1048"/>
+    <ellipse cx="20" cy="50" rx="6" ry="7" fill="#1a0828"/>
+    <ellipse cx="32" cy="50" rx="6" ry="7" fill="#1a0828"/>
+    <ellipse cx="44" cy="50" rx="6" ry="7" fill="#1a0828"/>
+    <ellipse cx="20" cy="51" rx="4" ry="5" fill="#ffc850"/>
+    <ellipse cx="32" cy="51" rx="4" ry="5" fill="#ffc850"/>
+    <ellipse cx="44" cy="51" rx="4" ry="5" fill="#ffc850"/>
+    <circle cx="20" cy="52" r="2" fill="#ffe878"/>
+    <circle cx="32" cy="52" r="2" fill="#ffe878"/>
+    <circle cx="44" cy="52" r="2" fill="#ffe878"/>
+  </g>
+  <g transform="translate(128,0)">
+    <polygon points="2,20 14,16 16,50 2,48" fill="#140820"/>
+    <polygon points="62,20 50,16 48,50 62,48" fill="#140820"/>
+    <polygon points="16,10 32,4 48,10 56,22 54,50 46,58 18,58 10,50 8,22" fill="#140820"/>
+    <polygon points="21,2 27,2 28,12 20,12" fill="#140820"/>
+    <polygon points="37,2 43,2 44,12 36,12" fill="#140820"/>
+    <polygon points="3,22 14,18 16,36 14,48 3,46 1,34" fill="#3c1a6e"/>
+    <polygon points="61,22 50,18 48,36 50,48 61,46 63,34" fill="#3c1a6e"/>
+    <polygon points="4,22 13,20 13,28 4,26" fill="#5a2480"/>
+    <polygon points="60,22 51,20 51,28 60,26" fill="#2a1048"/>
+    <polygon points="18,12 32,6 46,12 54,22 52,48 44,56 20,56 12,48 10,22" fill="#9a48d4"/>
+    <polygon points="18,12 32,6 46,12 50,18 14,18" fill="#c878f0"/>
+    <polygon points="12,40 52,40 44,56 20,56" fill="#3c1a6e"/>
+    <polygon points="10,22 18,22 18,46 12,42" fill="#d4a0ff"/>
+    <polygon points="54,22 46,22 46,46 54,42" fill="#5a2480"/>
+    <polygon points="30,10 34,10 34,50 32,54 30,50" fill="#c878f0"/>
+    <polygon points="20,20 44,20 46,32 18,32" fill="#7a34b0"/>
+    <ellipse cx="32" cy="24" rx="7" ry="5" fill="#2a1048"/>
+    <ellipse cx="32" cy="23" rx="5" ry="3" fill="#d4a0ff"/>
+    <rect x="22" y="3" width="6" height="11" fill="#ffc850"/>
+    <rect x="36" y="3" width="6" height="11" fill="#ffc850"/>
+    <rect x="23" y="2" width="4" height="5" fill="#ffe878"/>
+    <rect x="37" y="2" width="4" height="5" fill="#ffe878"/>
+    <rect x="24" y="3" width="2" height="6" fill="#1a0828"/>
+    <rect x="38" y="3" width="2" height="6" fill="#1a0828"/>
+    <rect x="4" y="28" width="7" height="6" fill="#ffc850"/>
+    <rect x="53" y="28" width="7" height="6" fill="#ffc850"/>
+    <rect x="5" y="30" width="5" height="2" fill="#1a0828"/>
+    <rect x="54" y="30" width="5" height="2" fill="#1a0828"/>
+    <polygon points="18,50 28,50 29,60 17,60" fill="#2a1048"/>
+    <polygon points="36,50 46,50 47,60 35,60" fill="#2a1048"/>
+    <rect x="20" y="52" width="6" height="6" fill="#ffc850"/>
+    <rect x="38" y="52" width="6" height="6" fill="#ffc850"/>
+    <circle cx="23" cy="56" r="2" fill="#ffe878"/>
+    <circle cx="41" cy="56" r="2" fill="#ffe878"/>
+    <rect x="22" y="34" width="20" height="2" fill="#5a2480"/>
+    <rect x="22" y="40" width="20" height="2" fill="#5a2480"/>
+    <circle cx="16" cy="28" r="2" fill="#d4a0ff"/>
+    <circle cx="48" cy="28" r="2" fill="#d4a0ff"/>
+  </g>
+  <g transform="translate(192,0)">
+    <polygon points="2,20 14,16 16,50 2,48" fill="#140820"/>
+    <polygon points="62,20 50,16 48,50 62,48" fill="#140820"/>
+    <polygon points="16,10 32,4 48,10 56,22 54,50 46,58 18,58 10,50 8,22" fill="#140820"/>
+    <polygon points="3,22 14,18 16,36 14,48 3,46 1,34" fill="#2a1048"/>
+    <polygon points="61,22 50,18 48,36 50,48 61,46 63,34" fill="#2a1048"/>
+    <polygon points="18,12 32,6 46,12 54,22 52,48 44,56 20,56 12,48 10,22" fill="#3c1a6e"/>
+    <polygon points="12,40 52,40 44,56 20,56" fill="#2a1048"/>
+    <polygon points="30,12 34,12 34,50 32,54 30,50" fill="#1a0828"/>
+    <rect x="22" y="3" width="6" height="11" fill="#c09020"/>
+    <rect x="36" y="3" width="6" height="11" fill="#c09020"/>
+    <ellipse cx="32" cy="26" rx="8" ry="6" fill="#1a0828"/>
+    <rect x="24" y="22" width="16" height="10" fill="#2a1048"/>
+    <rect x="4" y="30" width="7" height="5" fill="#c09020"/>
+    <rect x="53" y="30" width="7" height="5" fill="#c09020"/>
+    <polygon points="18,50 28,50 29,60 17,60" fill="#140820"/>
+    <polygon points="36,50 46,50 47,60 35,60" fill="#140820"/>
+    <rect x="20" y="52" width="6" height="6" fill="#5a2480"/>
+    <rect x="38" y="52" width="6" height="6" fill="#5a2480"/>
+    <rect x="16" y="24" width="32" height="2" fill="#1a0828"/>
+    <rect x="16" y="32" width="32" height="2" fill="#1a0828"/>
+    <rect x="16" y="40" width="32" height="2" fill="#1a0828"/>
+  </g>
+  <g transform="translate(256,0)">
+    <polygon points="4,18 46,12 60,22 60,42 46,52 4,46 2,32" fill="#140820"/>
+    <polygon points="14,34 48,32 50,54 12,54" fill="#140820"/>
+    <polygon points="6,20 46,14 58,24 58,40 46,50 6,44 4,32" fill="#9a48d4"/>
+    <polygon points="8,20 46,14 56,24 46,24 8,24" fill="#c878f0"/>
+    <polygon points="8,38 52,36 58,40 46,50 6,44" fill="#3c1a6e"/>
+    <polygon points="4,22 10,20 10,42 4,38" fill="#d4a0ff"/>
+    <polygon points="52,24 58,24 58,40 52,38" fill="#5a2480"/>
+    <polygon points="16,36 46,34 48,52 14,52" fill="#3c1a6e"/>
+    <polygon points="16,36 46,34 46,40 16,40" fill="#5a2480"/>
+    <polygon points="38,14 52,14 54,22 38,22" fill="#2a1048"/>
+    <polygon points="40,15 50,15 51,20 40,20" fill="#d4a0ff"/>
+    <polygon points="52,26 62,28 62,36 52,38" fill="#ffc850"/>
+    <polygon points="58,28 62,30 62,34 58,36" fill="#ffe878"/>
+    <rect x="54" y="30" width="6" height="4" fill="#1a0828"/>
+    <rect x="18" y="40" width="8" height="6" fill="#ffc850"/>
+    <rect x="19" y="42" width="6" height="2" fill="#1a0828"/>
+    <polygon points="2,22 12,18 12,46 2,42" fill="#2a1048"/>
+    <ellipse cx="8" cy="32" rx="5" ry="8" fill="#1a0828"/>
+    <ellipse cx="7" cy="32" rx="3" ry="5" fill="#ffc850"/>
+    <circle cx="6" cy="32" r="2" fill="#ffe878"/>
+    <rect x="22" y="26" width="16" height="3" fill="#7a34b0"/>
+    <rect x="22" y="44" width="18" height="2" fill="#2a1048"/>
+    <circle cx="48" cy="48" r="2" fill="#ffc850"/>
+  </g>
+</svg>
