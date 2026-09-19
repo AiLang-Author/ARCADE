@@ -224,13 +224,32 @@ Function.Galaga_PutBand {
 
 Function.Galaga_GroupTick {
     Body: {
-        IfCondition GreaterEqual(Arcade.grp, Arcade.gn) ThenBlock: { ReturnValue(0) }
         still = Galaga_Entering()
-        IfCondition EqualTo(still, 1) ThenBlock: { ReturnValue(0) }
-        IfCondition GreaterThan(Arcade.gwait, 0) ThenBlock: {
-            Arcade.gwait = Subtract(Arcade.gwait, 1)
+        IfCondition GreaterEqual(Arcade.grp, Arcade.gn) ThenBlock: {
+            IfCondition EqualTo(still, 0) ThenBlock: {
+                IfCondition EqualTo(Arcade.mode, Mode.PLAY) ThenBlock: {
+                    Galaga_GateHide()
+                }
+            }
             ReturnValue(0)
         }
+        IfCondition EqualTo(still, 1) ThenBlock: {
+            Galaga_GateShow()
+            ReturnValue(0)
+        }
+        IfCondition GreaterThan(Arcade.gwait, 0) ThenBlock: {
+            Arcade.gwait = Subtract(Arcade.gwait, 1)
+            IfCondition LessEqual(Arcade.gwait, 20) ThenBlock: {
+                Galaga_GateShow()
+            }
+            ElseBlock: {
+                IfCondition EqualTo(Arcade.mode, Mode.PLAY) ThenBlock: {
+                    Galaga_GateHide()
+                }
+            }
+            ReturnValue(0)
+        }
+        Galaga_GateShow()
         add = Galaga_PutBand(Arcade.grp)
         Arcade.grp = Add(Arcade.grp, 1)
         IfCondition EqualTo(add, 0) ThenBlock: {
@@ -325,8 +344,86 @@ Function.Galaga_GivePart {
     Body: {
         IfCondition GreaterEqual(Arcade.hd, 10) ThenBlock: { ReturnValue(0) }
         Arcade.hd = Add(Arcade.hd, 1)
-        Arcade.got = 150
+        Arcade.got = 90
         Sfx_Emit(SfxCode.WAVE)
+    }
+}
+
+Function.Galaga_SpawnPart {
+    Input: x: Integer
+    Input: y: Integer
+    Output: Integer
+    Body: {
+        id = Ent_Spawn(Kind.DROP, x, y)
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(-1) }
+        which = Modulo(Arcade.hd, 5)
+        Ent_Set(id, EField.ST, Drop.PART)
+        Ent_Set(id, EField.VIEW, which)
+        Ent_Set(id, EField.VY, 2)
+        Ent_Set(id, EField.W, 40)
+        Ent_Set(id, EField.H, 40)
+        Arcade.part = id
+        ReturnValue(id)
+    }
+}
+
+Function.Galaga_GateShow {
+    Body: {
+        glive = Ent_Alive(Arcade.gate)
+        IfCondition EqualTo(glive, 1) ThenBlock: {
+            Ent_Set(Arcade.gate, EField.FL, Add(EFlag.ALIVE, EFlag.VIS))
+        }
+    }
+}
+
+Function.Galaga_GateHide {
+    Body: {
+        glive = Ent_Alive(Arcade.gate)
+        IfCondition EqualTo(glive, 1) ThenBlock: {
+            Ent_Set(Arcade.gate, EField.FL, EFlag.ALIVE)
+        }
+    }
+}
+
+Function.Galaga_PartTick {
+    Body: {
+        id = Arcade.part
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ent_Alive(id), 0) ThenBlock: {
+            Arcade.part = -1
+            ReturnValue(0)
+        }
+        x = Ent_Get(id, EField.X)
+        y = Ent_Get(id, EField.Y)
+        foes = Galaga_CountFoes()
+        IfCondition GreaterThan(foes, 0) ThenBlock: {
+            y = Add(y, 1)
+            IfCondition GreaterThan(y, 420) ThenBlock: { y = 420 }
+            Ent_Set(id, EField.Y, y)
+            ReturnValue(0)
+        }
+        plive = Ent_Alive(Arcade.player)
+        IfCondition EqualTo(plive, 0) ThenBlock: { ReturnValue(0) }
+        px = Ent_Get(Arcade.player, EField.X)
+        py = Ent_Get(Arcade.player, EField.Y)
+        IfCondition LessThan(x, px) ThenBlock: { x = Add(x, 5) }
+        IfCondition GreaterThan(x, px) ThenBlock: { x = Subtract(x, 5) }
+        IfCondition LessThan(y, py) ThenBlock: { y = Add(y, 6) }
+        IfCondition GreaterThan(y, py) ThenBlock: { y = Subtract(y, 4) }
+        Ent_Set(id, EField.X, x)
+        Ent_Set(id, EField.Y, y)
+        dx = Subtract(x, px)
+        IfCondition LessThan(dx, 0) ThenBlock: { dx = Subtract(0, dx) }
+        dy = Subtract(y, py)
+        IfCondition LessThan(dy, 0) ThenBlock: { dy = Subtract(0, dy) }
+        IfCondition LessThan(dx, 22) ThenBlock: {
+            IfCondition LessThan(dy, 28) ThenBlock: {
+                Ent_Kill(id)
+                Arcade.part = -1
+                Galaga_GivePart()
+                Galaga_WarpBegin()
+            }
+        }
     }
 }
 
@@ -710,6 +807,7 @@ Function.Galaga_Fill {
         Gen.nsmall = 0
         Queen.id = -1
         Gen_Build()
+        Galaga_GateShow()
         n = Galaga_PutBand(0)
         bw = Galaga_BossWave()
         IfCondition EqualTo(bw, 1) ThenBlock: {
@@ -950,6 +1048,7 @@ Function.Galaga_EnsureGate {
         Ent_Set(id, EField.HP, 99)
         Ent_Set(id, EField.SLOT, -1)
         Arcade.gate = id
+        Ent_Set(id, EField.FL, EFlag.ALIVE)
         ReturnValue(id)
     }
 }
@@ -974,6 +1073,7 @@ Function.Galaga_Wipe {
 Function.Galaga_WarpBegin {
     Body: {
         Galaga_EnsureGate()
+        Galaga_GateShow()
         Arcade.mode = Mode.WARP
         Arcade.warp = 1
         Arcade.wt = 80
@@ -1045,12 +1145,17 @@ Function.Galaga_WarpTick {
                     Ent_Set(Arcade.player, EField.FL, EFlag.ALIVE)
                 }
                 Arcade.warp = 2
-                Arcade.wt = 16
+                Arcade.wt = 32
             }
             ReturnValue(0)
         }
         IfCondition EqualTo(Arcade.warp, 2) ThenBlock: {
+            Galaga_GateShow()
             IfCondition EqualTo(Arcade.need, 1) ThenBlock: {
+                IfCondition GreaterThan(Arcade.wt, 16) ThenBlock: {
+                    Arcade.wt = Subtract(Arcade.wt, 1)
+                    ReturnValue(0)
+                }
                 Galaga_Wipe()
                 Path_Init()
                 Galaga_Fill()
@@ -1073,6 +1178,7 @@ Function.Galaga_WarpTick {
         IfCondition EqualTo(Arcade.warp, 3) ThenBlock: {
             Path_FormBob()
             Form_Tick()
+            Galaga_GroupTick()
             Galaga_Move()
             Galaga_QueenAct()
             Boom_Tick()
@@ -1133,7 +1239,10 @@ Function.Galaga_Init {
         Form_Reset()
         Galaga_Player()
         Ent_Set(Arcade.player, EField.Y, 820)
+        Arcade.spips = 2
         Galaga_EnsureGate()
+        Galaga_GateHide()
+        Arcade.part = -1
         Arcade.ct = 0
         Arcade.bgm = 2
         Sfx_Emit(SfxCode.TITLE)
@@ -1456,7 +1565,7 @@ Function.Galaga_Hits {
                                                 Galaga_Drop(dx, dy, k, plated)
                                                 IfCondition EqualTo(k, Kind.QUEEN) ThenBlock: {
                                                     Queen.id = -1
-                                                    Galaga_GivePart()
+                                                    Galaga_SpawnPart(dx, dy)
                                                 }
                                                 Ent_Kill(j)
                                                 Arcade.left = Subtract(Arcade.left, 1)
@@ -1494,7 +1603,7 @@ Function.Galaga_Hits {
                                 }
                             }
                             IfCondition EqualTo(typ, Drop.NUGGET) ThenBlock: {
-                                Galaga_AddScore(200)
+                                Galaga_AddScore(1000)
                             }
                             IfCondition EqualTo(typ, Drop.LIFE) ThenBlock: {
                                 Galaga_GiveLife()
@@ -1734,12 +1843,19 @@ Function.Galaga_Tick {
         Boom_Tick()
         Galaga_Hits()
         Arcade.left = Galaga_CountFoes()
+        Galaga_PartTick()
         IfCondition EqualTo(Arcade.mode, Mode.PLAY) ThenBlock: {
             IfCondition EqualTo(Arcade.left, 0) ThenBlock: {
-                IfCondition GreaterEqual(Arcade.grp, Arcade.gn) ThenBlock: {
-                    Arcade.mode = Mode.WAVE
-                    Arcade.dive_cd = 50
-                    Sfx_Emit(SfxCode.WAVE)
+                waiting = 0
+                IfCondition GreaterEqual(Arcade.part, 0) ThenBlock: {
+                    IfCondition EqualTo(Ent_Alive(Arcade.part), 1) ThenBlock: { waiting = 1 }
+                }
+                IfCondition EqualTo(waiting, 0) ThenBlock: {
+                    IfCondition GreaterEqual(Arcade.grp, Arcade.gn) ThenBlock: {
+                        Arcade.mode = Mode.WAVE
+                        Arcade.dive_cd = 50
+                        Sfx_Emit(SfxCode.WAVE)
+                    }
                 }
             }
         }

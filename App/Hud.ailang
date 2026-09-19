@@ -332,6 +332,39 @@ Function.Hud_Text {
     }
 }
 
+Function.Hud_Center {
+    Input: y: Integer
+    Input: s: Address
+    Input: n: Integer
+    Input: col: Integer
+    Body: {
+        ch = Arcade.fsize
+        IfCondition LessThan(ch, 14) ThenBlock: { ch = 14 }
+        w = Multiply(n, ch)
+        w = Divide(w, 2)
+        x = Subtract(Divide(World.fw, 2), Divide(w, 2))
+        IfCondition LessThan(x, 8) ThenBlock: { x = 8 }
+        Hud_Text(x, y, s, n, col)
+    }
+}
+
+Function.Hud_Banner {
+    Input: s: Address
+    Input: n: Integer
+    Input: col: Integer
+    Body: {
+        os = Arcade.fsize
+        big = Add(os, 12)
+        IfCondition GreaterThan(big, 34) ThenBlock: { big = 34 }
+        VFont_UseSize(big)
+        y = Divide(World.fh, 2)
+        y = Subtract(y, Divide(big, 2))
+        IfCondition LessThan(y, 12) ThenBlock: { y = 12 }
+        Hud_Center(y, s, n, col)
+        VFont_UseSize(os)
+    }
+}
+
 Function.Hud_Pip {
     Input: x: Integer
     Input: y: Integer
@@ -503,21 +536,49 @@ Function.Hud_Draw {
             IfCondition LessThan(by2, 8) ThenBlock: { by2 = 8 }
             Hud_Text(x0, by2, "P SETTINGS", 10, Arc_RGBA(180, 200, 220))
         }
-        IfCondition GreaterThan(Arcade.got, 0) ThenBlock: {
-            Hud_Text(Divide(World.fw, 5), Divide(World.fh, 3), "DRIVE PART", 10, Arc_RGBA(80, 255, 220))
-        }
         IfCondition EqualTo(Arcade.mode, Mode.HOME) ThenBlock: {
             y0 = Divide(World.fh, 4)
-            Hud_Text(Divide(World.fw, 8), y0, "HYPERDRIVE ONLINE", 17, Arc_RGBA(80, 255, 220))
-            Hud_Text(Divide(World.fw, 8), Add(y0, Multiply(Arcade.fsize, 2)), "GET HOME", 8, Arc_RGBA(80, 255, 180))
-            Hud_Text(Divide(World.fw, 8), Add(y0, Multiply(Arcade.fsize, 4)), "ENTER", 5, Arc_RGBA(255, 255, 255))
+            Hud_Center(y0, "HYPERDRIVE ONLINE", 17, Arc_RGBA(80, 255, 220))
+            Hud_Center(Add(y0, Multiply(Arcade.fsize, 2)), "GET HOME", 8, Arc_RGBA(80, 255, 180))
+            Hud_Center(Add(y0, Multiply(Arcade.fsize, 4)), "ENTER", 5, Arc_RGBA(255, 255, 255))
         }
         IfCondition EqualTo(Arcade.pause, 1) ThenBlock: { Hud_Settings() }
         IfCondition EqualTo(Arcade.mode, Mode.DEAD) ThenBlock: {
-            Hud_Text(Divide(World.fw, 3), Divide(World.fh, 2), "READY", 5, Arc_RGBA(255, 220, 80))
+            Hud_Banner("GET READY", 9, Arc_RGBA(255, 220, 80))
         }
-        IfCondition EqualTo(Arcade.mode, Mode.WAVE) ThenBlock: {
-            Hud_Text(Divide(World.fw, 3), Divide(World.fh, 2), "CLEAR", 5, Arc_RGBA(80, 255, 140))
+        ElseBlock: {
+            falling = 0
+            IfCondition GreaterEqual(Arcade.part, 0) ThenBlock: {
+                IfCondition EqualTo(Ent_Alive(Arcade.part), 1) ThenBlock: { falling = 1 }
+            }
+            IfCondition EqualTo(falling, 1) ThenBlock: {
+                Hud_Banner("DRIVE PART", 10, Arc_RGBA(80, 255, 220))
+            }
+            ElseBlock: {
+                IfCondition EqualTo(Arcade.mode, Mode.WARP) ThenBlock: {
+                    m = Modulo(Arcade.wave, 10)
+                    queen = 0
+                    IfCondition EqualTo(m, 0) ThenBlock: {
+                        IfCondition GreaterEqual(Arcade.wave, 10) ThenBlock: { queen = 1 }
+                    }
+                    IfCondition EqualTo(queen, 1) ThenBlock: {
+                        Hud_Banner("HIVE QUEEN", 10, Arc_RGBA(255, 120, 80))
+                    }
+                    ElseBlock: {
+                        Hud_Banner("WAVE BEGIN", 10, Arc_RGBA(180, 230, 255))
+                    }
+                }
+                ElseBlock: {
+                    IfCondition EqualTo(Arcade.mode, Mode.WAVE) ThenBlock: {
+                        Hud_Banner("WAVE COMPLETE", 13, Arc_RGBA(80, 255, 160))
+                    }
+                    ElseBlock: {
+                        IfCondition GreaterThan(Arcade.ext, 0) ThenBlock: {
+                            Hud_Banner("1UP", 3, Arc_RGBA(180, 255, 140))
+                        }
+                    }
+                }
+            }
         }
     }
 }
