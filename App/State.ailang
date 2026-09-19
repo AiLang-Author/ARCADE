@@ -136,6 +136,7 @@ FixedPool.Arcade {
     "grp":     Initialize=0, CanChange=True
     "gn":      Initialize=0, CanChange=True
     "gwait":   Initialize=0, CanChange=True
+    "bgm":     Initialize=0, CanChange=True
     "hd":      Initialize=0, CanChange=True
     "got":     Initialize=0, CanChange=True
     "mv":      Initialize=7, CanChange=True

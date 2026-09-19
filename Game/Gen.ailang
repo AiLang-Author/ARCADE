@@ -454,10 +454,10 @@ Function.Gen_Convoys {
     Body: {
         w = Arcade.wave
         IfCondition LessThan(w, 1) ThenBlock: { w = 1 }
-        base = Subtract(w, 1)
-        dec = Divide(base, 10)
-        C = 3
-        IfCondition GreaterEqual(dec, 4) ThenBlock: { C = 4 }
+        C = 6
+        IfCondition GreaterEqual(w, 8) ThenBlock: { C = 7 }
+        IfCondition GreaterEqual(w, 16) ThenBlock: { C = 8 }
+        IfCondition GreaterThan(C, 8) ThenBlock: { C = 8 }
         Gen.convoys = C
         i = 0
         WhileLoop LessThan(i, C) {
@@ -494,13 +494,17 @@ Function.Gen_Convoys {
             Gen_CvSet(i, 7, Gen.y)
             i = Add(i, 1)
         }
+        tot = Gen.n
+        IfCondition LessThan(tot, 1) ThenBlock: { tot = 1 }
+        occ = 0
         i = 0
         WhileLoop LessThan(i, 50) {
             IfCondition GreaterThan(GetByte(Gen.mask, i), 0) ThenBlock: {
-                row = Divide(i, 10)
-                band = Divide(Multiply(row, C), 5)
+                prod = Multiply(occ, C)
+                band = Divide(prod, tot)
                 IfCondition GreaterEqual(band, C) ThenBlock: { band = Subtract(C, 1) }
                 Form_Set(i, 3, band)
+                occ = Add(occ, 1)
             }
             i = Add(i, 1)
         }
@@ -516,20 +520,19 @@ Function.Gen_Build {
         base = Subtract(w, 1)
         dec = Divide(base, 10)
         IfCondition GreaterThan(dec, 9) ThenBlock: { dec = 9 }
-        tier = Modulo(base, 10)
-        agg = Add(1, Multiply(dec, 2))
-        half = Divide(tier, 2)
-        agg = Add(agg, half)
+        agg = Add(2, Divide(base, 2))
+        agg = Add(agg, dec)
         IfCondition GreaterThan(agg, 18) ThenBlock: { agg = 18 }
         Arcade.agg = agg
-        want = Add(14, Multiply(tier, 2))
-        want = Add(want, Multiply(dec, 5))
-        want = Add(want, Arc_Range(4))
-        IfCondition LessThan(want, 12) ThenBlock: { want = 12 }
+        want = Add(38, Multiply(base, 2))
+        want = Add(want, Multiply(dec, 2))
+        jitter = Arc_Range(3)
+        want = Add(want, jitter)
+        IfCondition LessThan(want, 36) ThenBlock: { want = 36 }
         IfCondition GreaterThan(want, 50) ThenBlock: { want = 50 }
         Arcade.want = want
         Gen_Clear()
-        nprim = Add(2, Arc_Range(3))
+        nprim = Add(3, Arc_Range(2))
         IfCondition GreaterThan(nprim, 4) ThenBlock: { nprim = 4 }
         Gen.nprim = nprim
         first = 0

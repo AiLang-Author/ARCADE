@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="640" height="640">
+<defs>
+    <g>
+      <path d="M320 76 C312 110 300 152 290 182 C272 222 252 256 242 288 C232 330 225 400 221 452 C220 480 226 496 240 504 L320 518 Z" fill="#6E7786"></path>
+      <path d="M240 310 L154 352 Q142 358 139 371 L124 424 Q120 440 132 450 L184 492 Q191 497 200 499 L246 504 Z" fill="#6E7786"></path>
+      <g transform="translate(640,0) scale(-1,1)">
+        <path d="M320 76 C312 110 300 152 290 182 C272 222 252 256 242 288 C232 330 225 400 221 452 C220 480 226 496 240 504 L320 518 Z" fill="#6E7786"></path>
+        <path d="M240 310 L154 352 Q142 358 139 371 L124 424 Q120 440 132 450 L184 492 Q191 497 200 499 L246 504 Z" fill="#6E7786"></path>
+      </g>
+    </g>
+  </defs>
+  <g transform="translate(320,330) rotate(20) scale(1,0.52) translate(-320,-320)">
+    <g transform="translate(0,32)">
+    <path d="M240 310 L154 352 Q142 358 139 371 L124 424 Q120 440 132 450 L184 492 Q191 497 200 499 L246 504 Z" fill="#9AA3B2"></path>
+    <path d="M244 340 L180 372 Q170 377 168 388 L160 424 Q157 435 165 442 L200 470 Q206 474 213 475 L246 480 Z" fill="#7F8998"></path>
+    <g transform="translate(170,358) rotate(-3) translate(-170,-358)">
+      <rect x="152" y="294" width="34" height="132" rx="13" fill="#232A38"></rect>
+      <rect x="152" y="318" width="34" height="7" fill="#3A445A"></rect>
+      <rect x="152" y="343" width="34" height="7" fill="#3A445A"></rect>
+      <rect x="158" y="405" width="22" height="21" rx="10" fill="#FF8A5B"></rect>
+    </g></use>
+  <g>
+    <path d="M272 518 H368 L381 546 H259 Z" fill="#FFD2AE"></path>
+    <path d="M259 546 H381 L392 570 H248 Z" fill="#FF9E6B"></path>
+    <path d="M248 570 H392 L400 590 H240 Z" fill="#E8474C"></path>
+    <path d="M240 590 H400 L409 608 H231 Z" fill="#C42127"></path>
+    <path d="M231 608 H409 L415 622 H225 Z" fill="#7C0D15"></path>
+  </g>
+  <g>
+    <path d="M240 310 L154 352 Q142 358 139 371 L124 424 Q120 440 132 450 L184 492 Q191 497 200 499 L246 504 Z" fill="#9AA3B2"></path>
+    <path d="M244 340 L180 372 Q170 377 168 388 L160 424 Q157 435 165 442 L200 470 Q206 474 213 475 L246 480 Z" fill="#7F8998"></path>
+    <g transform="translate(170,358) rotate(-3) translate(-170,-358)">
+      <rect x="152" y="294" width="34" height="132" rx="13" fill="#232A38"></rect>
+      <rect x="152" y="318" width="34" height="7" fill="#3A445A"></rect>
+      <rect x="152" y="343" width="34" height="7" fill="#3A445A"></rect>
+      <rect x="158" y="405" width="22" height="21" rx="10" fill="#FF8A5B"></rect>
+    </g>
+    <path d="M320 76 C312 110 300 152 290 182 C272 222 252 256 242 288 C232 330 225 400 221 452 C220 480 226 496 240 504 L320 518 Z" fill="#8A93A3"></path>
+    <path d="M320 220 C302 262 276 334 262 404 C254 454 264 488 284 498 L320 508 Z" fill="#E9EDF5"></path>
+    <path d="M320 110 L320 252 L300 214 Z" fill="#F4F7FC"></path>
+    <g>
+      <ellipse cx="292" cy="489" rx="19" ry="13" fill="#232A38"></ellipse>
+      <path d="M283 487 v6 M292 486 v7 M301 487 v6" stroke="#FF6F4D" stroke-width="3" stroke-linecap="round"></path>
+    </g>
+  </g>
+  <g transform="translate(640,0) scale(-1,1)">
+    <path d="M240 310 L154 352 Q142 358 139 371 L124 424 Q120 440 132 450 L184 492 Q191 497 200 499 L246 504 Z" fill="#9AA3B2"></path>
+    <path d="M244 340 L180 372 Q170 377 168 388 L160 424 Q157 435 165 442 L200 470 Q206 474 213 475 L246 480 Z" fill="#7F8998"></path>
+    <g transform="translate(170,358) rotate(-3) translate(-170,-358)">
+      <rect x="152" y="294" width="34" height="132" rx="13" fill="#232A38"></rect>
+      <rect x="152" y="318" width="34" height="7" fill="#3A445A"></rect>
+      <rect x="152" y="343" width="34" height="7" fill="#3A445A"></rect>
+      <rect x="158" y="405" width="22" height="21" rx="10" fill="#FF8A5B"></rect>
+    </g></use>
+  <ellipse cx="320" cy="296" rx="56" ry="63" fill="#1C2430"></ellipse>
+  <ellipse cx="320" cy="296" rx="46" ry="53" fill="#2E7F93"></ellipse>
+  <path d="M320 240 C298 268 292 302 301 330 C310 350 330 350 340 330 C348 302 342 268 320 240 Z" fill="#7FD8F0"></path>
+    <g>
+      <ellipse cx="292" cy="505" rx="20" ry="14" fill="#232A38"></ellipse>
+      <ellipse cx="292" cy="505" rx="10" ry="7" fill="#FF6F4D"></ellipse>
+      <ellipse cx="348" cy="505" rx="20" ry="14" fill="#232A38"></ellipse>
+      <ellipse cx="348" cy="505" rx="10" ry="7" fill="#FF6F4D"></ellipse>
+    </g>
+  </g>
+</svg>
