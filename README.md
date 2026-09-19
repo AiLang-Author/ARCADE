@@ -1,73 +1,57 @@
 # Arcade
 
-This repo is the shelf for **fun, fast 2D games** built on the AILANG arcade
-engine (GTK window, kernel owns the pixels). **NOWAY HOME is the first title.**
-More games go here the same way — new `Game/` module, same host.
+Arcade is a collection of fast 2D games made with the AILANG arcade engine.
+**NOWAY HOME** is the first game; future games can share the same engine and
+host.
 
----
+## NOWAY HOME
 
-# NOWAY HOME *(game 1)*
-
-The hive tore a hole near Earth, swallowed a carrier, and farms the fleet as
-food. You are a fighter off that carrier. Ten queens hold the hyperdrive. Get
+A hive has captured a carrier near Earth and is using the fleet for food. You
+are a fighter left behind. Defeat ten queens, recover the hyperdrive, and get
 home.
 
-Title track: **Turn Us Around** (Suno, original lyrics). Queen theme: **Queen Ship
-Protocol**. Decade stages shuffle the other tracks and **let them finish** —
-no restart on every wave. Lyric crawl on the idle rift.
+The game includes:
 
-The fighter is a packed vector strip: top-down idle, ¾ bank on strafe, cycling
-exhaust. Capture hangs your ship under the captor until you shoot it free.
-Stages run a full rack in six packs, formation fire, dive glow. Hive bugs are
-the menace sheets (idle / dive). Queens escalate on a decade strip (Brood
-Throne → Hive Crown). The tear only opens when something goes in or comes out.
-Drive parts drop from a queen and home onto the ship before the rift.
+- Side-to-side fighter movement and shooting
+- Enemy formations, diving attacks, and formation fire
+- Captures that can be reversed by destroying the captor
+- Ten increasingly difficult queen battles
+- Drive-part pickups, shields, extra lives, and score bonuses
+- Music, sound effects, and an attract screen
 
-Title legend (left): blue ghost ship = shields, green = 1UP, gold spark = 1000.
-Yellow pickups are 1000 points.
+![Title screen](noway-home/Intro.png)
 
-**Attract**
+![Gameplay](noway-home/gameplay.png)
 
-![Title](noway-home/Intro.png)
+![Queen battle](noway-home/bossbattle.png)
 
-**Stage**
+## How it works
 
-![Play](noway-home/gameplay.png)
+The game runs in an AILANG process and displays through a small GTK host. The
+AILANG side draws the game frame and handles the game logic; the host provides
+the window, keyboard input, resizing, and audio support.
 
-**Queen**
+The playfield uses a square coordinate system and expands to fill the window.
+Vector artwork is rasterized for the current window size, so sprites remain
+sharp when the window is resized.
 
-![Queen](noway-home/bossbattle.png)
+## Performance
 
-Same contract as CAD, Paint, ECU dash, and HalCodeGTK:
+On an AMD FX-8370 system with 64 GB of RAM at 3.2 GHz, the game typically uses
+3–5% CPU and 9–20 MB of memory. Memory use depends on the window size; a
+1024×1024 window typically uses 9–11 MB, while larger windows use more.
 
-- **Kernel** (`arcade_app.x`) owns the playfield, sprites, fonts, and game.
-- **Host** (`host/arcade_shell_gtk`) is native chrome + Cairo blit + keys/resize.
-- Pixels travel as CAD’s `meta.bin` + `frame.raw` + `gen.txt`.
-- Later the same kernel presents straight to `/dev/fb0` on AOS — swap the window
-  head, keep the engine.
+## Repository layout
 
-## Playfield = the window
-
-There is no fixed internal resolution. The kernel framebuffer is the drawing
-area. Unit space is `1024×1024`, stretched to the full window (portrait or
-landscape). SVG/TVG craft are rasterized **on demand** at a cell size derived
-from the current window, then blitted from a view strip (front / back / top /
-bottom / side).
-
-Resize the window → kernel picks a new cell → vectors re-raster → sprites stay
-sharp. No baked 32×32 sheets.
-
-## Layout
-
-```
-arcade_app.ailang     thin Main
-App/                  engine (window, ipc, entities, sheets, formation, boom, hud)
-Game/Galaga.ailang    first title — more games plug in the same way
-assets/               SVG (player, enemies, queen decades, fx/parts, sfx, music)
-fonts/                AlteixSans.vif + DejaVuSans.vif (native VFont)
-host/                 Gtk3 blit chrome + miniaudio
-scripts/              launch_arcade.sh, install_desktop.sh, pack_foes.py
-noway-home/           title / stage / queen screenshots
+```text
+arcade_app.ailang     Application entry point
+App/                  Shared engine code
+Game/                 Game modules
+assets/               Artwork, sound effects, and music
+fonts/                Game fonts
+host/                 GTK window and audio host
+scripts/              Run and installation scripts
+noway-home/           NOWAY HOME screenshots
 ```
 
 ## Run
@@ -76,40 +60,37 @@ noway-home/           title / stage / queen screenshots
 ./scripts/run_arcade.sh
 ```
 
-Needs `ailang.x` on `PATH` (from Ailang-Self-Hosting `install_compiler.sh`) and Gtk3.
+You need `ailang.x` on your `PATH` and GTK3 installed. `ailang.x` is provided
+by [Ailang-Self-Hosting](https://github.com/AiLang-Author/Ailang-Self-Hosting).
 
 | Key | Action |
 |-----|--------|
-| ← → | move |
-| z / space | fire |
-| Enter | start / next wave |
-| p | pause / settings (music + SFX volume) |
-| Esc / q | quit |
+| ← → | Move |
+| z / Space | Fire |
+| Enter | Start or continue |
+| p | Pause and settings |
+| Esc / q | Quit |
 
-Linux desktop / applications menu:
+To add a desktop launcher on Linux:
 
 ```bash
 ./scripts/install_desktop.sh
 ```
 
-That writes **NOWAY HOME** to `~/.local/share/applications` and `~/Desktop`.
-Launch is `scripts/launch_arcade.sh` (does not rebuild unless a binary is missing).
+## Haiku
 
-**Haiku:** native window is a **sibling repo**, not this folder:
+The Haiku window host is maintained in a separate repository:
 
 https://github.com/AiLang-Author/Haiku-Arcade
 
-Clone it next to Arcade so the shared `assets/`, `fonts/`, and `arcade_app.x`
-symlinks resolve. Testers: `sh pack.sh` in Haiku-Arcade, copy
-`dist/NOWAY-HOME-Haiku` onto Haiku, double-click `install.sh`.
+Clone it next to this repository so its shared-file links can find `assets/`,
+`fonts/`, and `arcade_app.x`. See that repository's instructions for building
+and installing the Haiku version.
 
-## Next games
+## Adding games
 
-Arcade is not a one-game repo. NOWAY HOME is **the first**. The next title is
-`Game/<Name>.ailang` with `Name_Init` / `Name_Start` / `Name_Tick`. The engine
-already has window-sized playfield, on-demand vector sprites, entity pool,
-formation slots, starfield, HUD fonts, and boom RNG. 1942, Xevious, Gyruss, …
-drop in as another module. Each game can keep shots in its own folder
-(`noway-home/` for this one).
+Arcade is intended to hold more than one game. A new game can be added under
+`Game/` and can reuse the shared window, entity, formation, starfield, font, and
+effect systems.
 
 Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
