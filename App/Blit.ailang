@@ -31,6 +31,8 @@ FixedPool.Blit {
     "pa":    Initialize=0, CanChange=True
     "n":     Initialize=0, CanChange=True
     "tint":  Initialize=0, CanChange=True
+    "glow":  Initialize=0, CanChange=True
+    "ghost": Initialize=0, CanChange=True
 }
 
 Function.Blit_Clip {
@@ -101,8 +103,88 @@ Function.Blit_TintRow {
     }
 }
 
+Function.Blit_GlowRow {
+    Body: {
+        add = Blit.glow
+        IfCondition GreaterThan(add, 120) ThenBlock: { add = 120 }
+        hg = Divide(add, 2)
+        hb = Divide(add, 5)
+        Blit.col = 0
+        WhileLoop LessThan(Blit.col, Blit.w) {
+            Blit.off = Multiply(Blit.col, 4)
+            Blit.pa = GetByte(Blit.srow, Add(Blit.off, 3))
+            IfCondition GreaterThan(Blit.pa, 0) ThenBlock: {
+                b = GetByte(Blit.srow, Blit.off)
+                g = GetByte(Blit.srow, Add(Blit.off, 1))
+                r = GetByte(Blit.srow, Add(Blit.off, 2))
+                b = Add(b, hb)
+                g = Add(g, hg)
+                r = Add(r, add)
+                IfCondition GreaterThan(b, 255) ThenBlock: { b = 255 }
+                IfCondition GreaterThan(g, 255) ThenBlock: { g = 255 }
+                IfCondition GreaterThan(r, 255) ThenBlock: { r = 255 }
+                SetByte(Blit.drow, Blit.off, b)
+                SetByte(Blit.drow, Add(Blit.off, 1), g)
+                SetByte(Blit.drow, Add(Blit.off, 2), r)
+                SetByte(Blit.drow, Add(Blit.off, 3), Blit.pa)
+            }
+            Blit.col = Add(Blit.col, 1)
+        }
+    }
+}
+
+Function.Blit_GhostRow {
+    Body: {
+        a = Blit.ghost
+        IfCondition LessThan(a, 8) ThenBlock: { a = 8 }
+        IfCondition GreaterThan(a, 180) ThenBlock: { a = 180 }
+        ia = Subtract(255, a)
+        add = Blit.glow
+        Blit.col = 0
+        WhileLoop LessThan(Blit.col, Blit.w) {
+            Blit.off = Multiply(Blit.col, 4)
+            Blit.pa = GetByte(Blit.srow, Add(Blit.off, 3))
+            IfCondition GreaterThan(Blit.pa, 0) ThenBlock: {
+                sb = GetByte(Blit.srow, Blit.off)
+                sg = GetByte(Blit.srow, Add(Blit.off, 1))
+                sr = GetByte(Blit.srow, Add(Blit.off, 2))
+                sb = Add(sb, Divide(add, 5))
+                sg = Add(sg, Divide(add, 2))
+                sr = Add(sr, add)
+                IfCondition GreaterThan(sb, 255) ThenBlock: { sb = 255 }
+                IfCondition GreaterThan(sg, 255) ThenBlock: { sg = 255 }
+                IfCondition GreaterThan(sr, 255) ThenBlock: { sr = 255 }
+                db = GetByte(Blit.drow, Blit.off)
+                dg = GetByte(Blit.drow, Add(Blit.off, 1))
+                dr = GetByte(Blit.drow, Add(Blit.off, 2))
+                tb = Multiply(sb, a)
+                tb = Add(tb, Multiply(db, ia))
+                sb = Divide(tb, 255)
+                tg = Multiply(sg, a)
+                tg = Add(tg, Multiply(dg, ia))
+                sg = Divide(tg, 255)
+                tr = Multiply(sr, a)
+                tr = Add(tr, Multiply(dr, ia))
+                sr = Divide(tr, 255)
+                SetByte(Blit.drow, Blit.off, sb)
+                SetByte(Blit.drow, Add(Blit.off, 1), sg)
+                SetByte(Blit.drow, Add(Blit.off, 2), sr)
+            }
+            Blit.col = Add(Blit.col, 1)
+        }
+    }
+}
+
 Function.Blit_Row {
     Body: {
+        IfCondition GreaterThan(Blit.ghost, 0) ThenBlock: {
+            Blit_GhostRow()
+            ReturnValue(0)
+        }
+        IfCondition GreaterThan(Blit.glow, 0) ThenBlock: {
+            Blit_GlowRow()
+            ReturnValue(0)
+        }
         IfCondition EqualTo(Blit.tint, 1) ThenBlock: {
             Blit_TintRow()
             ReturnValue(0)

@@ -18,8 +18,13 @@ no restart on every wave. Lyric crawl on the idle rift.
 
 The fighter is a packed vector strip: top-down idle, ¾ bank on strafe, cycling
 exhaust. Capture hangs your ship under the captor until you shoot it free.
-Stages run long (full rack, six arrival packs) with formation fire and hotter
-dives. Queen art is still a stand-in.
+Stages run a full rack in six packs, formation fire, dive glow. Hive bugs are
+the menace sheets (idle / dive). Queens escalate on a decade strip (Brood
+Throne → Hive Crown). The tear only opens when something goes in or comes out.
+Drive parts drop from a queen and home onto the ship before the rift.
+
+Title legend (left): blue ghost ship = shields, green = 1UP, gold spark = 1000.
+Yellow pickups are 1000 points.
 
 **Attract**
 
@@ -58,9 +63,10 @@ sharp. No baked 32×32 sheets.
 arcade_app.ailang     thin Main
 App/                  engine (window, ipc, entities, sheets, formation, boom, hud)
 Game/Galaga.ailang    first title — more games plug in the same way
-assets/               SVG (ships/player.svg 5-cell strip + thrust.svg)
+assets/               SVG (player, enemies, queen decades, fx/parts, sfx, music)
 fonts/                AlteixSans.vif + DejaVuSans.vif (native VFont)
 host/                 Gtk3 blit chrome + miniaudio
+scripts/              launch_arcade.sh, install_desktop.sh, pack_foes.py
 noway-home/           title / stage / queen screenshots
 ```
 
@@ -80,7 +86,14 @@ Needs `ailang.x` on `PATH` (from Ailang-Self-Hosting `install_compiler.sh`) and 
 | p | pause / settings (music + SFX volume) |
 | Esc / q | quit |
 
-Deskbar / desktop (Linux): `scripts/launch_arcade.sh` (also `noway-home.desktop`).
+Linux desktop / applications menu:
+
+```bash
+./scripts/install_desktop.sh
+```
+
+That writes **NOWAY HOME** to `~/.local/share/applications` and `~/Desktop`.
+Launch is `scripts/launch_arcade.sh` (does not rebuild unless a binary is missing).
 
 **Haiku:** native window is a **sibling repo**, not this folder:
 

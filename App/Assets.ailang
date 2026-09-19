@@ -34,6 +34,8 @@ FixedPool.Gfx {
     "boom2":  Initialize=0, CanChange=True
     "boom3":  Initialize=0, CanChange=True
     "thrust": Initialize=0, CanChange=True
+    "queen":  Initialize=0, CanChange=True
+    "part":   Initialize=0, CanChange=True
 }
 
 Function.Gfx_Drop {
@@ -392,6 +394,8 @@ Function.Gfx_Reload {
         Gfx.boom2 = Gfx_Drop(Gfx.boom2)
         Gfx.boom3 = Gfx_Drop(Gfx.boom3)
         Gfx.thrust = Gfx_Drop(Gfx.thrust)
+        Gfx.queen = Gfx_Drop(Gfx.queen)
+        Gfx.part = Gfx_Drop(Gfx.part)
 
         SVG_Init()
         VIF_Init()
@@ -429,6 +433,9 @@ Function.Gfx_Reload {
         Gfx.boom3 = Gfx_TryLoad("assets/explosions/flash.svg", "assets/explosions/flash.tvg", Multiply(8, cell), cell)
         IfCondition EqualTo(Gfx.boom3, 0) ThenBlock: { Gfx.boom3 = Gfx_BuildBoom(3, cell) }
         Gfx.thrust = Gfx_TryLoad("assets/ships/thrust.svg", 0, Multiply(4, cell), cell)
+        qc = Multiply(cell, 2)
+        Gfx.queen = Gfx_TryLoad("assets/enemies/queen.svg", 0, Multiply(10, qc), qc)
+        Gfx.part = Gfx_TryLoad("assets/fx/parts.svg", 0, Multiply(5, cell), cell)
 
         Gfx.cell = cell
         Gfx.ok = 1
@@ -470,6 +477,22 @@ Function.Gfx_SurfFor {
     }
 }
 
+Function.Gfx_IsBug {
+    Input: kind: Integer
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(kind, Kind.BEE) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.BUTTER) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.BOSS) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.SCOUT) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.DART) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.HEAVY) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.FLAG) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(kind, Kind.CAP) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
 Function.Gfx_DrawEnt {
     Input: id: Integer
     Body: {
@@ -493,6 +516,33 @@ Function.Gfx_DrawEnt {
         }
         IfCondition EqualTo(kind, Kind.PBULLET) ThenBlock: { col = 0 }
         IfCondition EqualTo(kind, Kind.EBULLET) ThenBlock: { col = 0 }
+        bug = Gfx_IsBug(kind)
+        IfCondition EqualTo(bug, 1) ThenBlock: {
+            st = Ent_Get(id, EField.ST)
+            ph = Add(Arcade.t, Multiply(id, 5))
+            step = 9
+            IfCondition EqualTo(st, Est.DIVE) ThenBlock: { step = 3 }
+            IfCondition EqualTo(st, Est.HUNT) ThenBlock: { step = 4 }
+            IfCondition EqualTo(st, Est.BEAM) ThenBlock: { step = 3 }
+            IfCondition EqualTo(st, Est.FLEE) ThenBlock: { step = 4 }
+            IfCondition EqualTo(st, Est.ENTER) ThenBlock: { step = 6 }
+            IfCondition EqualTo(st, Est.FORM) ThenBlock: {
+                bit = Divide(ph, step)
+                bit = Modulo(bit, 2)
+                IfCondition EqualTo(bit, 1) ThenBlock: { col = View.BOTTOM }
+            }
+            span = Multiply(step, 2)
+            wave = Modulo(ph, span)
+            IfCondition GreaterThan(wave, step) ThenBlock: {
+                wave = Subtract(span, wave)
+            }
+            hot = 28
+            IfCondition EqualTo(st, Est.DIVE) ThenBlock: { hot = 56 }
+            IfCondition EqualTo(st, Est.HUNT) ThenBlock: { hot = 48 }
+            IfCondition EqualTo(st, Est.BEAM) ThenBlock: { hot = 64 }
+            inc = Multiply(wave, 8)
+            Blit.glow = Add(hot, inc)
+        }
         surf = Gfx_SurfFor(kind)
         flash = 0
         IfCondition EqualTo(kind, Kind.PLAYER) ThenBlock: {

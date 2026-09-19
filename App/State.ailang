@@ -80,6 +80,7 @@ FixedPool.Drop {
     "SHIELD": Initialize=1
     "NUGGET": Initialize=2
     "LIFE":   Initialize=3
+    "PART":   Initialize=4
 }
 
 FixedPool.World {
@@ -139,6 +140,7 @@ FixedPool.Arcade {
     "bgm":     Initialize=0, CanChange=True
     "hd":      Initialize=0, CanChange=True
     "got":     Initialize=0, CanChange=True
+    "part":    Initialize=-1, CanChange=True
     "mv":      Initialize=7, CanChange=True
     "sv":      Initialize=8, CanChange=True
     "sel":     Initialize=0, CanChange=True

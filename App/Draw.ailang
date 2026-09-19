@@ -6,6 +6,7 @@ Import.App.State
 Import.App.World
 Import.App.Entity
 Import.App.Assets
+Import.App.Blit
 Import.App.Star
 Import.App.Hud
 Import.Game.Paths
@@ -31,7 +32,80 @@ Function.Draw_Frame {
         Draw_Beam()
         Draw_Drops()
         Draw_Shield()
+        Draw_Help()
         Hud_Draw()
+    }
+}
+
+Function.Draw_HelpIcon {
+    Input: x: Integer
+    Input: y: Integer
+    Input: typ: Integer
+    Body: {
+        fw = Gfx.cell
+        IfCondition LessThan(fw, 18) ThenBlock: { fw = 18 }
+        IfCondition GreaterThan(fw, 28) ThenBlock: { fw = 28 }
+        pulse = Modulo(Arcade.t, 24)
+        IfCondition GreaterThan(pulse, 12) ThenBlock: {
+            pulse = Subtract(24, pulse)
+        }
+        a = Add(48, Multiply(pulse, 7))
+        gl = Add(16, Multiply(pulse, 5))
+        IfCondition EqualTo(typ, Drop.NUGGET) ThenBlock: {
+            rr = Add(6, Divide(pulse, 3))
+            Draw_Oval(x, y, rr, rr, Arc_RGBA(255, 210, 70))
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(typ, Drop.SHIELD) ThenBlock: {
+            rx = Add(Divide(fw, 2), Divide(pulse, 2))
+            Draw_Oval(x, y, rx, rx, Arc_RGBA(70, 180, 255))
+            rx2 = Subtract(rx, 4)
+            IfCondition GreaterThan(rx2, 4) ThenBlock: {
+                Draw_Oval(x, y, rx2, rx2, Arc_RGBA(140, 220, 255))
+            }
+        }
+        IfCondition EqualTo(typ, Drop.LIFE) ThenBlock: {
+            rx = Add(Divide(fw, 3), Divide(pulse, 2))
+            Draw_Oval(x, y, rx, rx, Arc_RGBA(180, 255, 200))
+        }
+        IfCondition NotEqual(Gfx.player, 0) ThenBlock: {
+            Blit.ghost = a
+            Blit.glow = gl
+            IfCondition EqualTo(typ, Drop.SHIELD) ThenBlock: {
+                Blit.glow = Add(gl, 24)
+            }
+            sx = Multiply(View.TOP, fw)
+            Blit.dx = Subtract(x, Divide(fw, 2))
+            Blit.dy = Subtract(y, Divide(fw, 2))
+            Blit_Cell(Gfx.player, sx, 0, fw, fw)
+            Blit.ghost = 0
+            Blit.glow = 0
+        }
+    }
+}
+
+Function.Draw_Help {
+    Body: {
+        IfCondition NotEqual(Arcade.mode, Mode.TITLE) ThenBlock: { ReturnValue(0) }
+        fs = Arcade.fsize
+        IfCondition LessThan(fs, 14) ThenBlock: { fs = 14 }
+        ix = Add(Divide(World.fw, 14), 18)
+        gap = Add(Gfx.cell, Add(fs, 6))
+        IfCondition LessThan(gap, 36) ThenBlock: { gap = 36 }
+        y0 = Subtract(World.fh, Multiply(fs, 9))
+        IfCondition LessThan(y0, 70) ThenBlock: { y0 = 70 }
+        y1 = Add(y0, gap)
+        y2 = Add(y1, gap)
+        Draw_HelpIcon(ix, y0, Drop.SHIELD)
+        Draw_HelpIcon(ix, y1, Drop.LIFE)
+        Draw_HelpIcon(ix, y2, Drop.NUGGET)
+        tx = Add(ix, Add(Gfx.cell, 8))
+        ty = Subtract(y0, Divide(fs, 3))
+        Hud_Text(tx, ty, "SHIELDS", 7, Arc_RGBA(140, 210, 255))
+        ty = Subtract(y1, Divide(fs, 3))
+        Hud_Text(tx, ty, "1UP", 3, Arc_RGBA(180, 255, 200))
+        ty = Subtract(y2, Divide(fs, 3))
+        Hud_Text(tx, ty, "1000", 4, Arc_RGBA(255, 220, 80))
     }
 }
 
@@ -54,6 +128,9 @@ Function.Draw_Gate {
         glive = Ent_Alive(Arcade.gate)
         IfCondition EqualTo(glive, 0) ThenBlock: { ReturnValue(0) }
         gk = Ent_Get(Arcade.gate, EField.KIND)
+        fl = Ent_Get(Arcade.gate, EField.FL)
+        vis = BitwiseAnd(fl, EFlag.VIS)
+        IfCondition EqualTo(vis, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(gk, Kind.GATE) ThenBlock: {
             ex = Ent_Get(Arcade.gate, EField.X)
             ey = Ent_Get(Arcade.gate, EField.Y)
@@ -81,6 +158,16 @@ Function.Draw_Queen {
         IfCondition LessThan(Queen.id, 0) ThenBlock: { ReturnValue(0) }
         live = Ent_Alive(Queen.id)
         IfCondition EqualTo(live, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition NotEqual(Gfx.queen, 0) ThenBlock: {
+            qn = Divide(Arcade.wave, 10)
+            IfCondition LessThan(qn, 1) ThenBlock: { qn = 1 }
+            IfCondition GreaterThan(qn, 10) ThenBlock: { qn = 10 }
+            col = Subtract(qn, 1)
+            qc = Multiply(World.cell, 2)
+            IfCondition LessThan(qc, 32) ThenBlock: { qc = 32 }
+            Ent_Blit(Queen.id, Gfx.queen, qc, qc, col)
+            ReturnValue(0)
+        }
         ex = Ent_Get(Queen.id, EField.X)
         ey = Ent_Get(Queen.id, EField.Y)
         px = World_X(ex)
@@ -254,22 +341,75 @@ Function.Draw_Plate {
 
 Function.Draw_Drops {
     Body: {
+        fw = Gfx.cell
+        IfCondition LessThan(fw, 20) ThenBlock: { fw = 20 }
+        pulse = Modulo(Arcade.t, 24)
+        IfCondition GreaterThan(pulse, 12) ThenBlock: {
+            pulse = Subtract(24, pulse)
+        }
+        a = Add(48, Multiply(pulse, 7))
+        gl = Add(16, Multiply(pulse, 5))
         i = 0
         WhileLoop LessThan(i, Ent.n) {
             IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
-                IfCondition EqualTo(Ent_Get(i, EField.KIND), Kind.DROP) ThenBlock: {
+                k = Ent_Get(i, EField.KIND)
+                IfCondition EqualTo(k, Kind.DROP) ThenBlock: {
+                    typ = Ent_Get(i, EField.ST)
                     ex = Ent_Get(i, EField.X)
                     ey = Ent_Get(i, EField.Y)
                     x = World_X(ex)
                     y = World_Y(ey)
-                    col = Arc_RGBA(80, 220, 255)
-                    IfCondition EqualTo(Ent_Get(i, EField.ST), Drop.NUGGET) ThenBlock: {
-                        col = Arc_RGBA(255, 200, 60)
+                    IfCondition EqualTo(typ, Drop.PART) ThenBlock: {
+                        fw2 = Gfx.cell
+                        IfCondition LessThan(fw2, 24) ThenBlock: { fw2 = 24 }
+                        colp = Ent_Get(i, EField.VIEW)
+                        IfCondition LessThan(colp, 0) ThenBlock: { colp = 0 }
+                        IfCondition GreaterThan(colp, 4) ThenBlock: { colp = 4 }
+                        IfCondition NotEqual(Gfx.part, 0) ThenBlock: {
+                            Blit.glow = Add(20, Multiply(pulse, 6))
+                            sx = Multiply(colp, fw2)
+                            Blit.dx = Subtract(x, Divide(fw2, 2))
+                            Blit.dy = Subtract(y, Divide(fw2, 2))
+                            Blit_Cell(Gfx.part, sx, 0, fw2, fw2)
+                            Blit.glow = 0
+                        }
+                        ElseBlock: {
+                            Draw_Oval(x, y, 12, 12, Arc_RGBA(80, 255, 220))
+                        }
                     }
-                    IfCondition EqualTo(Ent_Get(i, EField.ST), Drop.LIFE) ThenBlock: {
-                        col = Arc_RGBA(80, 255, 140)
+                    ElseBlock: {
+                    IfCondition EqualTo(typ, Drop.NUGGET) ThenBlock: {
+                        rr = Add(5, Divide(pulse, 3))
+                        Draw_Oval(x, y, rr, rr, Arc_RGBA(255, 210, 70))
                     }
-                    FB_FillRectFast(Subtract(x, 6), Subtract(y, 6), 12, 12, col)
+                    ElseBlock: {
+                        IfCondition EqualTo(typ, Drop.SHIELD) ThenBlock: {
+                            rx = Add(Divide(fw, 2), pulse)
+                            Draw_Oval(x, y, rx, rx, Arc_RGBA(70, 180, 255))
+                            rx2 = Subtract(rx, 4)
+                            IfCondition GreaterThan(rx2, 4) ThenBlock: {
+                                Draw_Oval(x, y, rx2, rx2, Arc_RGBA(140, 220, 255))
+                            }
+                        }
+                        IfCondition EqualTo(typ, Drop.LIFE) ThenBlock: {
+                            rx = Add(Divide(fw, 3), Divide(pulse, 2))
+                            Draw_Oval(x, y, rx, rx, Arc_RGBA(180, 255, 200))
+                        }
+                        IfCondition NotEqual(Gfx.player, 0) ThenBlock: {
+                            Blit.ghost = a
+                            Blit.glow = gl
+                            IfCondition EqualTo(typ, Drop.SHIELD) ThenBlock: {
+                                Blit.glow = Add(gl, 24)
+                            }
+                            sx = Multiply(View.TOP, fw)
+                            Blit.dx = Subtract(x, Divide(fw, 2))
+                            Blit.dy = Subtract(y, Divide(fw, 2))
+                            Blit_Cell(Gfx.player, sx, 0, fw, fw)
+                            Blit.ghost = 0
+                            Blit.glow = 0
+                        }
+                    }
+                    }
                 }
             }
             i = Add(i, 1)
