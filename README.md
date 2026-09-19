@@ -1,8 +1,12 @@
 # Arcade
 
-Arcade is a collection of fast 2D games made with the AILANG arcade engine.
-**NOWAY HOME** is the first game; future games can share the same engine and
-host.
+Arcade is a collection of fast, lightweight 2D games made with the AILANG
+programming language. **NOWAY HOME** is the first game, with more titles
+planned for the same engine and host.
+
+AILANG compiles to bare-metal x86_64 with a customized compiler. The language
+and toolchain are designed to make programs easy to read, reason about, and
+generate with the help of large language models.
 
 ## NOWAY HOME
 
@@ -27,19 +31,25 @@ The game includes:
 
 ## How it works
 
-The game runs in an AILANG process and displays through a small GTK host. The
-AILANG side draws the game frame and handles the game logic; the host provides
-the window, keyboard input, resizing, and audio support.
+The game is written in AILANG and compiled for x86_64. A small GTK host
+provides the desktop window, keyboard input, resizing, and audio support,
+while the compiled game handles the game logic and drawing.
 
-The playfield uses a square coordinate system and expands to fill the window.
-Vector artwork is rasterized for the current window size, so sprites remain
-sharp when the window is resized.
+The playfield expands to fill the window. Vector artwork is rasterized for the
+current window size, helping sprites stay sharp when the window is resized.
 
 ## Performance
 
-On an AMD FX-8370 system with 64 GB of RAM at 3.2 GHz, the game typically uses
-3–5% CPU and 9–20 MB of memory. Memory use depends on the window size; a
-1024×1024 window typically uses 9–11 MB, while larger windows use more.
+In testing on an AMD FX-8370 system with 64 GB of RAM at 3.2 GHz, the game used
+3–5% CPU and 9–20 MB of memory. A 1024×1024 window typically used 9–11 MB;
+larger windows use more memory because the framebuffer grows with the window
+size.
+
+## Development
+
+The game engine and NOWAY HOME were developed from start to finish in two work
+days, followed by a week of post-production testing and a final four-hour
+session of tweaks and improvements based on feedback.
 
 ## Repository layout
 
@@ -89,8 +99,8 @@ and installing the Haiku version.
 
 ## Adding games
 
-Arcade is intended to hold more than one game. A new game can be added under
-`Game/` and can reuse the shared window, entity, formation, starfield, font, and
-effect systems.
+Arcade is designed to support more than one game. A new title can be added
+under `Game/` and reuse the shared window, entity, formation, starfield, font,
+and effect systems.
 
 Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
