@@ -4,9 +4,10 @@ Arcade is a collection of fast, lightweight 2D games made with the AILANG
 programming language. **NOWAY HOME** is the first game, with more titles
 planned for the same engine and host.
 
-AILANG compiles to bare-metal x86_64 with a customized compiler. The language
-and toolchain are designed to make programs easy to read, reason about, and
-generate with the help of large language models.
+AILANG compiles to bare-metal x86_64 using a full self-hosting compiler written
+from the ground up for optimized code generation. The language and toolchain
+are designed to make programs easy to read, reason about, and generate with the
+help of large language models.
 
 ## NOWAY HOME
 
