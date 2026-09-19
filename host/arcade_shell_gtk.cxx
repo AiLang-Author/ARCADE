@@ -190,7 +190,28 @@ static void cb_menu(GtkMenuItem *, gpointer data) {
     if (data) write_cmd((const char *)data);
 }
 
+static void chdir_to_data(void) {
+    char exe[512], probe[640];
+    if (access("assets/ships/player.svg", R_OK) == 0) return;
+    ssize_t n = readlink("/proc/self/exe", exe, sizeof exe - 1);
+    if (n <= 0) return;
+    exe[n] = 0;
+    char *slash = strrchr(exe, '/');
+    if (!slash) return;
+    *slash = 0;
+    /* binary is ROOT/host/arcade_shell_gtk */
+    slash = strrchr(exe, '/');
+    if (slash && strcmp(slash, "/host") == 0) *slash = 0;
+    snprintf(probe, sizeof probe, "%s/assets/ships/player.svg", exe);
+    if (access(probe, R_OK) == 0) {
+        if (chdir(exe) == 0)
+            fprintf(stderr, "arcade: data %s\n", exe);
+        return;
+    }
+}
+
 int main(int argc, char **argv) {
+    chdir_to_data();
     const char *d = "/dev/shm/arcade_app";
     if (argc > 1 && argv[1] && argv[1][0]) d = argv[1];
     snprintf(dir, sizeof dir, "%s", d);

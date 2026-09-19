@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="640" height="640">
+<g>
+    <path d="M272 518 H368 L381 546 H259 Z" fill="#FFD2AE"></path>
+    <path d="M259 546 H381 L392 570 H248 Z" fill="#FF9E6B"></path>
+    <path d="M248 570 H392 L400 590 H240 Z" fill="#E8474C"></path>
+    <path d="M240 590 H400 L409 608 H231 Z" fill="#C42127"></path>
+    <path d="M231 608 H409 L415 622 H225 Z" fill="#7C0D15"></path>
+  </g>
+  <g>
+    <path d="M240 310 L154 352 Q142 358 139 371 L124 424 Q120 440 132 450 L184 492 Q191 497 200 499 L246 504 Z" fill="#7F8998"></path>
+    <path d="M244 340 L180 372 Q170 377 168 388 L160 424 Q157 435 165 442 L200 470 Q206 474 213 475 L246 480 Z" fill="#6E7786"></path>
+    <g transform="translate(170,358) rotate(-3) translate(-170,-358)">
+      <rect x="152" y="294" width="34" height="132" rx="13" fill="#232A38"></rect>
+      <rect x="152" y="318" width="34" height="7" fill="#3A445A"></rect>
+      <rect x="152" y="343" width="34" height="7" fill="#3A445A"></rect>
+      <rect x="158" y="405" width="22" height="21" rx="10" fill="#FF8A5B"></rect>
+    </g>
+    <path d="M320 76 C312 110 300 152 290 182 C272 222 252 256 242 288 C232 330 225 400 221 452 C220 480 226 496 240 504 L320 518 Z" fill="#6E7786"></path>
+    <path d="M320 230 C304 268 282 336 270 402 C263 450 272 482 288 494 L320 504 Z" fill="#7F8998"></path>
+    <path d="M300 300 L286 430 M266 360 L258 450" stroke="#5F6878" stroke-width="3" stroke-linecap="round"></path>
+    <rect x="248" y="392" width="36" height="12" rx="6" fill="#232A38" transform="translate(266,398) rotate(-8) translate(-266,-398)"></rect>
+    <rect x="272" y="252" width="30" height="10" rx="5" fill="#5F6878" transform="translate(287,257) rotate(-24) translate(-287,-257)"></rect>
+  </g>
+  <g transform="translate(640,0) scale(-1,1)">
+    <path d="M240 310 L154 352 Q142 358 139 371 L124 424 Q120 440 132 450 L184 492 Q191 497 200 499 L246 504 Z" fill="#7F8998"></path>
+    <path d="M244 340 L180 372 Q170 377 168 388 L160 424 Q157 435 165 442 L200 470 Q206 474 213 475 L246 480 Z" fill="#6E7786"></path>
+    <g transform="translate(170,358) rotate(-3) translate(-170,-358)">
+      <rect x="152" y="294" width="34" height="132" rx="13" fill="#232A38"></rect>
+      <rect x="152" y="318" width="34" height="7" fill="#3A445A"></rect>
+      <rect x="152" y="343" width="34" height="7" fill="#3A445A"></rect>
+      <rect x="158" y="405" width="22" height="21" rx="10" fill="#FF8A5B"></rect>
+    </g></use>
+  <ellipse cx="320" cy="300" rx="44" ry="56" fill="#7F8998"></ellipse>
+  <ellipse cx="320" cy="300" rx="34" ry="46" fill="#5F6878"></ellipse>
+  <g>
+    <ellipse cx="292" cy="489" rx="24" ry="17" fill="#232A38"></ellipse>
+    <ellipse cx="292" cy="489" rx="13" ry="9" fill="#FF6F4D"></ellipse>
+    <ellipse cx="348" cy="489" rx="24" ry="17" fill="#232A38"></ellipse>
+    <ellipse cx="348" cy="489" rx="13" ry="9" fill="#FF6F4D"></ellipse>
+  </g>
+</svg>

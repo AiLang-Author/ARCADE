@@ -13,7 +13,13 @@ food. You are a fighter off that carrier. Ten queens hold the hyperdrive. Get
 home.
 
 Title track: **Turn Us Around** (Suno, original lyrics). Queen theme: **Queen Ship
-Protocol**. Lyric crawl on the idle rift.
+Protocol**. Decade stages shuffle the other tracks and **let them finish** —
+no restart on every wave. Lyric crawl on the idle rift.
+
+The fighter is a packed vector strip: top-down idle, ¾ bank on strafe, cycling
+exhaust. Capture hangs your ship under the captor until you shoot it free.
+Stages run long (full rack, six arrival packs) with formation fire and hotter
+dives. Queen art is still a stand-in.
 
 **Attract**
 
@@ -52,9 +58,10 @@ sharp. No baked 32×32 sheets.
 arcade_app.ailang     thin Main
 App/                  engine (window, ipc, entities, sheets, formation, boom, hud)
 Game/Galaga.ailang    first title — more games plug in the same way
-assets/               SVG source (TVG siblings optional)
+assets/               SVG (ships/player.svg 5-cell strip + thrust.svg)
 fonts/                AlteixSans.vif + DejaVuSans.vif (native VFont)
-host/                 Gtk3 blit chrome
+host/                 Gtk3 blit chrome + miniaudio
+noway-home/           title / stage / queen screenshots
 ```
 
 ## Run

@@ -33,6 +33,7 @@ FixedPool.Gfx {
     "boom1":  Initialize=0, CanChange=True
     "boom2":  Initialize=0, CanChange=True
     "boom3":  Initialize=0, CanChange=True
+    "thrust": Initialize=0, CanChange=True
 }
 
 Function.Gfx_Drop {
@@ -42,6 +43,80 @@ Function.Gfx_Drop {
         IfCondition NotEqual(surf, 0) ThenBlock: {
             Surface_Destroy(surf)
         }
+        ReturnValue(0)
+    }
+}
+
+Function.Data_HasPlayer {
+    Output: Integer
+    Body: {
+        fd = SystemCall(2, "assets/ships/player.svg", 0, 0)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(3, fd)
+        ReturnValue(1)
+    }
+}
+
+Function.Data_StripFile {
+    Input: p: Address
+    Output: Integer
+    Body: {
+        n = 0
+        last = Subtract(0, 1)
+        more = 1
+        WhileLoop EqualTo(more, 1) {
+            c = GetByte(p, n)
+            IfCondition EqualTo(c, 0) ThenBlock: { more = 0 }
+            IfCondition EqualTo(more, 1) ThenBlock: {
+                IfCondition EqualTo(c, 47) ThenBlock: { last = n }
+                n = Add(n, 1)
+            }
+        }
+        IfCondition LessThan(last, 1) ThenBlock: { ReturnValue(0) }
+        SetByte(p, last, 0)
+        ReturnValue(1)
+    }
+}
+
+// Assets live next to arcade_app.x. Do not depend on the launcher cwd.
+Function.Data_Boot {
+    Output: Integer
+    Body: {
+        hit = Data_HasPlayer()
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            PrintMessage("arcade: data cwd\n")
+            ReturnValue(1)
+        }
+        buf = Allocate(512)
+        IfCondition EqualTo(buf, 0) ThenBlock: {
+            PrintMessage("arcade: WARN data buf\n")
+            ReturnValue(0)
+        }
+        i = 0
+        WhileLoop LessThan(i, 512) {
+            SetByte(buf, i, 0)
+            i = Add(i, 1)
+        }
+        n = SystemCall(89, "/proc/self/exe", buf, 511)
+        IfCondition GreaterThan(n, 0) ThenBlock: {
+            SetByte(buf, n, 0)
+            cut = Data_StripFile(buf)
+            IfCondition EqualTo(cut, 1) ThenBlock: {
+                SystemCall(80, buf)
+            }
+        }
+        hit = Data_HasPlayer()
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            PrintMessage("arcade: data next to arcade_app.x\n")
+            ReturnValue(1)
+        }
+        SystemCall(80, "/boot/home/config/non-packaged/data/ailang_arcade")
+        hit = Data_HasPlayer()
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            PrintMessage("arcade: data haiku datadir\n")
+            ReturnValue(1)
+        }
+        PrintMessage("arcade: WARN no assets/ships/player.svg\n")
         ReturnValue(0)
     }
 }
@@ -60,6 +135,13 @@ Function.Gfx_TryLoad {
         IfCondition NotEqual(surf, 0) ThenBlock: { ReturnValue(surf) }
         IfCondition NotEqual(tvg, 0) ThenBlock: {
             surf = TVG_RenderFile(tvg, h)
+        }
+        IfCondition EqualTo(surf, 0) ThenBlock: {
+            IfCondition NotEqual(svg, 0) ThenBlock: {
+                PrintMessage("[Gfx] miss ")
+                PrintMessage(svg)
+                PrintMessage("\n")
+            }
         }
         ReturnValue(surf)
     }
@@ -309,6 +391,7 @@ Function.Gfx_Reload {
         Gfx.boom1 = Gfx_Drop(Gfx.boom1)
         Gfx.boom2 = Gfx_Drop(Gfx.boom2)
         Gfx.boom3 = Gfx_Drop(Gfx.boom3)
+        Gfx.thrust = Gfx_Drop(Gfx.thrust)
 
         SVG_Init()
         VIF_Init()
@@ -345,6 +428,7 @@ Function.Gfx_Reload {
         IfCondition EqualTo(Gfx.boom2, 0) ThenBlock: { Gfx.boom2 = Gfx_BuildBoom(2, cell) }
         Gfx.boom3 = Gfx_TryLoad("assets/explosions/flash.svg", "assets/explosions/flash.tvg", Multiply(8, cell), cell)
         IfCondition EqualTo(Gfx.boom3, 0) ThenBlock: { Gfx.boom3 = Gfx_BuildBoom(3, cell) }
+        Gfx.thrust = Gfx_TryLoad("assets/ships/thrust.svg", 0, Multiply(4, cell), cell)
 
         Gfx.cell = cell
         Gfx.ok = 1
@@ -417,22 +501,41 @@ Function.Gfx_DrawEnt {
             }
         }
         IfCondition EqualTo(flash, 0) ThenBlock: {
+            IfCondition EqualTo(kind, Kind.PLAYER) ThenBlock: {
+                IfCondition EqualTo(col, View.TOP) ThenBlock: {
+                    IfCondition NotEqual(Gfx.thrust, 0) ThenBlock: {
+                        tf = Divide(Arcade.t, 3)
+                        tf = Modulo(tf, 4)
+                        Ent_Blit(id, Gfx.thrust, Gfx.cell, Gfx.cell, tf)
+                    }
+                }
+            }
             Ent_Blit(id, surf, Gfx.cell, Gfx.cell, col)
             IfCondition EqualTo(kind, Kind.PLAYER) ThenBlock: {
                 IfCondition EqualTo(Arcade.dual, 1) ThenBlock: {
                     ox = Ent_Get(id, EField.X)
                     Ent_Set(id, EField.X, Add(ox, 22))
+                    IfCondition EqualTo(col, View.TOP) ThenBlock: {
+                        IfCondition NotEqual(Gfx.thrust, 0) ThenBlock: {
+                            tf = Divide(Arcade.t, 3)
+                            tf = Modulo(tf, 4)
+                            Ent_Blit(id, Gfx.thrust, Gfx.cell, Gfx.cell, tf)
+                        }
+                    }
                     Ent_Blit(id, surf, Gfx.cell, Gfx.cell, col)
                     Ent_Set(id, EField.X, ox)
                 }
             }
         }
         IfCondition EqualTo(kind, Kind.CAP) ThenBlock: {
-            IfCondition EqualTo(Ent_Get(id, EField.LIFE), 1) ThenBlock: {
+            held = Arcade.held
+            IfCondition EqualTo(held, id) ThenBlock: {
                 ox = Ent_Get(id, EField.X)
                 oy = Ent_Get(id, EField.Y)
-                Ent_Set(id, EField.Y, Add(oy, 22))
-                Ent_Blit(id, Gfx.player, Gfx.cell, Gfx.cell, View.BACK)
+                drop = Gfx.cell
+                IfCondition LessThan(drop, 36) ThenBlock: { drop = 36 }
+                Ent_Set(id, EField.Y, Add(oy, drop))
+                Ent_Blit(id, Gfx.player, Gfx.cell, Gfx.cell, View.TOP)
                 Ent_Set(id, EField.Y, oy)
             }
         }
