@@ -8,7 +8,11 @@
  * Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
  */
 #include <gtk/gtk.h>
+#include <gdk/gdkx.h>
 #include <cairo.h>
+
+#include <X11/Xlib.h>
+#include <X11/keysym.h>
 
 #include <fcntl.h>
 #include <stdint.h>
@@ -29,6 +33,14 @@ static cairo_surface_t *surf;
 static int last_gen = -1, fw = 800, fh = 600;
 static int k_l, k_r, k_u, k_d, k_f, k_s, k_p;
 static int last_dw, last_dh;
+
+/* Press/release events are not a reliable hold. X11 autorepeat, the input
+ * method, and focus flicker all deliver a release while the key is still
+ * down, so the kernel sees fire (and steer) drop to 0 and come back.
+ * While this window is active, the keymap is the hold state. */
+static int x11_ok;
+static KeyCode kc_l[6], kc_r[6], kc_u[6], kc_d[6], kc_f[6], kc_s[6], kc_p[6];
+static int n_l, n_r, n_u, n_d, n_f, n_s, n_p;
 
 static int le32(const uint8_t *p) {
     return (int)(p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24));
@@ -135,6 +147,79 @@ static gboolean on_configure(GtkWidget *w, GdkEventConfigure *, gpointer) {
     return FALSE;
 }
 
+static int game_key(guint kv) {
+    if (kv == GDK_KEY_Left || kv == GDK_KEY_a || kv == GDK_KEY_A) return 1;
+    if (kv == GDK_KEY_Right || kv == GDK_KEY_d || kv == GDK_KEY_D) return 1;
+    if (kv == GDK_KEY_Up || kv == GDK_KEY_w || kv == GDK_KEY_W) return 1;
+    if (kv == GDK_KEY_Down || kv == GDK_KEY_s || kv == GDK_KEY_S) return 1;
+    if (kv == GDK_KEY_z || kv == GDK_KEY_Z || kv == GDK_KEY_space) return 1;
+    if (kv == GDK_KEY_Return || kv == GDK_KEY_KP_Enter) return 1;
+    if (kv == GDK_KEY_p || kv == GDK_KEY_P) return 1;
+    return 0;
+}
+
+static void keys_clear(void) {
+    k_l = k_r = k_u = k_d = k_f = k_s = k_p = 0;
+}
+
+static void kc_add(KeyCode *dst, int *n, KeySym sym) {
+    if (!x11_ok || *n >= 6) return;
+    Display *dpy = gdk_x11_display_get_xdisplay(gdk_display_get_default());
+    KeyCode kc = XKeysymToKeycode(dpy, sym);
+    if (!kc) return;
+    for (int i = 0; i < *n; i++) if (dst[i] == kc) return;
+    dst[(*n)++] = kc;
+}
+
+static void kc_init(void) {
+    GdkDisplay *gd = gdk_display_get_default();
+    x11_ok = GDK_IS_X11_DISPLAY(gd);
+    if (!x11_ok) return;
+    kc_add(kc_l, &n_l, XK_Left);
+    kc_add(kc_l, &n_l, XK_a);
+    kc_add(kc_l, &n_l, XK_A);
+    kc_add(kc_r, &n_r, XK_Right);
+    kc_add(kc_r, &n_r, XK_d);
+    kc_add(kc_r, &n_r, XK_D);
+    kc_add(kc_u, &n_u, XK_Up);
+    kc_add(kc_u, &n_u, XK_w);
+    kc_add(kc_u, &n_u, XK_W);
+    kc_add(kc_d, &n_d, XK_Down);
+    kc_add(kc_d, &n_d, XK_s);
+    kc_add(kc_d, &n_d, XK_S);
+    kc_add(kc_f, &n_f, XK_z);
+    kc_add(kc_f, &n_f, XK_Z);
+    kc_add(kc_f, &n_f, XK_space);
+    kc_add(kc_s, &n_s, XK_Return);
+    kc_add(kc_s, &n_s, XK_KP_Enter);
+    kc_add(kc_p, &n_p, XK_p);
+    kc_add(kc_p, &n_p, XK_P);
+}
+
+static int kc_down(const char *map, const KeyCode *lst, int n) {
+    for (int i = 0; i < n; i++) {
+        unsigned kc = lst[i];
+        if (kc < 256 && (map[kc >> 3] & (1u << (kc & 7)))) return 1;
+    }
+    return 0;
+}
+
+/* Autorepeat is a release+press pair with one timestamp. Ignore that
+ * release when we are not polling the keymap (non-X11). */
+static int repeat_release(GdkEventKey *e) {
+    if (e->type != GDK_KEY_RELEASE) return 0;
+    GdkEvent *next = gdk_event_peek();
+    if (!next) return 0;
+    int rep = 0;
+    if (next->type == GDK_KEY_PRESS) {
+        GdkEventKey *n = (GdkEventKey *)next;
+        if (n->hardware_keycode == e->hardware_keycode && n->time == e->time)
+            rep = 1;
+    }
+    gdk_event_free(next);
+    return rep;
+}
+
 static int map_key(guint kv, int on) {
     int *slot = NULL;
     if (kv == GDK_KEY_Left || kv == GDK_KEY_a || kv == GDK_KEY_A) slot = &k_l;
@@ -150,18 +235,49 @@ static int map_key(guint kv, int on) {
     return 1;
 }
 
+static void poll_keys(void) {
+    if (!x11_ok || !win) return;
+    /* Menu grab owns the keyboard. Ship stays put until it closes. */
+    if (!gtk_window_is_active(GTK_WINDOW(win)) || gtk_grab_get_current()) {
+        keys_clear();
+        return;
+    }
+    Display *dpy = gdk_x11_display_get_xdisplay(gdk_display_get_default());
+    char map[32];
+    XQueryKeymap(dpy, map);
+    k_l = kc_down(map, kc_l, n_l);
+    k_r = kc_down(map, kc_r, n_r);
+    k_u = kc_down(map, kc_u, n_u);
+    k_d = kc_down(map, kc_d, n_d);
+    k_f = kc_down(map, kc_f, n_f);
+    k_s = kc_down(map, kc_s, n_s);
+    k_p = kc_down(map, kc_p, n_p);
+}
+
 static gboolean on_key(GtkWidget *, GdkEventKey *e, gpointer) {
     if (e->keyval == GDK_KEY_Escape || e->keyval == GDK_KEY_q || e->keyval == GDK_KEY_Q) {
         write_cmd("quit");
         gtk_main_quit();
         return TRUE;
     }
+    /* Eat the event so the menu bar cannot take Space, Enter, or arrows.
+     * Hold state comes from the keymap poll, not from this edge. */
+    if (x11_ok && game_key(e->keyval)) return TRUE;
     if (map_key(e->keyval, 1)) return TRUE;
     return FALSE;
 }
 
 static gboolean on_key_up(GtkWidget *, GdkEventKey *e, gpointer) {
+    if (x11_ok && game_key(e->keyval)) return TRUE;
+    if (repeat_release(e)) return TRUE;
     if (map_key(e->keyval, 0)) return TRUE;
+    return FALSE;
+}
+
+static gboolean on_focus_out(GtkWidget *, GdkEventFocus *, gpointer) {
+    if (!x11_ok) return FALSE;
+    keys_clear();
+    write_keys();
     return FALSE;
 }
 
@@ -174,6 +290,7 @@ static gboolean on_tick(gpointer) {
     gtk_widget_get_allocation(draw_area, &a);
     if (a.width > 0 && a.height > 0)
         write_size(a.width, a.height);
+    if (x11_ok) poll_keys();
     write_keys();
     arcade_audio_poll(path_sfx);
     arcade_audio_poll_vol(path_vol);
@@ -233,6 +350,7 @@ int main(int argc, char **argv) {
     g_signal_connect(win, "delete-event", G_CALLBACK(on_delete), NULL);
     g_signal_connect(win, "key-press-event", G_CALLBACK(on_key), NULL);
     g_signal_connect(win, "key-release-event", G_CALLBACK(on_key_up), NULL);
+    g_signal_connect(win, "focus-out-event", G_CALLBACK(on_focus_out), NULL);
 
     GtkCssProvider *css = gtk_css_provider_new();
     gtk_css_provider_load_from_data(css,
@@ -272,17 +390,21 @@ int main(int argc, char **argv) {
     gtk_widget_add_events(draw_area, GDK_KEY_PRESS_MASK | GDK_KEY_RELEASE_MASK);
     g_signal_connect(draw_area, "draw", G_CALLBACK(on_draw), NULL);
     g_signal_connect(draw_area, "configure-event", G_CALLBACK(on_configure), NULL);
+    g_signal_connect(draw_area, "key-press-event", G_CALLBACK(on_key), NULL);
+    g_signal_connect(draw_area, "key-release-event", G_CALLBACK(on_key_up), NULL);
     gtk_box_pack_start(GTK_BOX(vbox), draw_area, TRUE, TRUE, 0);
 
     status = gtk_label_new("Arrows move · Z/Space fire · Enter start · P pause/settings · Esc quit");
     gtk_widget_set_halign(status, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(vbox), status, FALSE, FALSE, 2);
 
+    kc_init();
     write_keys();
     write_size(900, 720);
     arcade_audio_init(".");
     g_timeout_add(16, on_tick, NULL);
     gtk_widget_show_all(win);
+    gtk_widget_grab_focus(draw_area);
     load_frame();
     gtk_main();
     write_cmd("quit");
