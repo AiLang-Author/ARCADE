@@ -39,6 +39,12 @@ while the compiled game handles the game logic and drawing.
 The playfield expands to fill the window. Vector artwork is rasterized for the
 current window size, helping sprites stay sharp when the window is resized.
 
+Held fire is read from the keyboard device, not from GTK key repeat. A repeat
+is still "down", so the gun does not drop out while Z or Space is held. Bee
+and dart tails are inside the hit box, so a shot aimed at the yellow spike
+connects. The gun also keeps firing while shots are still on screen, and a
+shot that never hits anything expires instead of sitting in front of the ship.
+
 ## Performance
 
 In testing on an AMD FX-8370 system with 64 GB of RAM at 3.2 GHz, the game used

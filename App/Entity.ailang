@@ -132,6 +132,37 @@ Function.Ent_Hit {
         by = Ent_Get(b, EField.Y)
         bw = Divide(Ent_Get(b, EField.W), 2)
         bh = Divide(Ent_Get(b, EField.H), 2)
+        // Bug: bees and darts draw a yellow tail past the stored box. Shots
+        // aimed at that spike missed, piled up, and the old shot cap then
+        // silenced the gun. Grow a ship-sized box to the drawn cell.
+        IfCondition GreaterEqual(Ent_Get(a, EField.W), 30) ThenBlock: {
+            IfCondition GreaterThan(World.fw, 0) ThenBlock: {
+                vis = Multiply(World.cell, World.UW)
+                vis = Divide(vis, World.fw)
+                vis = Divide(vis, 2)
+                IfCondition GreaterThan(vis, aw) ThenBlock: { aw = vis }
+            }
+            IfCondition GreaterThan(World.fh, 0) ThenBlock: {
+                vis = Multiply(World.cell, World.UH)
+                vis = Divide(vis, World.fh)
+                vis = Divide(vis, 2)
+                IfCondition GreaterThan(vis, ah) ThenBlock: { ah = vis }
+            }
+        }
+        IfCondition GreaterEqual(Ent_Get(b, EField.W), 30) ThenBlock: {
+            IfCondition GreaterThan(World.fw, 0) ThenBlock: {
+                vis = Multiply(World.cell, World.UW)
+                vis = Divide(vis, World.fw)
+                vis = Divide(vis, 2)
+                IfCondition GreaterThan(vis, bw) ThenBlock: { bw = vis }
+            }
+            IfCondition GreaterThan(World.fh, 0) ThenBlock: {
+                vis = Multiply(World.cell, World.UH)
+                vis = Divide(vis, World.fh)
+                vis = Divide(vis, 2)
+                IfCondition GreaterThan(vis, bh) ThenBlock: { bh = vis }
+            }
+        }
         IfCondition GreaterThan(Subtract(ax, aw), Add(bx, bw)) ThenBlock: { ReturnValue(0) }
         IfCondition LessThan(Add(ax, aw), Subtract(bx, bw)) ThenBlock: { ReturnValue(0) }
         IfCondition GreaterThan(Subtract(ay, ah), Add(by, bh)) ThenBlock: { ReturnValue(0) }
