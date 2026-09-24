@@ -16,8 +16,10 @@ fi
 if [[ -z "${XAUTHORITY:-}" && -f "$HOME/.Xauthority" ]]; then
   export XAUTHORITY="$HOME/.Xauthority"
 fi
-export XMODIFIERS="${XMODIFIERS:-@im=none}"
-export GTK_IM_MODULE="${GTK_IM_MODULE:-}"
+# IBus eats a held fire key once repeat starts. Do not keep the session IM.
+export XMODIFIERS="@im=none"
+export GTK_IM_MODULE="gtk-im-context-simple"
+export QT_IM_MODULE="simple"
 
 if [[ ! -x "$ROOT/host/arcade_shell_gtk" ]]; then
   make -C "$ROOT/host"
