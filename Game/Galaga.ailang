@@ -1270,8 +1270,11 @@ Function.Galaga_Fire {
     Body: {
         IfCondition LessThan(Arcade.player, 0) ThenBlock: { ReturnValue(0) }
         IfCondition GreaterThan(Arcade.fire_cd, 0) ThenBlock: { ReturnValue(0) }
-        cap = 6
-        IfCondition EqualTo(Arcade.dual, 1) ThenBlock: { cap = 8 }
+        // Bug: cap was 6. Missed shots at the yellow tails filled it and
+        // fire fell to nothing until one left the screen. 16 stays above
+        // a normal stream. LIFE is the fuse so a stuck shot cannot hold a slot.
+        cap = 16
+        IfCondition EqualTo(Arcade.dual, 1) ThenBlock: { cap = 24 }
         IfCondition GreaterEqual(Galaga_Shots(), cap) ThenBlock: { ReturnValue(0) }
         px = Ent_Get(Arcade.player, EField.X)
         py = Ent_Get(Arcade.player, EField.Y)
@@ -1281,6 +1284,7 @@ Function.Galaga_Fire {
             Ent_Set(id, EField.W, 16)
             Ent_Set(id, EField.H, 32)
             Ent_Set(id, EField.VIEW, 0)
+            Ent_Set(id, EField.LIFE, 40)
             Arcade.fire_cd = 5
             Sfx_Emit(SfxCode.SHOT)
         }
@@ -1291,6 +1295,7 @@ Function.Galaga_Fire {
                 Ent_Set(id2, EField.W, 16)
                 Ent_Set(id2, EField.H, 32)
                 Ent_Set(id2, EField.VIEW, 0)
+                Ent_Set(id2, EField.LIFE, 40)
             }
         }
     }
@@ -1375,6 +1380,13 @@ Function.Galaga_Move {
                 IfCondition Or(EqualTo(k, Kind.PBULLET), EqualTo(k, Kind.EBULLET)) ThenBlock: {
                     Ent_Set(i, EField.X, Add(Ent_Get(i, EField.X), Ent_Get(i, EField.VX)))
                     Ent_Set(i, EField.Y, Add(Ent_Get(i, EField.Y), Ent_Get(i, EField.VY)))
+                    IfCondition EqualTo(k, Kind.PBULLET) ThenBlock: {
+                        // Fuse set in Galaga_Fire. Expires a shot that never leaves.
+                        life = Ent_Get(i, EField.LIFE)
+                        life = Subtract(life, 1)
+                        Ent_Set(i, EField.LIFE, life)
+                        IfCondition LessEqual(life, 0) ThenBlock: { Ent_Kill(i) }
+                    }
                     IfCondition Or(LessThan(Ent_Get(i, EField.Y), 0), GreaterThan(Ent_Get(i, EField.Y), 1040)) ThenBlock: {
                         Ent_Kill(i)
                     }

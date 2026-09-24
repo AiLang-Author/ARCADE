@@ -33,9 +33,10 @@ static int last_gen = -1, fw = 800, fh = 600;
 static int k_l, k_r, k_u, k_d, k_f, k_s, k_p;
 static int last_dw, last_dh;
 
-/* Game keys are evdev, same rule as Display Evdev_HandleKey:
- * value 0 up, 1 down, 2 repeat-still-down. No grab, so the desktop
- * keeps the keyboard. GTK/X repeat is not consulted. */
+/* Bug: GTK/X autorepeat arrives as a release, so a held fire key dropped
+ * to 0 and the gun stopped, then came back on the next press. Evdev matches
+ * Display Evdev_HandleKey: value 0 up, 1 down, 2 repeat-still-down.
+ * No grab, so the rest of the desktop keeps the keyboard. */
 static int ev_fd[16];
 static int ev_n;
 
