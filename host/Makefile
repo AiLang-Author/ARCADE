@@ -40,7 +40,7 @@ endif
 all: arcade_shell_gtk
 
 arcade_shell_gtk: arcade_shell_gtk.cxx audio.cc audio.h miniaudio.h
-	g++ -O2 -std=c++17 -o $@ arcade_shell_gtk.cxx audio.cc $(GTK_CFLAGS) $(GTK_LIBS) -lpthread -ldl -lm
+	g++ -O2 -std=c++17 -o $@ arcade_shell_gtk.cxx audio.cc $(GTK_CFLAGS) $(GTK_LIBS) -lX11 -lpthread -ldl -lm
 
 clean:
 	rm -f arcade_shell_gtk
