@@ -1,5 +1,7 @@
 # Arcade
 
+#Bug Fixed in Fire control !!!!! now working reliably. 
+
 Arcade is a collection of fast, lightweight 2D games made with the AILANG
 programming language. **NOWAY HOME** is the first game, with more titles
 planned for the same engine and host.
@@ -39,11 +41,7 @@ while the compiled game handles the game logic and drawing.
 The playfield expands to fill the window. Vector artwork is rasterized for the
 current window size, helping sprites stay sharp when the window is resized.
 
-Held fire is read from the keyboard device, not from GTK key repeat. A repeat
-is still "down", so the gun does not drop out while Z or Space is held. Bee
-and dart tails are inside the hit box, so a shot aimed at the yellow spike
-connects. The gun also keeps firing while shots are still on screen, and a
-shot that never hits anything expires instead of sitting in front of the ship.
+
 
 ## Performance
 
