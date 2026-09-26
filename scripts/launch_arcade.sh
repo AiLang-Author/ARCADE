@@ -24,6 +24,10 @@ export QT_IM_MODULE="simple"
 if [[ ! -x "$ROOT/host/arcade_shell_gtk" ]]; then
   make -C "$ROOT/host"
 fi
+if ldd "$ROOT/host/arcade_shell_gtk" | grep -q 'not found'; then
+  echo "ERROR: GTK host is missing libraries. Run ./scripts/install_desktop.sh"
+  exit 1
+fi
 if [[ ! -x "$ROOT/arcade_app.x" ]]; then
   ailang.x "$ROOT/arcade_app.ailang" "$ROOT/arcade_app.x"
 fi
