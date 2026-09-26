@@ -24,8 +24,11 @@ AOS path: skip the Gtk host, `FB_Init` instead of `FB_InitHeadless`, same
 
 ## Unit space
 
-`World.UW × World.UH` = 1024×1024, mapped to `FB.width × FB.height` with
-independent X/Y scale so the playfield **is** the window. Entities live in
+`World.UW × World.UH` = 1024×1024. That square is rasterized at
+`k × 1024` device pixels (`k` = 1, 2, … as the window allows) and centered
+in the framebuffer. X and Y share that scale, so a unit lands on a pixel.
+Sprites are rasterized from the vectors at that cell size. The host copies
+the buffer 1:1 in device pixels and does not stretch it. Entities stay in
 units; blit converts at draw time. Resize does not rewrite positions.
 
 ## On-demand sprites

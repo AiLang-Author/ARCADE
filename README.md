@@ -38,8 +38,9 @@ The game is written in AILANG and compiled for x86_64. A small GTK host
 provides the desktop window, keyboard input, resizing, and audio support,
 while the compiled game handles the game logic and drawing.
 
-The playfield expands to fill the window. Vector artwork is rasterized for the
-current window size, helping sprites stay sharp when the window is resized.
+The playfield is a square raster in the window's device pixels. Vector artwork
+is rasterized at that size and the host copies it 1:1, so a fullscreen window
+does not stretch the frame off the pixel grid.
 
 
 

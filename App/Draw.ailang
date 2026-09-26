@@ -43,8 +43,7 @@ Function.Draw_HelpIcon {
     Input: typ: Integer
     Body: {
         fw = Gfx.cell
-        IfCondition LessThan(fw, 18) ThenBlock: { fw = 18 }
-        IfCondition GreaterThan(fw, 28) ThenBlock: { fw = 28 }
+        IfCondition LessThan(fw, 12) ThenBlock: { fw = 12 }
         pulse = Modulo(Arcade.t, 24)
         IfCondition GreaterThan(pulse, 12) ThenBlock: {
             pulse = Subtract(24, pulse)
@@ -342,7 +341,7 @@ Function.Draw_Plate {
 Function.Draw_Drops {
     Body: {
         fw = Gfx.cell
-        IfCondition LessThan(fw, 20) ThenBlock: { fw = 20 }
+        IfCondition LessThan(fw, 12) ThenBlock: { fw = 12 }
         pulse = Modulo(Arcade.t, 24)
         IfCondition GreaterThan(pulse, 12) ThenBlock: {
             pulse = Subtract(24, pulse)
@@ -361,7 +360,7 @@ Function.Draw_Drops {
                     y = World_Y(ey)
                     IfCondition EqualTo(typ, Drop.PART) ThenBlock: {
                         fw2 = Gfx.cell
-                        IfCondition LessThan(fw2, 24) ThenBlock: { fw2 = 24 }
+                        IfCondition LessThan(fw2, 12) ThenBlock: { fw2 = 12 }
                         colp = Ent_Get(i, EField.VIEW)
                         IfCondition LessThan(colp, 0) ThenBlock: { colp = 0 }
                         IfCondition GreaterThan(colp, 4) ThenBlock: { colp = 4 }

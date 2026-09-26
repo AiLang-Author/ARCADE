@@ -27,11 +27,24 @@ static char dir[512];
 static char path_meta[600], path_frame[600], path_gen[600];
 static char path_cmd[600], path_keys[600], path_size[600], path_sfx[600], path_vol[600];
 
-static GtkWidget *win, *draw_area, *status;
+static GtkWidget *win, *draw_area, *menu_bar, *status;
 static cairo_surface_t *surf;
 static int last_gen = -1, fw = 800, fh = 600;
 static int k_l, k_r, k_u, k_d, k_f, k_s, k_p;
 static int last_dw, last_dh;
+
+/* Device pixels of the drawing area. GTK allocation is logical; the
+ * framebuffer is alloc * scale so the SVG raster is the monitor's pixels. */
+static int device_px(GtkWidget *w, int *pw, int *ph) {
+    GtkAllocation a;
+    int s;
+    gtk_widget_get_allocation(w, &a);
+    s = gtk_widget_get_scale_factor(w);
+    if (s < 1) s = 1;
+    *pw = a.width * s;
+    *ph = a.height * s;
+    return s;
+}
 
 /* Bug: GTK/X autorepeat arrives as a release, so a held fire key dropped
  * to 0 and the gun stopped, then came back on the next press. Evdev matches
@@ -121,26 +134,49 @@ static int load_frame(void) {
 }
 
 static gboolean on_draw(GtkWidget *w, cairo_t *cr, gpointer) {
-    GtkAllocation a;
-    gtk_widget_get_allocation(w, &a);
+    int s, dw, dh;
     cairo_set_source_rgb(cr, 0.02, 0.04, 0.10);
     cairo_paint(cr);
-    if (!surf || fw < 1 || fh < 1 || a.width < 1 || a.height < 1) return FALSE;
-    /* Playfield is the window: stretch the kernel frame to the drawing area. */
-    cairo_scale(cr, (double)a.width / (double)fw, (double)a.height / (double)fh);
+    if (!surf || fw < 1 || fh < 1) return FALSE;
+    /* 1:1 in device pixels. A scale here resampled the raster and walked
+     * the ship off the pixel grid whenever the window was not 800×600. */
+    s = device_px(w, &dw, &dh);
+    cairo_save(cr);
+    if (s != 1) cairo_scale(cr, 1.0 / (double)s, 1.0 / (double)s);
     cairo_set_source_surface(cr, surf, 0, 0);
     cairo_pattern_set_filter(cairo_get_source(cr), CAIRO_FILTER_NEAREST);
     cairo_paint(cr);
+    cairo_restore(cr);
     return FALSE;
 }
 
-static gboolean on_configure(GtkWidget *w, GdkEventConfigure *, gpointer) {
-    GtkAllocation a;
-    gtk_widget_get_allocation(w, &a);
-    if (a.width != last_dw || a.height != last_dh) {
-        last_dw = a.width;
-        last_dh = a.height;
-        write_size(a.width, a.height);
+static void publish_size(void) {
+    int w, h;
+    if (!draw_area) return;
+    device_px(draw_area, &w, &h);
+    if (w < 320 || h < 240) return;
+    if (w == last_dw && h == last_dh) return;
+    last_dw = w;
+    last_dh = h;
+    write_size(w, h);
+}
+
+static gboolean on_configure(GtkWidget *, GdkEventConfigure *, gpointer) {
+    publish_size();
+    return FALSE;
+}
+
+static gboolean on_state(GtkWidget *, GdkEventWindowState *ev, gpointer) {
+    int full;
+    if (!(ev->changed_mask & GDK_WINDOW_STATE_FULLSCREEN)) return FALSE;
+    full = (ev->new_window_state & GDK_WINDOW_STATE_FULLSCREEN) != 0;
+    if (menu_bar) {
+        if (full) gtk_widget_hide(menu_bar);
+        else gtk_widget_show(menu_bar);
+    }
+    if (status) {
+        if (full) gtk_widget_hide(status);
+        else gtk_widget_show(status);
     }
     return FALSE;
 }
@@ -226,20 +262,18 @@ static void publish_keys(void) {
     write_keys();
 }
 
-static gboolean on_tick(gpointer) {
+static gboolean on_tick(GtkWidget *w, GdkFrameClock *, gpointer) {
     int g = read_gen();
     if (g != last_gen && g >= 0) {
         if (load_frame()) last_gen = g;
     }
-    GtkAllocation a;
-    gtk_widget_get_allocation(draw_area, &a);
-    if (a.width > 0 && a.height > 0)
-        write_size(a.width, a.height);
+    publish_size();
     evdev_poll();
     publish_keys();
     arcade_audio_poll(path_sfx);
     arcade_audio_poll_vol(path_vol);
-    return TRUE;
+    gtk_widget_queue_draw(w);
+    return G_SOURCE_CONTINUE;
 }
 
 static gboolean on_delete(GtkWidget *, GdkEvent *, gpointer) {
@@ -293,6 +327,7 @@ int main(int argc, char **argv) {
     gtk_window_set_default_size(GTK_WINDOW(win), 900, 720);
     gtk_window_set_resizable(GTK_WINDOW(win), TRUE);
     g_signal_connect(win, "delete-event", G_CALLBACK(on_delete), NULL);
+    g_signal_connect(win, "window-state-event", G_CALLBACK(on_state), NULL);
 
     GtkCssProvider *css = gtk_css_provider_new();
     gtk_css_provider_load_from_data(css,
@@ -307,6 +342,7 @@ int main(int argc, char **argv) {
     gtk_container_add(GTK_CONTAINER(win), vbox);
 
     GtkWidget *menu = gtk_menu_bar_new();
+    menu_bar = menu;
     GtkWidget *game_item = gtk_menu_item_new_with_label("Game");
     GtkWidget *game_menu = gtk_menu_new();
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(game_item), game_menu);
@@ -339,12 +375,12 @@ int main(int argc, char **argv) {
 
     evdev_open_all();
     write_keys();
-    write_size(900, 720);
     arcade_audio_init(".");
-    g_timeout_add(16, on_tick, NULL);
     gtk_widget_show_all(win);
     gtk_widget_grab_focus(draw_area);
+    publish_size();
     load_frame();
+    gtk_widget_add_tick_callback(draw_area, on_tick, NULL, NULL);
     gtk_main();
     write_cmd("quit");
     arcade_audio_shutdown();

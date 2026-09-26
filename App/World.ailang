@@ -1,5 +1,6 @@
-// App/World.ailang — playfield is the window.
-// Unit space 1024×1024 maps onto the full framebuffer (stretch, not letterbox).
+// App/World.ailang — playfield is a device-pixel raster of the 1024 unit square.
+// One scale for X and Y, snapped to a whole number of units per pixel, centered.
+// The host copies that buffer 1:1. It does not stretch it.
 // Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
 
 LibraryImport.Arena
@@ -40,8 +41,29 @@ Function.World_CellOf {
         }
         c = Divide(m, 18)
         IfCondition LessThan(c, 12) ThenBlock: { c = 12 }
-        IfCondition GreaterThan(c, 96) ThenBlock: { c = 96 }
+        IfCondition GreaterThan(c, 256) ThenBlock: { c = 256 }
         ReturnValue(c)
+    }
+}
+
+Function.World_Place {
+    Body: {
+        side = World.fw
+        IfCondition GreaterThan(World.fh, 0) ThenBlock: {
+            IfCondition LessThan(World.fh, side) ThenBlock: { side = World.fh }
+        }
+        IfCondition LessThan(side, 1) ThenBlock: { side = 1 }
+        span = side
+        // Whole pixels per unit: 1024, 2048, 3072. A short window keeps the raw side.
+        IfCondition GreaterEqual(side, World.UW) ThenBlock: {
+            n = Divide(side, World.UW)
+            IfCondition LessThan(n, 1) ThenBlock: { n = 1 }
+            span = Multiply(n, World.UW)
+        }
+        World.span = span
+        World.ox = Divide(Subtract(World.fw, span), 2)
+        World.oy = Divide(Subtract(World.fh, span), 2)
+        World.cell = World_CellOf(span, span)
     }
 }
 
@@ -52,8 +74,8 @@ Function.World_SetSize {
     Body: {
         IfCondition LessThan(w, 320) ThenBlock: { w = 320 }
         IfCondition LessThan(h, 240) ThenBlock: { h = 240 }
-        IfCondition GreaterThan(w, 2560) ThenBlock: { w = 2560 }
-        IfCondition GreaterThan(h, 1600) ThenBlock: { h = 1600 }
+        IfCondition GreaterThan(w, 4096) ThenBlock: { w = 4096 }
+        IfCondition GreaterThan(h, 4096) ThenBlock: { h = 4096 }
         IfCondition And(EqualTo(World.ok, 1), And(EqualTo(w, World.fw), EqualTo(h, World.fh))) ThenBlock: {
             ReturnValue(0)
         }
@@ -66,7 +88,7 @@ Function.World_SetSize {
         }
         IfCondition EqualTo(FB_InitHeadless(w, h), 0) ThenBlock: { ReturnValue(-1) }
         IfCondition EqualTo(World_BindFB(), 0) ThenBlock: { ReturnValue(-1) }
-        World.cell = World_CellOf(w, h)
+        World_Place()
         World.ok = 1
         Arcade.need = 1
         ReturnValue(1)
@@ -78,7 +100,10 @@ Function.World_X {
     Output: Integer
     Body: {
         IfCondition LessEqual(World.UW, 0) ThenBlock: { ReturnValue(0) }
-        ReturnValue(Divide(Multiply(u, World.fw), World.UW))
+        base = World.span
+        IfCondition LessEqual(base, 0) ThenBlock: { base = World.fw }
+        p = Divide(Multiply(u, base), World.UW)
+        ReturnValue(Add(World.ox, p))
     }
 }
 
@@ -87,7 +112,10 @@ Function.World_Y {
     Output: Integer
     Body: {
         IfCondition LessEqual(World.UH, 0) ThenBlock: { ReturnValue(0) }
-        ReturnValue(Divide(Multiply(u, World.fh), World.UH))
+        base = World.span
+        IfCondition LessEqual(base, 0) ThenBlock: { base = World.fh }
+        p = Divide(Multiply(u, base), World.UH)
+        ReturnValue(Add(World.oy, p))
     }
 }
 

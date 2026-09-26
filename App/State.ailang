@@ -88,6 +88,9 @@ FixedPool.World {
     "UH":    Initialize=1024
     "fw":    Initialize=800, CanChange=True
     "fh":    Initialize=600, CanChange=True
+    "span":  Initialize=0, CanChange=True
+    "ox":    Initialize=0, CanChange=True
+    "oy":    Initialize=0, CanChange=True
     "cell":  Initialize=32, CanChange=True
     "surf":  Initialize=0, CanChange=True
     "shake": Initialize=0, CanChange=True
