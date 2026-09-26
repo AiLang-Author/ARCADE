@@ -76,8 +76,16 @@ noway-home/           NOWAY HOME screenshots
 ./scripts/run_arcade.sh
 ```
 
-You need `ailang.x` on your `PATH` and GTK3 installed. `ailang.x` is provided
-by [Ailang-Self-Hosting](https://github.com/AiLang-Author/Ailang-Self-Hosting).
+`./scripts/install_desktop.sh` uses the prebuilt `arcade_app.x` (static) and
+`host/arcade_shell_gtk`. On Debian, Ubuntu, and Pop it installs the GTK 3,
+Cairo, ALSA, and PulseAudio libraries that host needs, and adds your user to
+the `input` group when `/dev/input` is not readable. Log out once if it says
+the group is not active yet.
+
+Rebuilding the kernel needs `ailang.x` on your `PATH`, from
+[Ailang-Self-Hosting](https://github.com/AiLang-Author/Ailang-Self-Hosting).
+Rebuilding the host needs `g++`, `make`, `pkg-config`, and the GTK 3 headers.
+The installer adds those compiler packages when the host binary is absent.
 
 | Key | Action |
 |-----|--------|
@@ -87,7 +95,7 @@ by [Ailang-Self-Hosting](https://github.com/AiLang-Author/Ailang-Self-Hosting).
 | p | Pause and settings |
 | Esc / q | Quit |
 
-To add a desktop launcher on Linux:
+To install the menu and desktop launcher, and the libraries it needs:
 
 ```bash
 ./scripts/install_desktop.sh
