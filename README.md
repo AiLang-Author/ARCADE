@@ -1,6 +1,6 @@
 # Arcade
 
-# Bug Fixed in Fire control !!!!! now working reliably. 
+# More bugs fixes this week with fullscreen and alternate screen size play and stuttering.
 
 Arcade is a collection of fast, lightweight 2D games made with the AILANG
 programming language. **NOWAY HOME** is the first game, with more titles
