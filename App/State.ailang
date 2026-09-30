@@ -188,7 +188,45 @@ FixedPool.Ipc {
     "fd":    Initialize=0, CanChange=True
     "map":   Initialize=0, CanChange=True
     "mapsz": Initialize=0, CanChange=True
+    "map0":  Initialize=0, CanChange=True
+    "map1":  Initialize=0, CanChange=True
+    "sz0":   Initialize=0, CanChange=True
+    "sz1":   Initialize=0, CanChange=True
+    "pub":   Initialize=1, CanChange=True
     "tmp":   Initialize=0, CanChange=True
+}
+
+FixedPool.Prof {
+    "mark":   Initialize=0, CanChange=True
+    "win":    Initialize=0, CanChange=True
+    "frames": Initialize=0, CanChange=True
+    "over":   Initialize=0, CanChange=True
+    "poll":   Initialize=0, CanChange=True
+    "pollm":  Initialize=0, CanChange=True
+    "gfx":    Initialize=0, CanChange=True
+    "gfxm":   Initialize=0, CanChange=True
+    "tick":   Initialize=0, CanChange=True
+    "tickm":  Initialize=0, CanChange=True
+    "clear":  Initialize=0, CanChange=True
+    "clearm": Initialize=0, CanChange=True
+    "star":   Initialize=0, CanChange=True
+    "starm":  Initialize=0, CanChange=True
+    "ent":    Initialize=0, CanChange=True
+    "entm":   Initialize=0, CanChange=True
+    "hud":    Initialize=0, CanChange=True
+    "hudm":   Initialize=0, CanChange=True
+    "pres":   Initialize=0, CanChange=True
+    "presm":  Initialize=0, CanChange=True
+    "sfx":    Initialize=0, CanChange=True
+    "sfxm":   Initialize=0, CanChange=True
+    "slp":    Initialize=0, CanChange=True
+    "slpm":   Initialize=0, CanChange=True
+    "frm":    Initialize=0, CanChange=True
+    "frmm":   Initialize=0, CanChange=True
+    "copy":   Initialize=0, CanChange=True
+    "glow":   Initialize=0, CanChange=True
+    "ghost":  Initialize=0, CanChange=True
+    "tint":   Initialize=0, CanChange=True
 }
 
 FixedPool.Scratch {

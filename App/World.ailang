@@ -1,6 +1,6 @@
-// App/World.ailang — playfield is a device-pixel raster of the 1024 unit square.
-// One scale for X and Y, snapped to a whole number of units per pixel, centered.
-// The host copies that buffer 1:1. It does not stretch it.
+// App/World.ailang — the window's short side is the 1024-unit playfield.
+// One scale for X and Y, centered, so a ship stays square at any window size.
+// Sprites are rasterized at that scale. The host copies the buffer 1:1.
 // Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
 
 LibraryImport.Arena
@@ -39,7 +39,11 @@ Function.World_CellOf {
         IfCondition GreaterThan(fh, 0) ThenBlock: {
             IfCondition LessThan(fh, m) ThenBlock: { m = fh }
         }
-        c = Divide(m, 18)
+        // A craft is 56 units. Raster that many device pixels, rounded.
+        half = Divide(World.UW, 2)
+        c = Multiply(m, 56)
+        c = Add(c, half)
+        c = Divide(c, World.UW)
         IfCondition LessThan(c, 12) ThenBlock: { c = 12 }
         IfCondition GreaterThan(c, 256) ThenBlock: { c = 256 }
         ReturnValue(c)
@@ -53,17 +57,10 @@ Function.World_Place {
             IfCondition LessThan(World.fh, side) ThenBlock: { side = World.fh }
         }
         IfCondition LessThan(side, 1) ThenBlock: { side = 1 }
-        span = side
-        // Whole pixels per unit: 1024, 2048, 3072. A short window keeps the raw side.
-        IfCondition GreaterEqual(side, World.UW) ThenBlock: {
-            n = Divide(side, World.UW)
-            IfCondition LessThan(n, 1) ThenBlock: { n = 1 }
-            span = Multiply(n, World.UW)
-        }
-        World.span = span
-        World.ox = Divide(Subtract(World.fw, span), 2)
-        World.oy = Divide(Subtract(World.fh, span), 2)
-        World.cell = World_CellOf(span, span)
+        World.span = side
+        World.ox = Divide(Subtract(World.fw, side), 2)
+        World.oy = Divide(Subtract(World.fh, side), 2)
+        World.cell = World_CellOf(side, side)
     }
 }
 
@@ -95,14 +92,30 @@ Function.World_SetSize {
     }
 }
 
-Function.World_X {
+Function.World_DU {
     Input: u: Integer
     Output: Integer
     Body: {
         IfCondition LessEqual(World.UW, 0) ThenBlock: { ReturnValue(0) }
         base = World.span
         IfCondition LessEqual(base, 0) ThenBlock: { base = World.fw }
-        p = Divide(Multiply(u, base), World.UW)
+        half = Divide(World.UW, 2)
+        prod = Multiply(u, base)
+        IfCondition LessThan(u, 0) ThenBlock: {
+            prod = Subtract(prod, half)
+        }
+        ElseBlock: {
+            prod = Add(prod, half)
+        }
+        ReturnValue(Divide(prod, World.UW))
+    }
+}
+
+Function.World_X {
+    Input: u: Integer
+    Output: Integer
+    Body: {
+        p = World_DU(u)
         ReturnValue(Add(World.ox, p))
     }
 }
@@ -112,9 +125,7 @@ Function.World_Y {
     Output: Integer
     Body: {
         IfCondition LessEqual(World.UH, 0) ThenBlock: { ReturnValue(0) }
-        base = World.span
-        IfCondition LessEqual(base, 0) ThenBlock: { base = World.fh }
-        p = Divide(Multiply(u, base), World.UH)
+        p = World_DU(u)
         ReturnValue(Add(World.oy, p))
     }
 }

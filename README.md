@@ -1,6 +1,13 @@
 # Arcade
 
-# More bugs fixes this week with fullscreen and alternate screen size play and stuttering.
+# Large-window stutter fixed
+
+Ships jumped when the window grew, and the game felt slow. The kernel was
+still finishing a frame in about 6 ms and ticking at 60 Hz. The GTK host was
+handing that frame to Cairo on the toolkit frame clock, and the clock stopped
+calling the redraw for a few hundred milliseconds at a time, so the window
+skipped those frames. The window is only the wrapper. The kernel's finished
+buffer is put on the drawing area with X shared memory, 1:1, on an 8 ms timer.
 
 Arcade is a collection of fast, lightweight 2D games made with the AILANG
 programming language. **NOWAY HOME** is the first game, with more titles
@@ -38,9 +45,11 @@ The game is written in AILANG and compiled for x86_64. A small GTK host
 provides the desktop window, keyboard input, resizing, and audio support,
 while the compiled game handles the game logic and drawing.
 
-The playfield is a square raster in the window's device pixels. Vector artwork
-is rasterized at that size and the host copies it 1:1, so a fullscreen window
-does not stretch the frame off the pixel grid.
+The playfield is a square raster in the window's device pixels. The short side
+of the window is the 1024-unit square, centered. Vector artwork is rasterized
+once at that size, cached, and reused until the window is resized. The host
+puts that buffer on the window 1:1 with X shared memory, so a larger window
+stays on the pixel grid.
 
 
 
@@ -49,7 +58,9 @@ does not stretch the frame off the pixel grid.
 In testing on an AMD FX-8370 system with 64 GB of RAM at 3.2 GHz, the game used
 3–5% CPU and 9–20 MB of memory. A 1024×1024 window typically used 9–11 MB;
 larger windows use more memory because the framebuffer grows with the window
-size.
+size. A later look on a 1280×1024 panel showed the remaining stutter was the
+host dropping frames, not the kernel falling behind: after the shared-memory
+put, a 1280×923 window kept every kernel frame.
 
 ## Development
 

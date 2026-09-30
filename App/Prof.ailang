@@ -1,0 +1,202 @@
+// App/Prof.ailang — one line per second, /dev/shm/arcade_app/prof.txt.
+// Times are average/max microseconds. Built with StringConcat and NumberToString.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.Display.Render.Framebuffer
+Import.App.State
+Import.App.World
+Import.App.Ipc
+
+Function.Prof_Mark {
+    Body: {
+        Prof.mark = Ipc_NowUs()
+    }
+}
+
+Function.Prof_Note {
+    Input: which: Integer
+    Input: us: Integer
+    Body: {
+        IfCondition LessThan(us, 0) ThenBlock: { us = 0 }
+        IfCondition EqualTo(which, 1) ThenBlock: {
+            Prof.poll = Add(Prof.poll, us)
+            IfCondition GreaterThan(us, Prof.pollm) ThenBlock: { Prof.pollm = us }
+        }
+        IfCondition EqualTo(which, 2) ThenBlock: {
+            Prof.gfx = Add(Prof.gfx, us)
+            IfCondition GreaterThan(us, Prof.gfxm) ThenBlock: { Prof.gfxm = us }
+        }
+        IfCondition EqualTo(which, 3) ThenBlock: {
+            Prof.tick = Add(Prof.tick, us)
+            IfCondition GreaterThan(us, Prof.tickm) ThenBlock: { Prof.tickm = us }
+        }
+        IfCondition EqualTo(which, 4) ThenBlock: {
+            Prof.clear = Add(Prof.clear, us)
+            IfCondition GreaterThan(us, Prof.clearm) ThenBlock: { Prof.clearm = us }
+        }
+        IfCondition EqualTo(which, 5) ThenBlock: {
+            Prof.star = Add(Prof.star, us)
+            IfCondition GreaterThan(us, Prof.starm) ThenBlock: { Prof.starm = us }
+        }
+        IfCondition EqualTo(which, 6) ThenBlock: {
+            Prof.ent = Add(Prof.ent, us)
+            IfCondition GreaterThan(us, Prof.entm) ThenBlock: { Prof.entm = us }
+        }
+        IfCondition EqualTo(which, 7) ThenBlock: {
+            Prof.hud = Add(Prof.hud, us)
+            IfCondition GreaterThan(us, Prof.hudm) ThenBlock: { Prof.hudm = us }
+        }
+        IfCondition EqualTo(which, 8) ThenBlock: {
+            Prof.pres = Add(Prof.pres, us)
+            IfCondition GreaterThan(us, Prof.presm) ThenBlock: { Prof.presm = us }
+        }
+        IfCondition EqualTo(which, 9) ThenBlock: {
+            Prof.sfx = Add(Prof.sfx, us)
+            IfCondition GreaterThan(us, Prof.sfxm) ThenBlock: { Prof.sfxm = us }
+        }
+        IfCondition EqualTo(which, 10) ThenBlock: {
+            Prof.slp = Add(Prof.slp, us)
+            IfCondition GreaterThan(us, Prof.slpm) ThenBlock: { Prof.slpm = us }
+        }
+        IfCondition EqualTo(which, 11) ThenBlock: {
+            Prof.frm = Add(Prof.frm, us)
+            IfCondition GreaterThan(us, Prof.frmm) ThenBlock: { Prof.frmm = us }
+            IfCondition GreaterThan(us, 16000) ThenBlock: {
+                Prof.over = Add(Prof.over, 1)
+            }
+        }
+    }
+}
+
+Function.Prof_Lap {
+    Input: which: Integer
+    Body: {
+        now = Ipc_NowUs()
+        d = Subtract(now, Prof.mark)
+        Prof.mark = now
+        Prof_Note(which, d)
+    }
+}
+
+Function.Prof_CatNum {
+    Input: line: Address
+    Input: label: Address
+    Input: n: Integer
+    Output: Address
+    Body: {
+        num = NumberToString(n)
+        piece = StringConcat(label, num)
+        nlen = StringLength(line)
+        IfCondition EqualTo(nlen, 0) ThenBlock: {
+            ReturnValue(piece)
+        }
+        out = StringConcat(line, piece)
+        ReturnValue(out)
+    }
+}
+
+Function.Prof_CatPair {
+    Input: line: Address
+    Input: label: Address
+    Input: acc: Integer
+    Input: mx: Integer
+    Input: frames: Integer
+    Output: Address
+    Body: {
+        avg = 0
+        IfCondition GreaterThan(frames, 0) ThenBlock: {
+            avg = Divide(acc, frames)
+        }
+        line2 = Prof_CatNum(line, label, avg)
+        line3 = StringConcat(line2, "/")
+        num = NumberToString(mx)
+        out = StringConcat(line3, num)
+        ReturnValue(out)
+    }
+}
+
+Function.Prof_Write {
+    Body: {
+        line = ""
+        line = Prof_CatNum(line, "f=", Prof.frames)
+        line = Prof_CatNum(line, " w=", FB.width)
+        line = Prof_CatNum(line, " h=", FB.height)
+        line = Prof_CatNum(line, " cell=", World.cell)
+        line = Prof_CatNum(line, " over=", Prof.over)
+        line = Prof_CatPair(line, " poll=", Prof.poll, Prof.pollm, Prof.frames)
+        line = Prof_CatPair(line, " gfx=", Prof.gfx, Prof.gfxm, Prof.frames)
+        line = Prof_CatPair(line, " tick=", Prof.tick, Prof.tickm, Prof.frames)
+        line = Prof_CatPair(line, " clear=", Prof.clear, Prof.clearm, Prof.frames)
+        line = Prof_CatPair(line, " star=", Prof.star, Prof.starm, Prof.frames)
+        line = Prof_CatPair(line, " ent=", Prof.ent, Prof.entm, Prof.frames)
+        line = Prof_CatPair(line, " hud=", Prof.hud, Prof.hudm, Prof.frames)
+        line = Prof_CatPair(line, " pres=", Prof.pres, Prof.presm, Prof.frames)
+        line = Prof_CatPair(line, " sfx=", Prof.sfx, Prof.sfxm, Prof.frames)
+        line = Prof_CatPair(line, " slp=", Prof.slp, Prof.slpm, Prof.frames)
+        line = Prof_CatPair(line, " frm=", Prof.frm, Prof.frmm, Prof.frames)
+        line = Prof_CatNum(line, " copy=", Prof.copy)
+        line = Prof_CatNum(line, " glow=", Prof.glow)
+        line = Prof_CatNum(line, " ghost=", Prof.ghost)
+        line = Prof_CatNum(line, " tint=", Prof.tint)
+        nl = StringConcat(line, "\n")
+        fd = Ipc_Open(13, 577, 420)
+        IfCondition GreaterEqual(fd, 0) ThenBlock: {
+            n = StringLength(nl)
+            SystemCall(1, fd, nl, n)
+            SystemCall(3, fd)
+            Ipc_Rename(13)
+        }
+    }
+}
+
+Function.Prof_Reset {
+    Body: {
+        Prof.frames = 0
+        Prof.over = 0
+        Prof.poll = 0
+        Prof.pollm = 0
+        Prof.gfx = 0
+        Prof.gfxm = 0
+        Prof.tick = 0
+        Prof.tickm = 0
+        Prof.clear = 0
+        Prof.clearm = 0
+        Prof.star = 0
+        Prof.starm = 0
+        Prof.ent = 0
+        Prof.entm = 0
+        Prof.hud = 0
+        Prof.hudm = 0
+        Prof.pres = 0
+        Prof.presm = 0
+        Prof.sfx = 0
+        Prof.sfxm = 0
+        Prof.slp = 0
+        Prof.slpm = 0
+        Prof.frm = 0
+        Prof.frmm = 0
+        Prof.copy = 0
+        Prof.glow = 0
+        Prof.ghost = 0
+        Prof.tint = 0
+    }
+}
+
+Function.Prof_Flush {
+    Input: now: Integer
+    Output: Integer
+    Body: {
+        span = 0
+        IfCondition EqualTo(Prof.win, 0) ThenBlock: {
+            Prof.win = now
+            ReturnValue(0)
+        }
+        span = Subtract(now, Prof.win)
+        IfCondition LessThan(span, 1000000) ThenBlock: { ReturnValue(0) }
+        Prof_Write()
+        Prof_Reset()
+        Prof.win = now
+        ReturnValue(1)
+    }
+}

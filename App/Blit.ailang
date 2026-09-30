@@ -33,6 +33,8 @@ FixedPool.Blit {
     "tint":  Initialize=0, CanChange=True
     "glow":  Initialize=0, CanChange=True
     "ghost": Initialize=0, CanChange=True
+    "nx":    Initialize=0, CanChange=True
+    "ny":    Initialize=0, CanChange=True
 }
 
 Function.Blit_Clip {
@@ -178,17 +180,21 @@ Function.Blit_GhostRow {
 Function.Blit_Row {
     Body: {
         IfCondition GreaterThan(Blit.ghost, 0) ThenBlock: {
+            Prof.ghost = Add(Prof.ghost, 1)
             Blit_GhostRow()
             ReturnValue(0)
         }
         IfCondition GreaterThan(Blit.glow, 0) ThenBlock: {
+            Prof.glow = Add(Prof.glow, 1)
             Blit_GlowRow()
             ReturnValue(0)
         }
         IfCondition EqualTo(Blit.tint, 1) ThenBlock: {
+            Prof.tint = Add(Prof.tint, 1)
             Blit_TintRow()
             ReturnValue(0)
         }
+        Prof.copy = Add(Prof.copy, 1)
         Blit.col = 0
         WhileLoop LessThan(Blit.col, Blit.w) {
             Blit.off = Multiply(Blit.col, 4)

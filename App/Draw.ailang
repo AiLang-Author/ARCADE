@@ -3,6 +3,7 @@
 
 LibraryImport.Display.Render.Framebuffer
 Import.App.State
+Import.App.Prof
 Import.App.World
 Import.App.Entity
 Import.App.Assets
@@ -17,8 +18,11 @@ FixedPool.DrawFx {
 
 Function.Draw_Frame {
     Body: {
+        Prof_Mark()
         FB_FillRectFast(0, 0, World.fw, World.fh, FB_RGB(6, 10, 28))
+        Prof_Lap(4)
         Star_Draw()
+        Prof_Lap(5)
         i = 0
         WhileLoop LessThan(i, Ent.n) {
             IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
@@ -32,8 +36,10 @@ Function.Draw_Frame {
         Draw_Beam()
         Draw_Drops()
         Draw_Shield()
+        Prof_Lap(6)
         Draw_Help()
         Hud_Draw()
+        Prof_Lap(7)
     }
 }
 

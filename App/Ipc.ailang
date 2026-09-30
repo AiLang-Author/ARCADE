@@ -35,6 +35,9 @@ Function.Ipc_Open {
             IfCondition EqualTo(kind, 8) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/cmd.txt", flags, mode) }
             IfCondition EqualTo(kind, 9) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/sfx.bin", flags, mode) }
             IfCondition EqualTo(kind, 10) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/vol.txt", flags, mode) }
+            IfCondition EqualTo(kind, 11) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/frame0.raw", flags, mode) }
+            IfCondition EqualTo(kind, 12) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/frame1.raw", flags, mode) }
+            IfCondition EqualTo(kind, 13) ThenBlock: { fd = SystemCall(2, "/dev/shm/arcade_app/prof.tmp", flags, mode) }
         }
         ElseBlock: {
             IfCondition EqualTo(kind, 1) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/frame.raw", flags, mode) }
@@ -47,6 +50,9 @@ Function.Ipc_Open {
             IfCondition EqualTo(kind, 8) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/cmd.txt", flags, mode) }
             IfCondition EqualTo(kind, 9) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/sfx.bin", flags, mode) }
             IfCondition EqualTo(kind, 10) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/vol.txt", flags, mode) }
+            IfCondition EqualTo(kind, 11) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/frame0.raw", flags, mode) }
+            IfCondition EqualTo(kind, 12) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/frame1.raw", flags, mode) }
+            IfCondition EqualTo(kind, 13) ThenBlock: { fd = SystemCall(2, "/tmp/arcade_app/prof.tmp", flags, mode) }
         }
         ReturnValue(fd)
     }
@@ -62,6 +68,15 @@ Function.Ipc_Rename {
             IfCondition EqualTo(kind, 2) ThenBlock: {
                 SystemCall(82, "/dev/shm/arcade_app/gen.tmp", "/dev/shm/arcade_app/gen.txt")
             }
+            IfCondition EqualTo(kind, 11) ThenBlock: {
+                SystemCall(82, "/dev/shm/arcade_app/frame.tmp", "/dev/shm/arcade_app/frame0.raw")
+            }
+            IfCondition EqualTo(kind, 12) ThenBlock: {
+                SystemCall(82, "/dev/shm/arcade_app/frame.tmp", "/dev/shm/arcade_app/frame1.raw")
+            }
+            IfCondition EqualTo(kind, 13) ThenBlock: {
+                SystemCall(82, "/dev/shm/arcade_app/prof.tmp", "/dev/shm/arcade_app/prof.txt")
+            }
         }
         ElseBlock: {
             IfCondition EqualTo(kind, 1) ThenBlock: {
@@ -69,6 +84,15 @@ Function.Ipc_Rename {
             }
             IfCondition EqualTo(kind, 2) ThenBlock: {
                 SystemCall(82, "/tmp/arcade_app/gen.tmp", "/tmp/arcade_app/gen.txt")
+            }
+            IfCondition EqualTo(kind, 11) ThenBlock: {
+                SystemCall(82, "/tmp/arcade_app/frame.tmp", "/tmp/arcade_app/frame0.raw")
+            }
+            IfCondition EqualTo(kind, 12) ThenBlock: {
+                SystemCall(82, "/tmp/arcade_app/frame.tmp", "/tmp/arcade_app/frame1.raw")
+            }
+            IfCondition EqualTo(kind, 13) ThenBlock: {
+                SystemCall(82, "/tmp/arcade_app/prof.tmp", "/tmp/arcade_app/prof.txt")
             }
         }
     }
@@ -83,6 +107,22 @@ Function.Ipc_NowMs {
     }
 }
 
+Function.Ipc_NowUs {
+    Output: Integer
+    Body: {
+        sec = 0
+        nsec = 0
+        us = 0
+        IfCondition EqualTo(Ipc.ts, 0) ThenBlock: { Ipc.ts = Allocate(16) }
+        SystemCall(228, 1, Ipc.ts)
+        sec = Dereference(Ipc.ts)
+        nsec = Dereference(Add(Ipc.ts, 8))
+        us = Multiply(sec, 1000000)
+        us = Add(us, Divide(nsec, 1000))
+        ReturnValue(us)
+    }
+}
+
 Function.Ipc_Sleep {
     Input: ms: Integer
     Body: {
@@ -94,33 +134,65 @@ Function.Ipc_Sleep {
     }
 }
 
-Function.Ipc_MapFrame {
+Function.Ipc_WriteAll {
+    Input: fd: Integer
+    Input: ptr: Address
+    Input: n: Integer
     Output: Integer
     Body: {
-        Ipc.n = Multiply(FB.pitch, FB.height)
-        IfCondition And(NotEqual(Ipc.map, 0), EqualTo(Ipc.mapsz, Ipc.n)) ThenBlock: {
-            ReturnValue(1)
+        left = n
+        at = ptr
+        WhileLoop GreaterThan(left, 0) {
+            got = SystemCall(1, fd, at, left)
+            IfCondition LessEqual(got, 0) ThenBlock: { ReturnValue(0) }
+            at = Add(at, got)
+            left = Subtract(left, got)
         }
-        IfCondition GreaterThan(Ipc.map, 0) ThenBlock: {
-            SystemCall(11, Ipc.map, Ipc.mapsz)
-            Ipc.map = 0
-        }
-        IfCondition EqualTo(Ipc.tmp, 1) ThenBlock: { ReturnValue(0) }
-        Ipc.fd = Ipc_Open(1, 66, 420)
-        IfCondition LessThan(Ipc.fd, 0) ThenBlock: {
-            Ipc.tmp = 1
-            ReturnValue(0)
-        }
-        SystemCall(77, Ipc.fd, Ipc.n)
-        Ipc.map = SystemCall(9, 0, Ipc.n, 3, 1, Ipc.fd, 0)
-        SystemCall(3, Ipc.fd)
-        IfCondition LessThan(Ipc.map, 4096) ThenBlock: {
-            Ipc.map = 0
-            Ipc.tmp = 1
-            ReturnValue(0)
-        }
-        Ipc.mapsz = Ipc.n
         ReturnValue(1)
+    }
+}
+
+// The window reads the other slot. This map is the one being filled.
+Function.Ipc_MapSlot {
+    Input: slot: Integer
+    Output: Integer
+    Body: {
+        need = Multiply(FB.pitch, FB.height)
+        kind = 12
+        IfCondition EqualTo(slot, 0) ThenBlock: { kind = 11 }
+        IfCondition EqualTo(slot, 0) ThenBlock: {
+            IfCondition And(GreaterThan(Ipc.map0, 4095), EqualTo(Ipc.sz0, need)) ThenBlock: {
+                ReturnValue(Ipc.map0)
+            }
+            IfCondition GreaterThan(Ipc.map0, 4095) ThenBlock: {
+                SystemCall(11, Ipc.map0, Ipc.sz0)
+                Ipc.map0 = 0
+            }
+        }
+        IfCondition EqualTo(slot, 1) ThenBlock: {
+            IfCondition And(GreaterThan(Ipc.map1, 4095), EqualTo(Ipc.sz1, need)) ThenBlock: {
+                ReturnValue(Ipc.map1)
+            }
+            IfCondition GreaterThan(Ipc.map1, 4095) ThenBlock: {
+                SystemCall(11, Ipc.map1, Ipc.sz1)
+                Ipc.map1 = 0
+            }
+        }
+        Ipc.fd = Ipc_Open(kind, 66, 420)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(77, Ipc.fd, need)
+        mapped = SystemCall(9, 0, need, 3, 1, Ipc.fd, 0)
+        SystemCall(3, Ipc.fd)
+        IfCondition LessThan(mapped, 4096) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(slot, 0) ThenBlock: {
+            Ipc.map0 = mapped
+            Ipc.sz0 = need
+        }
+        IfCondition EqualTo(slot, 1) ThenBlock: {
+            Ipc.map1 = mapped
+            Ipc.sz1 = need
+        }
+        ReturnValue(mapped)
     }
 }
 
@@ -140,19 +212,26 @@ Function.Ipc_Present {
         IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
         SystemCall(1, Ipc.fd, Ipc.hdr, 12)
         SystemCall(3, Ipc.fd)
+        back = Subtract(1, Ipc.pub)
+        IfCondition NotEqual(back, 0) ThenBlock: {
+            IfCondition NotEqual(back, 1) ThenBlock: { back = 0 }
+        }
         Ipc.n = Multiply(FB.pitch, FB.height)
-        mapped = Ipc_MapFrame()
-        IfCondition EqualTo(mapped, 1) ThenBlock: {
-            Ipc.fd = FB_GetDrawBuffer()
-            MemoryCopy(Ipc.map, Ipc.fd, Ipc.n)
+        mapped = Ipc_MapSlot(back)
+        IfCondition GreaterThan(mapped, 4095) ThenBlock: {
+            MemoryCopy(mapped, FB_GetDrawBuffer(), Ipc.n)
         }
         ElseBlock: {
             Ipc.fd = Ipc_Open(3, 577, 420)
             IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
-            SystemCall(1, Ipc.fd, FB_GetDrawBuffer(), Ipc.n)
+            wrote = Ipc_WriteAll(Ipc.fd, FB_GetDrawBuffer(), Ipc.n)
             SystemCall(3, Ipc.fd)
-            Ipc_Rename(1)
+            IfCondition EqualTo(wrote, 0) ThenBlock: { ReturnValue(0) }
+            rel = 12
+            IfCondition EqualTo(back, 0) ThenBlock: { rel = 11 }
+            Ipc_Rename(rel)
         }
+        Ipc.pub = back
         Ipc.gen = Add(Ipc.gen, 1)
         IfCondition EqualTo(Ipc.genb, 0) ThenBlock: { Ipc.genb = Allocate(32) }
         Ipc.n = 0
@@ -168,10 +247,12 @@ Function.Ipc_Present {
             SetByte(Ipc.genb, Ipc.w, GetByte(Add(Ipc.genb, 16), Subtract(Subtract(Ipc.n, 1), Ipc.w)))
             Ipc.w = Add(Ipc.w, 1)
         }
-        SetByte(Ipc.genb, Ipc.n, 10)
+        SetByte(Ipc.genb, Ipc.n, 32)
+        SetByte(Ipc.genb, Add(Ipc.n, 1), Add(48, Ipc.pub))
+        SetByte(Ipc.genb, Add(Ipc.n, 2), 10)
         Ipc.fd = Ipc_Open(4, 577, 420)
         IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
-        SystemCall(1, Ipc.fd, Ipc.genb, Add(Ipc.n, 1))
+        SystemCall(1, Ipc.fd, Ipc.genb, Add(Ipc.n, 3))
         SystemCall(3, Ipc.fd)
         Ipc_Rename(2)
         ReturnValue(1)

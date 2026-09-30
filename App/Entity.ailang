@@ -174,11 +174,24 @@ Function.Ent_Blit {
         IfCondition LessThan(fh, 1) ThenBlock: { ReturnValue(0) }
         IfCondition LessThan(col, 0) ThenBlock: { col = 0 }
         sx = Multiply(col, fw)
-        dx = Subtract(World_X(Ent_Get(id, EField.X)), Divide(fw, 2))
-        dy = Subtract(World_Y(Ent_Get(id, EField.Y)), Divide(fh, 2))
+        dx = World_X(Ent_Get(id, EField.X))
+        half = Divide(fw, 2)
+        dx = Subtract(dx, half)
+        dx = Add(dx, Blit.nx)
+        dy = World_Y(Ent_Get(id, EField.Y))
+        half = Divide(fh, 2)
+        dy = Subtract(dy, half)
+        dy = Add(dy, Blit.ny)
         IfCondition GreaterThan(World.shake, 0) ThenBlock: {
-            dx = Add(dx, Modulo(Arcade.t, 5))
-            dy = Add(dy, Modulo(Multiply(Arcade.t, 3), 5))
+            sh = Modulo(Arcade.t, 5)
+            sh = Multiply(sh, World.cell)
+            sh = Divide(sh, 56)
+            dx = Add(dx, sh)
+            sh = Multiply(Arcade.t, 3)
+            sh = Modulo(sh, 5)
+            sh = Multiply(sh, World.cell)
+            sh = Divide(sh, 56)
+            dy = Add(dy, sh)
         }
         Blit.dx = dx
         Blit.dy = dy
