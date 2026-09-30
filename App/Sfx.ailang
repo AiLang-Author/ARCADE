@@ -19,6 +19,8 @@ FixedPool.SfxCode {
     "QUIET": Initialize=9
     "TITLE": Initialize=10
     "QUEEN": Initialize=11
+    "GYRE":  Initialize=12
+    "LOBBY": Initialize=13
 }
 
 FixedPool.Sfx {

@@ -28,9 +28,11 @@ Import.App.Star
 Import.App.Hud
 Import.App.Set
 Import.App.Draw
+Import.App.Cab
 Import.Game.Paths
 Import.Game.Gen
 Import.Game.Galaga
+Import.Game.Gyre
 
 Function.DebugLog_Push {
     Input: tag: Address
@@ -57,9 +59,9 @@ SubRoutine.Main {
     Form_Init()
     Gen_Init()
     Star_Init()
-    Gfx_Reload()
     Hud_Init()
-    Galaga_Init()
+    Gfx_Arm()
+    Cab_Boot()
     Set_Load()
     Arcade.run = 1
     WhileLoop EqualTo(Arcade.run, 1) {
@@ -68,7 +70,7 @@ SubRoutine.Main {
         Prof.mark = t0
         Ipc_PollSize()
         Prof_Lap(1)
-        Gfx_Reload()
+        Cab_Resize()
         Prof_Lap(2)
         Ipc_PollKeys()
         hit = Ipc_PollCmd()
@@ -84,15 +86,16 @@ SubRoutine.Main {
             }
         }
         IfCondition EqualTo(hit, 3) ThenBlock: {
-            IfCondition EqualTo(Arcade.mode, Mode.TITLE) ThenBlock: { Galaga_Start() }
+            IfCondition EqualTo(Arcade.mode, Mode.TITLE) ThenBlock: { Cab_Start() }
+            IfCondition EqualTo(Arcade.mode, Mode.PICK) ThenBlock: { Cab_Enter() }
         }
         IfCondition EqualTo(Arcade.run, 1) ThenBlock: {
             Arcade.t = Add(Arcade.t, 1)
             Prof_Mark()
             Star_Tick()
-            Galaga_Tick()
+            Cab_Tick()
             Prof_Lap(3)
-            Draw_Frame()
+            Cab_Draw()
             Prof_Mark()
             Ipc_Present()
             Prof_Lap(8)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install NOWAY HOME to the Linux applications menu and Desktop.
+# Install ARCADE to the Linux applications menu and Desktop.
 # Prebuilt arcade_app.x is static. The GTK host needs shared libraries,
 # and held keys need a readable /dev/input device. This script installs both.
 # Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
@@ -146,7 +146,9 @@ chmod 755 "$ROOT/scripts/launch_arcade.sh" "$ROOT/arcade_app.x" "$ROOT/host/arca
 verify_host_libs
 ensure_input
 
-ICON="$ROOT/assets/hud/noway-home.svg"
+ICON="$ROOT/assets/hud/icons/hicolor/512x512/apps/arcade-cabinet.png"
+[[ -f "$ICON" ]] || ICON="$ROOT/assets/hud/arcade.png"
+[[ -f "$ICON" ]] || ICON="$ROOT/assets/hud/noway-home.svg"
 [[ -f "$ICON" ]] || ICON="$ROOT/noway-home/Intro.png"
 LAUNCH="$ROOT/scripts/launch_arcade.sh"
 [[ -x "$LAUNCH" ]]
@@ -158,38 +160,40 @@ LAUNCH="$ROOT/scripts/launch_arcade.sh"
 
 APPS="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 mkdir -p "$APPS"
-DESK="$APPS/noway-home.desktop"
+DESK="$APPS/arcade.desktop"
 cat > "$DESK" << EOF
 [Desktop Entry]
 Type=Application
 Version=1.0
-Name=NOWAY HOME
+Name=ARCADE
 GenericName=Arcade
-Comment=NOWAY HOME — AILANG arcade fighter. Get home.
+Comment=ARCADE — AILANG cabinet. NOWAY HOME and GYRE.
 Exec=$LAUNCH
 TryExec=$LAUNCH
 Icon=$ICON
 Terminal=false
 Categories=Game;ArcadeGame;
-Keywords=Arcade;Galaga;NOWAY;HOME;Ailang;
+Keywords=Arcade;NOWAY;HOME;GYRE;Ailang;
 StartupNotify=true
 StartupWMClass=arcade_shell_gtk
 Path=$ROOT
 EOF
 chmod 755 "$DESK"
+rm -f "$APPS/noway-home.desktop"
 
 DESKTOP="${XDG_DESKTOP_DIR:-$HOME/Desktop}"
 if [[ -d "$DESKTOP" ]]; then
-  cp -f "$DESK" "$DESKTOP/noway-home.desktop"
-  chmod 755 "$DESKTOP/noway-home.desktop"
+  cp -f "$DESK" "$DESKTOP/arcade.desktop"
+  chmod 755 "$DESKTOP/arcade.desktop"
+  rm -f "$DESKTOP/noway-home.desktop"
   if command -v gio >/dev/null; then
-    gio set "$DESKTOP/noway-home.desktop" metadata::trusted true 2>/dev/null || true
+    gio set "$DESKTOP/arcade.desktop" metadata::trusted true 2>/dev/null || true
     if command -v sha256sum >/dev/null; then
-      sum=$(sha256sum "$DESKTOP/noway-home.desktop" | awk '{print $1}')
-      gio set -t string "$DESKTOP/noway-home.desktop" metadata::xfce-exe-checksum "$sum" 2>/dev/null || true
+      sum=$(sha256sum "$DESKTOP/arcade.desktop" | awk '{print $1}')
+      gio set -t string "$DESKTOP/arcade.desktop" metadata::xfce-exe-checksum "$sum" 2>/dev/null || true
     fi
   fi
-  echo "Desktop: $DESKTOP/noway-home.desktop"
+  echo "Desktop: $DESKTOP/arcade.desktop"
 fi
 
 update-desktop-database "$APPS" 2>/dev/null || true
@@ -197,4 +201,4 @@ echo "Menu:     $DESK"
 echo "Launch:   $LAUNCH"
 echo "Kernel:   $ROOT/arcade_app.x"
 echo "Host:     $ROOT/host/arcade_shell_gtk"
-echo "OK — Applications → Games → NOWAY HOME"
+echo "OK — Applications → Games → ARCADE"

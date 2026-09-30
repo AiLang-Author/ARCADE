@@ -508,10 +508,31 @@ Function.Hud_Settings {
             px = Add(px, pstep)
             i = Add(i, 1)
         }
-        y3 = Add(y2, Multiply(fs, 3))
-        Hud_Text(x0, y3, "ARROWS CHANGE", 13, Arc_RGBA(160, 180, 200))
-        y4 = Add(y3, fs)
-        Hud_Text(x0, y4, "P OR ENTER RESUME", 17, Arc_RGBA(160, 180, 200))
+        Hud_GamesRow()
+    }
+}
+
+Function.Hud_GamesRow {
+    Body: {
+        fs = Arcade.fsize
+        y0 = Divide(World.fh, 5)
+        x0 = Divide(World.fw, 8)
+        y1 = Add(y0, Multiply(fs, 2))
+        y2 = Add(y1, Multiply(fs, 2))
+        y3 = Add(y2, Multiply(fs, 2))
+        y4 = 0
+        y5 = 0
+        col = Arc_RGBA(140, 160, 180)
+        IfCondition EqualTo(Arcade.sel, 2) ThenBlock: { col = Arc_RGBA(255, 230, 120) }
+        Hud_Text(x0, y3, "GAMES", 5, col)
+        y4 = Add(y3, Multiply(fs, 3))
+        IfCondition EqualTo(Arcade.sel, 2) ThenBlock: {
+            Hud_Text(x0, y4, "ENTER  SELECT", 13, Arc_RGBA(160, 180, 200))
+            ReturnValue(0)
+        }
+        Hud_Text(x0, y4, "ARROWS CHANGE", 13, Arc_RGBA(160, 180, 200))
+        y5 = Add(y4, fs)
+        Hud_Text(x0, y5, "P OR ENTER RESUME", 17, Arc_RGBA(160, 180, 200))
     }
 }
 

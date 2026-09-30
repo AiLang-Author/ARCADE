@@ -203,6 +203,8 @@ Function.Ent_Blit {
         }
         Blit_Cell(surf, sx, 0, fw, fh)
         Blit.tint = 0
+        Blit.cycle = 0
+        Blit.turn = 0
         Blit.glow = 0
         Blit.ghost = 0
     }

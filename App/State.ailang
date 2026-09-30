@@ -74,6 +74,7 @@ FixedPool.Mode {
     "WAVE":  Initialize=3
     "WARP":  Initialize=4
     "HOME":  Initialize=5
+    "PICK":  Initialize=6
 }
 
 FixedPool.Drop {
@@ -152,6 +153,7 @@ FixedPool.Arcade {
     "sw":      Initialize=0, CanChange=True
     "rw":      Initialize=0, CanChange=True
     "ct":      Initialize=0, CanChange=True
+    "cab":     Initialize=0, CanChange=True
 }
 
 FixedPool.Queen {

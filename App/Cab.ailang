@@ -1,0 +1,678 @@
+// App/Cab.ailang — cabinet select, then the running game.
+// PICK is the front menu. 0 is NOWAY HOME. 1 is GYRE.
+// Up on a game title returns here. Play is unchanged.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Display.Render.Framebuffer
+LibraryImport.Arena
+LibraryImport.Browser.ImageDecode
+Import.App.State
+Import.App.World
+Import.App.Entity
+Import.App.Hud
+Import.App.Draw
+Import.App.Star
+Import.App.Prof
+Import.App.Set
+Import.App.Sfx
+Import.Game.Galaga
+Import.Game.Gyre
+
+FixedPool.Cab {
+    "u0": Initialize=0, CanChange=True
+    "d0": Initialize=0, CanChange=True
+    "home": Initialize=-1, CanChange=True
+    "gyre": Initialize=-1, CanChange=True
+    "got": Initialize=0, CanChange=True
+    "buf": Initialize=0, CanChange=True
+    "bx": Initialize=0, CanChange=True
+    "by": Initialize=0, CanChange=True
+    "bw": Initialize=0, CanChange=True
+    "bh": Initialize=0, CanChange=True
+    "fx": Initialize=0, CanChange=True
+    "fy": Initialize=0, CanChange=True
+    "pw": Initialize=0, CanChange=True
+    "ph": Initialize=0, CanChange=True
+}
+
+Function.Cab_Boot {
+    Body: {
+        Arcade.cab = 0
+        Arcade.mode = Mode.PICK
+        Arcade.pause = 0
+        Ent_Clear()
+        Queen.id = -1
+        Sfx_Emit(SfxCode.LOBBY)
+    }
+}
+
+Function.Cab_LoadBar {
+    Body: {
+        y = 0
+        Hud_Resize()
+        FB_FillRectFast(0, 0, World.fw, World.fh, FB_RGB(4, 6, 16))
+        y = Divide(World.fh, 2)
+        Hud_Center(y, "LOADING", 7, Arc_RGBA(220, 240, 255))
+    }
+}
+
+Function.Cab_LoadHome {
+    Body: {
+        cell = World.cell
+        IfCondition LessThan(cell, 12) ThenBlock: { cell = 12 }
+        IfCondition EqualTo(Gfx.ok, 1) ThenBlock: {
+            IfCondition EqualTo(Gfx.cell, cell) ThenBlock: { ReturnValue(0) }
+        }
+        Cab_LoadBar()
+        Ipc_Present()
+        Gfx_Reload()
+    }
+}
+
+Function.Cab_LoadGyre {
+    Body: {
+        Gyre_Bake()
+    }
+}
+
+Function.Cab_Resize {
+    Body: {
+        IfCondition EqualTo(Arcade.mode, Mode.PICK) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Arcade.cab, 1) ThenBlock: {
+            Cab_LoadGyre()
+            ReturnValue(0)
+        }
+        Cab_LoadHome()
+    }
+}
+
+Function.Cab_Enter {
+    Body: {
+        IfCondition EqualTo(Arcade.cab, 1) ThenBlock: {
+            Cab_LoadGyre()
+            Gyre_Open()
+            ReturnValue(0)
+        }
+        Cab_LoadHome()
+        Galaga_Init()
+    }
+}
+
+Function.Cab_Menu {
+    Body: {
+        Ent_Clear()
+        Queen.id = -1
+        Arcade.mode = Mode.PICK
+        Arcade.pause = 0
+        Sfx_Emit(SfxCode.LOBBY)
+    }
+}
+
+Function.Cab_Back {
+    Body: {
+        IfCondition NotEqual(Arcade.mode, Mode.TITLE) ThenBlock: {
+            Cab.u0 = Key.u
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Arcade.pause, 1) ThenBlock: {
+            Cab.u0 = Key.u
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Key.u, 1) ThenBlock: {
+            IfCondition EqualTo(Cab.u0, 0) ThenBlock: {
+                Cab.u0 = 1
+                Cab_Menu()
+                ReturnValue(0)
+            }
+        }
+        Cab.u0 = Key.u
+    }
+}
+
+Function.Cab_Nudge {
+    Input: dir: Integer
+    Body: {
+        n = Add(Arcade.cab, dir)
+        IfCondition LessThan(n, 0) ThenBlock: { n = 1 }
+        IfCondition GreaterThan(n, 1) ThenBlock: { n = 0 }
+        Arcade.cab = n
+    }
+}
+
+Function.Cab_PickTick {
+    Body: {
+        held = Set_Tick()
+        IfCondition EqualTo(held, 1) ThenBlock: {
+            Cab.u0 = Key.u
+            Cab.d0 = Key.d
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Key.u, 1) ThenBlock: {
+            IfCondition EqualTo(Cab.u0, 0) ThenBlock: {
+                step = Subtract(0, 1)
+                Cab_Nudge(step)
+            }
+        }
+        IfCondition EqualTo(Key.d, 1) ThenBlock: {
+            IfCondition EqualTo(Cab.d0, 0) ThenBlock: { Cab_Nudge(1) }
+        }
+        Cab.u0 = Key.u
+        Cab.d0 = Key.d
+        go = Set_Start()
+        IfCondition EqualTo(go, 1) ThenBlock: { Cab_Enter() }
+        Arcade.sk = Key.s
+    }
+}
+
+Function.Cab_Start {
+    Body: {
+        IfCondition EqualTo(Arcade.cab, 1) ThenBlock: {
+            Gyre_Start()
+            ReturnValue(0)
+        }
+        Galaga_Start()
+    }
+}
+
+Function.Cab_Leave {
+    Body: {
+        IfCondition NotEqual(SetIo.leave, 1) ThenBlock: { ReturnValue(0) }
+        SetIo.leave = 0
+        Cab_Menu()
+    }
+}
+
+Function.Cab_Tick {
+    Body: {
+        Cab_Leave()
+        IfCondition EqualTo(Arcade.mode, Mode.PICK) ThenBlock: {
+            Cab_PickTick()
+            ReturnValue(0)
+        }
+        Cab_Back()
+        IfCondition EqualTo(Arcade.mode, Mode.PICK) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Arcade.cab, 1) ThenBlock: {
+            Gyre_Tick()
+            ReturnValue(0)
+        }
+        Galaga_Tick()
+    }
+}
+
+Function.Cab_Hint {
+    Body: {
+        y = 0
+        IfCondition NotEqual(Arcade.mode, Mode.TITLE) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Arcade.pause, 1) ThenBlock: { ReturnValue(0) }
+        y = Arcade.fsize
+        IfCondition LessThan(y, 14) ThenBlock: { y = 14 }
+        Hud_Text(12, y, "UP  GAMES", 9, Arc_RGBA(160, 190, 220))
+    }
+}
+
+Function.Cab_Box {
+    Input: x: Integer
+    Input: y: Integer
+    Input: w: Integer
+    Input: h: Integer
+    Input: fill: Integer
+    Input: edge: Integer
+    Body: {
+        t = 4
+        bot = 0
+        right = 0
+        IfCondition LessThan(w, 8) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(h, 8) ThenBlock: { ReturnValue(0) }
+        FB_FillRectFast(x, y, w, h, fill)
+        FB_FillRectFast(x, y, w, t, edge)
+        bot = Add(y, h)
+        bot = Subtract(bot, t)
+        FB_FillRectFast(x, bot, w, t, edge)
+        FB_FillRectFast(x, y, t, h, edge)
+        right = Add(x, w)
+        right = Subtract(right, t)
+        FB_FillRectFast(right, y, t, h, edge)
+    }
+}
+
+Function.Cab_Title {
+    Body: {
+        y = 0
+        ys = 0
+        shadow = 0
+        gold = 0
+        y = Divide(World.fh, 8)
+        ys = Add(y, 2)
+        shadow = Arc_RGBA(8, 6, 16)
+        gold = Arc_RGBA(255, 220, 90)
+        Hud_Center(ys, "ARCADE", 6, shadow)
+        Hud_Center(y, "ARCADE", 6, gold)
+    }
+}
+
+Function.Cab_Card {
+    Input: which: Integer
+    Input: y: Integer
+    Input: name: Address
+    Input: nlen: Integer
+    Body: {
+        fs = 0
+        w = 0
+        maxw = 0
+        x = 0
+        h = 0
+        on = 0
+        fill = 0
+        edge = 0
+        col = 0
+        ty = 0
+        fs = Arcade.fsize
+        IfCondition LessThan(fs, 14) ThenBlock: { fs = 14 }
+        w = Multiply(World.fw, 5)
+        w = Divide(w, 8)
+        maxw = Subtract(World.fw, 48)
+        IfCondition GreaterThan(w, maxw) ThenBlock: { w = maxw }
+        IfCondition LessThan(w, 160) ThenBlock: { w = 160 }
+        IfCondition GreaterThan(w, World.fw) ThenBlock: { w = Subtract(World.fw, 16) }
+        x = Subtract(World.fw, w)
+        x = Divide(x, 2)
+        h = Multiply(fs, 3)
+        fill = FB_RGB(10, 14, 26)
+        edge = FB_RGB(46, 64, 96)
+        col = Arc_RGBA(150, 170, 200)
+        IfCondition EqualTo(Arcade.cab, which) ThenBlock: {
+            on = 1
+            fill = FB_RGB(42, 26, 64)
+            edge = FB_RGB(255, 206, 72)
+            col = Arc_RGBA(255, 230, 140)
+        }
+        Cab_Box(x, y, w, h, fill, edge)
+        ty = Add(y, fs)
+        Hud_Center(ty, name, nlen, col)
+    }
+}
+
+Function.Cab_LoadShots {
+    Body: {
+        fd = 0
+        n = 0
+        IfCondition EqualTo(Cab.got, 1) ThenBlock: { ReturnValue(0) }
+        Cab.buf = Allocate(160000)
+        IfCondition EqualTo(Cab.buf, 0) ThenBlock: { ReturnValue(0) }
+        fd = SystemCall(2, "assets/menu/home.png", 0, 0)
+        IfCondition GreaterEqual(fd, 0) ThenBlock: {
+            n = SystemCall(0, fd, Cab.buf, 159000)
+            SystemCall(3, fd)
+            IfCondition GreaterThan(n, 8) ThenBlock: { Cab.home = IMG_DecodePNG(Cab.buf, n) }
+        }
+        fd = SystemCall(2, "assets/menu/gyre.png", 0, 0)
+        IfCondition GreaterEqual(fd, 0) ThenBlock: {
+            n = SystemCall(0, fd, Cab.buf, 159000)
+            SystemCall(3, fd)
+            IfCondition GreaterThan(n, 8) ThenBlock: { Cab.gyre = IMG_DecodePNG(Cab.buf, n) }
+        }
+        Cab.got = 1
+    }
+}
+
+Function.Cab_Blit {
+    Input: h: Integer
+    Input: dx: Integer
+    Input: dy: Integer
+    Input: dw: Integer
+    Input: dh: Integer
+    Body: {
+        pix = 0
+        sw = 0
+        sh = 0
+        x = 0
+        y = 0
+        sx = 0
+        sy = 0
+        off = 0
+        r = 0
+        g = 0
+        b = 0
+        col = 0
+        px = 0
+        py = 0
+        IfCondition LessThan(h, 0) ThenBlock: { ReturnValue(0) }
+        pix = IMG_GetPixels(h)
+        sw = IMG_GetWidth(h)
+        sh = IMG_GetHeight(h)
+        IfCondition EqualTo(pix, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(sw, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(dw, 1) ThenBlock: { ReturnValue(0) }
+        y = 0
+        WhileLoop LessThan(y, dh) {
+            sy = Multiply(y, sh)
+            sy = Divide(sy, dh)
+            x = 0
+            WhileLoop LessThan(x, dw) {
+                sx = Multiply(x, sw)
+                sx = Divide(sx, dw)
+                off = Add(Multiply(sy, sw), sx)
+                off = Multiply(off, 4)
+                b = GetByte(pix, off)
+                off = Add(off, 1)
+                g = GetByte(pix, off)
+                off = Add(off, 1)
+                r = GetByte(pix, off)
+                col = Arc_RGBA(r, g, b)
+                px = Add(dx, x)
+                py = Add(dy, y)
+                IfCondition And(GreaterEqual(px, 0), LessThan(px, World.fw)) ThenBlock: {
+                    IfCondition And(GreaterEqual(py, 0), LessThan(py, World.fh)) ThenBlock: {
+                        FB_SetPixelFast(px, py, col)
+                    }
+                }
+                x = Add(x, 1)
+            }
+            y = Add(y, 1)
+        }
+    }
+}
+
+Function.Cab_Place {
+    Body: {
+        fs = 0
+        gap = 0
+        fs = Arcade.fsize
+        IfCondition LessThan(fs, 14) ThenBlock: { fs = 14 }
+        Cab.bw = Multiply(World.fw, 36)
+        Cab.bw = Divide(Cab.bw, 100)
+        IfCondition LessThan(Cab.bw, 220) ThenBlock: { Cab.bw = 220 }
+        IfCondition GreaterThan(Cab.bw, Subtract(World.fw, 24)) ThenBlock: { Cab.bw = Subtract(World.fw, 24) }
+        Cab.bx = Divide(World.fw, 14)
+        IfCondition LessThan(Cab.bx, 48) ThenBlock: { Cab.bx = 48 }
+        Cab.by = Divide(World.fh, 7)
+        IfCondition LessThan(Cab.by, 48) ThenBlock: { Cab.by = 48 }
+        Cab.bh = Multiply(fs, 10)
+        Cab.pw = Multiply(World.fw, 32)
+        Cab.pw = Divide(Cab.pw, 100)
+        IfCondition LessThan(Cab.pw, 160) ThenBlock: { Cab.pw = 160 }
+        gap = 18
+        Cab.fx = Add(Cab.bx, Cab.bw)
+        Cab.fx = Add(Cab.fx, gap)
+        IfCondition GreaterThan(Add(Cab.fx, Cab.pw), Subtract(World.fw, 48)) ThenBlock: {
+            Cab.pw = Subtract(World.fw, Cab.fx)
+            Cab.pw = Subtract(Cab.pw, 48)
+        }
+        IfCondition LessThan(Cab.pw, 80) ThenBlock: { Cab.pw = 80 }
+        Cab.fy = Cab.by
+        Cab.ph = Multiply(Cab.pw, 5)
+        Cab.ph = Divide(Cab.ph, 8)
+        Cab.ph = Add(Cab.ph, Multiply(fs, 6))
+        IfCondition GreaterThan(Add(Cab.fy, Cab.ph), Subtract(World.fh, 48)) ThenBlock: {
+            Cab.ph = Subtract(World.fh, Cab.fy)
+            Cab.ph = Subtract(Cab.ph, 48)
+        }
+        IfCondition GreaterThan(Add(Cab.by, Cab.bh), Subtract(World.fh, 48)) ThenBlock: {
+            Cab.bh = Subtract(World.fh, Cab.by)
+            Cab.bh = Subtract(Cab.bh, 48)
+        }
+    }
+}
+
+Function.Cab_Gold {
+    Output: Integer
+    Body: {
+        p = 0
+        r = 0
+        g = 0
+        b = 0
+        p = Divide(Arcade.t, 8)
+        p = Modulo(p, 48)
+        IfCondition GreaterThan(p, 24) ThenBlock: { p = Subtract(48, p) }
+        r = Add(156, Multiply(p, 4))
+        g = Add(108, Multiply(p, 3))
+        b = Add(36, Multiply(p, 2))
+        ReturnValue(FB_RGB(r, g, b))
+    }
+}
+
+Function.Cab_Bulb {
+    Input: i: Integer
+    Input: n: Integer
+    Output: Integer
+    Body: {
+        head = 0
+        gap = 0
+        r = 132
+        g = 78
+        b = 28
+        head = Divide(Arcade.t, 10)
+        head = Modulo(head, n)
+        gap = Subtract(i, head)
+        IfCondition LessThan(gap, 0) ThenBlock: { gap = Add(gap, n) }
+        IfCondition EqualTo(gap, 0) ThenBlock: {
+            r = 255
+            g = 210
+            b = 120
+        }
+        IfCondition EqualTo(gap, 1) ThenBlock: {
+            r = 242
+            g = 176
+            b = 78
+        }
+        IfCondition EqualTo(gap, 2) ThenBlock: {
+            r = 214
+            g = 146
+            b = 52
+        }
+        IfCondition EqualTo(gap, 3) ThenBlock: {
+            r = 176
+            g = 114
+            b = 40
+        }
+        ReturnValue(Arc_RGBA(r, g, b))
+    }
+}
+
+Function.Cab_Spark {
+    Input: cx: Integer
+    Input: cy: Integer
+    Input: col: Integer
+    Body: {
+        k = 0
+        p = 0
+        IfCondition LessThan(cx, 12) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(cy, 12) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(cx, Subtract(World.fw, 13)) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(cy, Subtract(World.fh, 13)) ThenBlock: { ReturnValue(0) }
+        WhileLoop LessThan(k, 19) {
+            p = Subtract(k, 9)
+            FB_SetPixelFast(Add(cx, p), cy, col)
+            FB_SetPixelFast(cx, Add(cy, p), col)
+            FB_SetPixelFast(Add(cx, p), Add(cy, p), col)
+            FB_SetPixelFast(Add(cx, p), Subtract(cy, p), col)
+            k = Add(k, 1)
+        }
+    }
+}
+
+Function.Cab_Chase {
+    Body: {
+        i = 0
+        n = 0
+        per = 0
+        t = 0
+        px = 0
+        py = 0
+        ax = 0
+        ay = 0
+        sw = 0
+        sh = 0
+        col = 0
+        ax = 20
+        ay = 20
+        sw = Subtract(World.fw, 40)
+        sh = Subtract(World.fh, 40)
+        IfCondition LessThan(sw, 80) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(sh, 80) ThenBlock: { ReturnValue(0) }
+        per = Add(sw, sh)
+        per = Multiply(per, 2)
+        n = Divide(per, 64)
+        IfCondition LessThan(n, 16) ThenBlock: { n = 16 }
+        IfCondition GreaterThan(n, 72) ThenBlock: { n = 72 }
+        WhileLoop LessThan(i, n) {
+            t = Multiply(i, per)
+            t = Divide(t, n)
+            px = ax
+            py = ay
+            IfCondition LessThan(t, sw) ThenBlock: {
+                px = Add(ax, t)
+                py = ay
+            }
+            IfCondition GreaterEqual(t, sw) ThenBlock: {
+                IfCondition LessThan(t, Add(sw, sh)) ThenBlock: {
+                    px = Add(ax, sw)
+                    py = Add(ay, Subtract(t, sw))
+                }
+            }
+            IfCondition GreaterEqual(t, Add(sw, sh)) ThenBlock: {
+                IfCondition LessThan(t, Add(Add(sw, sh), sw)) ThenBlock: {
+                    px = Add(ax, sw)
+                    px = Subtract(px, Subtract(t, Add(sw, sh)))
+                    py = Add(ay, sh)
+                }
+            }
+            IfCondition GreaterEqual(t, Add(Add(sw, sh), sw)) ThenBlock: {
+                px = ax
+                py = Add(ay, sh)
+                py = Subtract(py, Subtract(t, Add(Add(sw, sh), sw)))
+            }
+            col = Cab_Bulb(i, n)
+            Cab_Spark(px, py, col)
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Cab_Row {
+    Input: which: Integer
+    Input: y: Integer
+    Input: name: Address
+    Input: nlen: Integer
+    Input: key: Address
+    Input: klen: Integer
+    Body: {
+        fs = 0
+        rh = 0
+        ink = 0
+        x = 0
+        fs = Arcade.fsize
+        IfCondition LessThan(fs, 14) ThenBlock: { fs = 14 }
+        rh = Add(Multiply(fs, 2), 2)
+        x = Add(Cab.bx, 12)
+        ink = Arc_RGBA(200, 214, 229)
+        IfCondition EqualTo(Arcade.cab, which) ThenBlock: {
+            FB_FillRectFast(Add(Cab.bx, 4), y, Subtract(Cab.bw, 8), rh, FB_RGB(242, 211, 74))
+            ink = Arc_RGBA(4, 7, 13)
+        }
+        Hud_Text(x, Add(y, 4), name, nlen, ink)
+        Hud_Text(Add(x, Subtract(Cab.bw, 48)), Add(y, 4), key, klen, ink)
+    }
+}
+
+Function.Cab_Fly {
+    Body: {
+        fs = 0
+        h = 0
+        ih = 0
+        edge = 0
+        gold = 0
+        ink = 0
+        tag = 0
+        y = 0
+        fs = Arcade.fsize
+        IfCondition LessThan(fs, 14) ThenBlock: { fs = 14 }
+        edge = Cab_Gold()
+        gold = Arc_RGBA(242, 211, 74)
+        ink = Arc_RGBA(200, 214, 229)
+        tag = Arc_RGBA(127, 212, 255)
+        Cab_Box(Cab.fx, Cab.fy, Cab.pw, Cab.ph, FB_RGB(11, 17, 25), edge)
+        ih = Multiply(Subtract(Cab.pw, 16), 5)
+        ih = Divide(ih, 8)
+        h = Cab.gyre
+        IfCondition EqualTo(Arcade.cab, 0) ThenBlock: { h = Cab.home }
+        Cab_Blit(h, Add(Cab.fx, 8), Add(Cab.fy, 8), Subtract(Cab.pw, 16), ih)
+        y = Add(Cab.fy, ih)
+        y = Add(y, 16)
+        IfCondition EqualTo(Arcade.cab, 0) ThenBlock: {
+            Hud_Text(Add(Cab.fx, 12), y, "NOWAY HOME", 10, gold)
+            y = Add(y, fs)
+            y = Add(y, 6)
+            Hud_Text(Add(Cab.fx, 12), y, "WAVES AND SHIELDS", 16, ink)
+            y = Add(y, fs)
+            y = Add(y, 4)
+            Hud_Text(Add(Cab.fx, 12), y, "FIGHTER", 7, tag)
+        }
+        IfCondition EqualTo(Arcade.cab, 1) ThenBlock: {
+            Hud_Text(Add(Cab.fx, 12), y, "GYRE", 4, gold)
+            y = Add(y, fs)
+            y = Add(y, 6)
+            Hud_Text(Add(Cab.fx, 12), y, "ORBIT THE RIM", 13, ink)
+            y = Add(y, fs)
+            y = Add(y, 4)
+            Hud_Text(Add(Cab.fx, 12), y, "TUBE SHOOTER", 12, tag)
+        }
+        y = Add(y, fs)
+        y = Add(y, 8)
+        Hud_Text(Add(Cab.fx, 12), y, "ENTER", 5, gold)
+    }
+}
+
+Function.Cab_PickRows {
+    Body: {
+        fs = 0
+        rh = 0
+        y = 0
+        ink = 0
+        fs = Arcade.fsize
+        IfCondition LessThan(fs, 14) ThenBlock: { fs = 14 }
+        Cab_Place()
+        Cab_Box(Cab.bx, Cab.by, Cab.bw, Cab.bh, FB_RGB(11, 17, 25), Cab_Gold())
+        ink = Arc_RGBA(242, 211, 74)
+        Hud_Text(Add(Cab.bx, 12), Add(Cab.by, 8), "PLAY", 4, ink)
+        rh = Add(Multiply(fs, 2), 2)
+        y = Add(Cab.by, Add(fs, 10))
+        Cab_Row(0, y, "NOWAY HOME", 10, "1", 1)
+        y = Add(y, rh)
+        y = Add(y, 4)
+        Cab_Row(1, y, "GYRE", 4, "2", 1)
+        Cab_Fly()
+        Cab_Chase()
+    }
+}
+
+Function.Cab_PickDraw {
+    Body: {
+        Prof_Mark()
+        FB_FillRectFast(0, 0, World.fw, World.fh, FB_RGB(4, 6, 16))
+        Prof_Lap(4)
+        Star_Draw()
+        Prof_Lap(5)
+        Cab_LoadShots()
+        Prof_Lap(6)
+        Cab_PickRows()
+        IfCondition EqualTo(Arcade.pause, 1) ThenBlock: { Hud_Settings() }
+        Prof_Lap(7)
+    }
+}
+
+Function.Cab_Draw {
+    Body: {
+        IfCondition EqualTo(Arcade.mode, Mode.PICK) ThenBlock: {
+            Cab_PickDraw()
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Arcade.cab, 1) ThenBlock: {
+            Gyre_Draw()
+        }
+        ElseBlock: {
+            Draw_Frame()
+        }
+        Cab_Hint()
+    }
+}

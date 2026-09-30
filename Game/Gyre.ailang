@@ -1,0 +1,1511 @@
+// Game/Gyre.ailang — tube shooter. The ship rides the rim and fires inward.
+// Each depth has its own raster of the vector art, cached in the sheet pool.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Display.Render.Framebuffer
+Import.App.State
+Import.App.World
+Import.App.Entity
+Import.App.Assets
+Import.App.Blit
+Import.App.Hud
+Import.App.Sfx
+Import.App.Boom
+Import.App.Set
+Import.App.Star
+Import.App.Prof
+Import.App.Ring
+Import.App.Ipc
+Import.App.Draw
+
+FixedPool.Gyre {
+    "pilot": Initialize=-1, CanChange=True
+    "have":  Initialize=4, CanChange=True
+    "near":  Initialize=12, CanChange=True
+    "cd":    Initialize=0, CanChange=True
+    "inv":   Initialize=0, CanChange=True
+    "lives": Initialize=3, CanChange=True
+    "score": Initialize=0, CanChange=True
+    "wave":  Initialize=1, CanChange=True
+    "left":  Initialize=0, CanChange=True
+    "many":  Initialize=8, CanChange=True
+    "wait":  Initialize=0, CanChange=True
+    "step":  Initialize=1, CanChange=True
+    "nxt":   Initialize=0, CanChange=True
+    "hop":   Initialize=32, CanChange=True
+    "gap":   Initialize=36, CanChange=True
+    "hold":  Initialize=0, CanChange=True
+    "surf":  Initialize=0, CanChange=True
+    "fw":    Initialize=12, CanChange=True
+    "col":   Initialize=0, CanChange=True
+    "fired": Initialize=0, CanChange=True
+    "hits":  Initialize=0, CanChange=True
+    "paid":  Initialize=0, CanChange=True
+    "sh":    Initialize=2, CanChange=True
+    "st":    Initialize=0, CanChange=True
+    "bonus": Initialize=0, CanChange=True
+    "gave":  Initialize=0, CanChange=True
+    "hive":  Initialize=-1, CanChange=True
+    "hh":    Initialize=0, CanChange=True
+    "frac":  Initialize=0, CanChange=True
+    "clock": Initialize=0, CanChange=True
+    "hue":   Initialize=0, CanChange=True
+    "baked": Initialize=0, CanChange=True
+}
+
+Function.Gyre_Near {
+    Body: {
+        n = World.cell
+        IfCondition LessThan(n, 12) ThenBlock: { n = 12 }
+        IfCondition GreaterThan(n, 96) ThenBlock: { n = 96 }
+        Gyre.near = n
+    }
+}
+
+Function.Gyre_Size {
+    Input: depth: Integer
+    Output: Integer
+    Body: {
+        span = 0
+        num = 0
+        sz = 4
+        IfCondition LessThan(depth, 0) ThenBlock: { depth = 0 }
+        IfCondition GreaterThan(depth, 256) ThenBlock: { depth = 256 }
+        span = Subtract(Gyre.near, 4)
+        num = Multiply(span, depth)
+        num = Divide(num, 256)
+        sz = Add(4, num)
+        IfCondition GreaterThan(sz, Gyre.near) ThenBlock: { sz = Gyre.near }
+        IfCondition LessThan(sz, 4) ThenBlock: { sz = 4 }
+        ReturnValue(sz)
+    }
+}
+
+Function.Gyre_View {
+    Input: ang: Integer
+    Output: Integer
+    Body: {
+        a = ang
+        IfCondition LessThan(a, 0) ThenBlock: { a = Add(a, 256) }
+        a = Modulo(a, 256)
+        a = Add(a, 16)
+        a = Divide(a, 32)
+        a = Modulo(a, 8)
+        ReturnValue(a)
+    }
+}
+
+Function.Gyre_FoeSheet {
+    Input: look: Integer
+    Input: sz: Integer
+    Body: {
+        wide = Multiply(sz, 8)
+        none = Subtract(0, 1)
+        IfCondition EqualTo(look, 0) ThenBlock: {
+            Gyre.surf = Gfx_Sheet("assets/gyre/enemy-01-tick-strip.svg", 0, wide, sz, none)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(look, 1) ThenBlock: {
+            Gyre.surf = Gfx_Sheet("assets/gyre/enemy-02-dart-strip.svg", 0, wide, sz, none)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(look, 2) ThenBlock: {
+            Gyre.surf = Gfx_Sheet("assets/gyre/enemy-03-talon-strip.svg", 0, wide, sz, none)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(look, 3) ThenBlock: {
+            Gyre.surf = Gfx_Sheet("assets/gyre/enemy-04-wisp-strip.svg", 0, wide, sz, none)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(look, 4) ThenBlock: {
+            Gyre.surf = Gfx_Sheet("assets/gyre/enemy-06-splitter-strip.svg", 0, wide, sz, none)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(look, 5) ThenBlock: {
+            Gyre.surf = Gfx_Sheet("assets/gyre/enemy-07-bulwark-strip.svg", 0, wide, sz, none)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(look, 6) ThenBlock: {
+            Gyre.surf = Gfx_Sheet("assets/gyre/enemy-08-leech-strip.svg", 0, wide, sz, none)
+            ReturnValue(0)
+        }
+        Gyre.surf = Gfx_Sheet("assets/gyre/enemy-09-lance-strip.svg", 0, wide, sz, none)
+    }
+}
+
+Function.Gyre_Prep {
+    Input: kind: Integer
+    Input: sz: Integer
+    Body: {
+        wide = sz
+        look = 0
+        none = Subtract(0, 1)
+        Gyre.fw = sz
+        Gyre.col = 0
+        Gyre.surf = 0
+        IfCondition LessThan(sz, 4) ThenBlock: { ReturnValue(0) }
+        wide = Multiply(sz, 8)
+        IfCondition EqualTo(kind, Kind.PLAYER) ThenBlock: {
+            Gyre.surf = Gfx_Sheet("assets/gyre/hero-kestrel-strip.svg", 0, wide, sz, none)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(kind, Kind.BEE) ThenBlock: {
+            look = Subtract(Gyre.wave, 1)
+            look = Modulo(look, 8)
+            Gyre_FoeSheet(look, sz)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(kind, Kind.PBULLET) ThenBlock: {
+            Gyre.surf = Gfx_Sheet("assets/gyre/shot-hero-strip.svg", 0, wide, sz, none)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(kind, Kind.EBULLET) ThenBlock: {
+            Gyre.surf = Gfx_Sheet("assets/gyre/shot-enemy-strip.svg", 0, wide, sz, none)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(kind, Kind.BOOM) ThenBlock: {
+            Gyre.surf = Gfx_Sheet("assets/explosions/burst.svg", "assets/explosions/burst.tvg", wide, sz, 10)
+            ReturnValue(0)
+        }
+    }
+}
+
+Function.Gyre_Make {
+    Input: sz: Integer
+    Body: {
+        IfCondition LessThan(sz, 4) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(Sheet.n, 2000) ThenBlock: { ReturnValue(0) }
+        Gyre_Prep(Kind.PLAYER, sz)
+        Gyre_FoeSheet(0, sz)
+        Gyre_FoeSheet(1, sz)
+        Gyre_FoeSheet(2, sz)
+        Gyre_FoeSheet(3, sz)
+        Gyre_FoeSheet(4, sz)
+        Gyre_FoeSheet(5, sz)
+        Gyre_FoeSheet(6, sz)
+        Gyre_FoeSheet(7, sz)
+        Gyre_Prep(Kind.PBULLET, sz)
+        Gyre_Prep(Kind.EBULLET, sz)
+        Gyre_Prep(Kind.BOOM, sz)
+        Gyre_QueenSheet(sz)
+    }
+}
+
+Function.Gyre_Bar {
+    Input: done: Integer
+    Input: total: Integer
+    Body: {
+        span = 0
+        x0 = 0
+        y0 = 0
+        fill = 0
+        IfCondition LessThan(total, 1) ThenBlock: { total = 1 }
+        Hud_Resize()
+        FB_FillRectFast(0, 0, World.fw, World.fh, FB_RGB(4, 6, 16))
+        Hud_Center(Divide(World.fh, 3), "LOADING", 7, Arc_RGBA(220, 240, 255))
+        span = Divide(World.fw, 2)
+        x0 = Divide(Subtract(World.fw, span), 2)
+        y0 = Divide(World.fh, 2)
+        FB_FillRectFast(x0, y0, span, 18, FB_RGB(20, 28, 40))
+        fill = Multiply(span, done)
+        fill = Divide(fill, total)
+        IfCondition GreaterThan(done, 0) ThenBlock: {
+            IfCondition LessThan(fill, 1) ThenBlock: { fill = 1 }
+        }
+        IfCondition GreaterThan(fill, span) ThenBlock: { fill = span }
+        FB_FillRectFast(x0, y0, fill, 18, FB_RGB(80, 170, 220))
+    }
+}
+
+Function.Gyre_Bake {
+    Body: {
+        sz = 4
+        span = 1
+        step = 0
+        lim = 0
+        Gyre_Near()
+        IfCondition EqualTo(Gyre.baked, Gyre.near) ThenBlock: { ReturnValue(0) }
+        Gfx_Arm()
+        span = Subtract(Gyre.near, 3)
+        IfCondition LessThan(span, 1) ThenBlock: { span = 1 }
+        lim = Add(Gyre.near, 1)
+        WhileLoop LessThan(sz, lim) {
+            Gyre_Make(sz)
+            step = Subtract(sz, 3)
+            Gyre_Bar(step, span)
+            Ipc_Present()
+            sz = Add(sz, 1)
+        }
+        Gyre.baked = Gyre.near
+    }
+}
+
+Function.Gyre_Count {
+    Input: kind: Integer
+    Output: Integer
+    Body: {
+        n = 0
+        i = 0
+        k = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                k = Ent_Get(i, EField.KIND)
+                IfCondition EqualTo(k, kind) ThenBlock: { n = Add(n, 1) }
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(n)
+    }
+}
+
+Function.Gyre_AngGap {
+    Input: a: Integer
+    Input: b: Integer
+    Output: Integer
+    Body: {
+        d = Subtract(a, b)
+        d = Add(d, 256)
+        d = Modulo(d, 256)
+        IfCondition GreaterThan(d, 128) ThenBlock: {
+            d = Subtract(256, d)
+        }
+        ReturnValue(d)
+    }
+}
+
+Function.Gyre_SpawnAt {
+    Input: kind: Integer
+    Input: ang: Integer
+    Input: depth: Integer
+    Input: vel: Integer
+    Output: Integer
+    Body: {
+        id = 0
+        Ring_Place(ang, depth)
+        id = Ent_Spawn(kind, Ring.x, Ring.y)
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(-1) }
+        Ent_Set(id, EField.SLOT, ang)
+        Ent_Set(id, EField.ACC, depth)
+        Ent_Set(id, EField.VY, vel)
+        Ent_Set(id, EField.VIEW, View.FRONT)
+        Ent_Set(id, EField.HP, 1)
+        ReturnValue(id)
+    }
+}
+
+Function.Gyre_Pilot {
+    Body: {
+        id = Gyre_SpawnAt(Kind.PLAYER, 64, 256, 0)
+        Gyre.pilot = id
+    }
+}
+
+Function.Gyre_Open {
+    Body: {
+        Ent_Clear()
+        Gyre.lives = 3
+        Gyre.score = 0
+        Gyre.fired = 0
+        Gyre.hits = 0
+        Gyre.paid = 0
+        Gyre.sh = 2
+        Gyre.st = 0
+        Gyre.wave = 1
+        Gyre.left = 0
+        Gyre.cd = 0
+        Gyre.inv = 0
+        Gyre.hold = 0
+        Gyre.hive = -1
+        Gyre.hh = 0
+        Gyre.frac = 0
+        Gyre.clock = 0
+        Gyre.hue = 0
+        Arcade.mode = Mode.TITLE
+        Arcade.pause = 0
+        Gyre_Pilot()
+        Sfx_Emit(SfxCode.GYRE)
+    }
+}
+
+Function.Gyre_FoeCount {
+    Output: Integer
+    Body: {
+        n = Multiply(Gyre.wave, 4)
+        n = Add(14, n)
+        IfCondition GreaterThan(n, 32) ThenBlock: { n = 32 }
+        ReturnValue(n)
+    }
+}
+
+Function.Gyre_ShipStep {
+    Output: Integer
+    Body: {
+        s = 2
+        t = Divide(Gyre.clock, 2700)
+        w = Subtract(Gyre.wave, 1)
+        w = Divide(w, 6)
+        s = Add(s, t)
+        s = Add(s, w)
+        IfCondition GreaterThan(s, 5) ThenBlock: { s = 5 }
+        IfCondition LessThan(s, 2) ThenBlock: { s = 2 }
+        ReturnValue(s)
+    }
+}
+
+Function.Gyre_FoeStep {
+    Output: Integer
+    Body: {
+        q = 2
+        t = Divide(Gyre.clock, 1800)
+        w = Subtract(Gyre.wave, 1)
+        w = Divide(w, 3)
+        q = Add(q, t)
+        q = Add(q, w)
+        IfCondition GreaterThan(q, 16) ThenBlock: { q = 16 }
+        IfCondition LessThan(q, 2) ThenBlock: { q = 2 }
+        ReturnValue(q)
+    }
+}
+
+Function.Gyre_FoePace {
+    Output: Integer
+    Body: {
+        q = Gyre_FoeStep()
+        s = 0
+        Gyre.frac = Add(Gyre.frac, q)
+        s = Divide(Gyre.frac, 4)
+        Gyre.frac = Modulo(Gyre.frac, 4)
+        ReturnValue(s)
+    }
+}
+
+Function.Gyre_Decade {
+    Output: Integer
+    Body: {
+        m = 0
+        IfCondition LessThan(Gyre.wave, 10) ThenBlock: { ReturnValue(0) }
+        m = Modulo(Gyre.wave, 10)
+        IfCondition NotEqual(m, 0) ThenBlock: { ReturnValue(0) }
+        ReturnValue(1)
+    }
+}
+
+Function.Gyre_QueenSheet {
+    Input: sz: Integer
+    Body: {
+        none = Subtract(0, 1)
+        IfCondition LessThan(sz, 4) ThenBlock: { ReturnValue(0) }
+        Gyre.surf = Gfx_Sheet("assets/gyre/queen-matriarch.svg", 0, sz, sz, none)
+    }
+}
+
+Function.Gyre_QueenGap {
+    Output: Integer
+    Body: {
+        d = Divide(Gyre.wave, 10)
+        h = Subtract(20, d)
+        IfCondition LessThan(h, 8) ThenBlock: { h = 8 }
+        ReturnValue(h)
+    }
+}
+
+Function.Gyre_QueenArm {
+    Body: {
+        hp = 0
+        id = 0
+        on = 0
+        Gyre.hive = -1
+        Gyre.hh = 0
+        on = Gyre_Decade()
+        IfCondition EqualTo(on, 0) ThenBlock: { ReturnValue(0) }
+        hp = Divide(Gyre.wave, 10)
+        hp = Multiply(hp, 2)
+        hp = Add(6, hp)
+        IfCondition GreaterThan(hp, 16) ThenBlock: { hp = 16 }
+        id = Gyre_SpawnAt(Kind.QUEEN, 0, 16, 0)
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(0) }
+        Ent_Set(id, EField.HP, hp)
+        Ent_Set(id, EField.ARM, 0)
+        Ent_Set(id, EField.ARM0, 0)
+        Gyre.hive = id
+        Gyre.hh = hp
+        Gyre.many = Add(Gyre.many, hp)
+        Gyre.nxt = 0
+    }
+}
+
+Function.Gyre_QueenSpin {
+    Body: {
+        live = 0
+        ang = 0
+        sp = 1
+        IfCondition LessThan(Gyre.hive, 0) ThenBlock: { ReturnValue(0) }
+        live = Ent_Alive(Gyre.hive)
+        IfCondition EqualTo(live, 0) ThenBlock: {
+            Gyre.hive = -1
+            ReturnValue(0)
+        }
+        IfCondition GreaterEqual(Gyre.wave, 20) ThenBlock: { sp = 2 }
+        IfCondition GreaterEqual(Gyre.wave, 40) ThenBlock: { sp = 3 }
+        ang = Ent_Get(Gyre.hive, EField.SLOT)
+        ang = Add(ang, sp)
+        ang = Modulo(ang, 256)
+        Ent_Set(Gyre.hive, EField.SLOT, ang)
+    }
+}
+
+Function.Gyre_QueenInk {
+    Output: Integer
+    Body: {
+        p = Multiply(Gyre.hue, 5)
+        u = 0
+        r = 40
+        g = 255
+        b = 90
+        col = 0
+        p = Modulo(p, 192)
+        IfCondition LessThan(p, 64) ThenBlock: {
+            r = Add(40, Multiply(p, 3))
+            g = 255
+            b = Add(80, Multiply(p, 2))
+        }
+        IfCondition GreaterEqual(p, 64) ThenBlock: {
+            IfCondition LessThan(p, 128) ThenBlock: {
+                u = Subtract(p, 64)
+                r = 255
+                g = Subtract(255, u)
+                b = Subtract(210, Multiply(u, 2))
+            }
+        }
+        IfCondition GreaterEqual(p, 128) ThenBlock: {
+            u = Subtract(p, 128)
+            r = Subtract(255, Multiply(u, 2))
+            g = Add(140, u)
+            b = 48
+        }
+        IfCondition GreaterThan(r, 255) ThenBlock: { r = 255 }
+        IfCondition LessThan(r, 0) ThenBlock: { r = 0 }
+        IfCondition GreaterThan(g, 255) ThenBlock: { g = 255 }
+        IfCondition LessThan(g, 0) ThenBlock: { g = 0 }
+        IfCondition GreaterThan(b, 255) ThenBlock: { b = 255 }
+        IfCondition LessThan(b, 0) ThenBlock: { b = 0 }
+        col = Arc_RGBA(r, g, b)
+        ReturnValue(col)
+    }
+}
+
+Function.Gyre_QueenRay {
+    Body: {
+        ang = 0
+        half = 0
+        a = 0
+        n = 0
+        i = 0
+        d = 0
+        x = 0
+        y = 0
+        col = 0
+        IfCondition LessThan(Gyre.hive, 0) ThenBlock: { ReturnValue(0) }
+        ang = Ent_Get(Gyre.hive, EField.SLOT)
+        half = Gyre_QueenGap()
+        col = Gyre_QueenInk()
+        a = Subtract(ang, half)
+        a = Add(a, 256)
+        a = Modulo(a, 256)
+        n = Multiply(half, 2)
+        n = Divide(n, 4)
+        IfCondition LessThan(n, 1) ThenBlock: { n = 1 }
+        WhileLoop LessThan(i, n) {
+            d = 8
+            WhileLoop LessThan(d, 72) {
+                Ring_Place(a, d)
+                x = World_X(Ring.x)
+                y = World_Y(Ring.y)
+                FB_SetPixel(x, y, col)
+                FB_SetPixel(Add(x, 1), y, col)
+                d = Add(d, 8)
+            }
+            a = Add(a, 4)
+            a = Modulo(a, 256)
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Gyre_QueenDraw {
+    Body: {
+        live = 0
+        sz = 0
+        ang = 0
+        IfCondition LessThan(Gyre.hive, 0) ThenBlock: { ReturnValue(0) }
+        live = Ent_Alive(Gyre.hive)
+        IfCondition EqualTo(live, 0) ThenBlock: { ReturnValue(0) }
+        Gyre_Near()
+        sz = Gyre.near
+        IfCondition LessThan(sz, 16) ThenBlock: { sz = 16 }
+        Gyre_QueenSheet(sz)
+        ang = Ent_Get(Gyre.hive, EField.SLOT)
+        Ring_Place(0, 0)
+        Ent_Set(Gyre.hive, EField.X, Ring.x)
+        Ent_Set(Gyre.hive, EField.Y, Ring.y)
+        IfCondition NotEqual(Gyre.surf, 0) ThenBlock: {
+            Blit.glow = 0
+            Blit.ghost = 0
+            Blit.tint = 0
+            Blit.nx = 0
+            Blit.ny = 0
+            Blit.cycle = Add(Gyre.hue, 1)
+            Blit.turn = ang
+            Ent_Blit(Gyre.hive, Gyre.surf, sz, sz, 0)
+        }
+        IfCondition EqualTo(Gyre.surf, 0) ThenBlock: {
+            px = World_X(Ring.x)
+            py = World_Y(Ring.y)
+            rx = Divide(sz, 2)
+            ink = Gyre_QueenInk()
+            DrawFx.step = 8
+            Draw_Oval(px, py, rx, rx, ink)
+            DrawFx.step = 6
+        }
+        Gyre_QueenRay()
+    }
+}
+
+Function.Gyre_QueenCatch {
+    Input: id: Integer
+    Body: {
+        live = 0
+        di = 0
+        ai = 0
+        aj = 0
+        gap = 0
+        half = 0
+        hp = 0
+        IfCondition LessThan(Gyre.hive, 0) ThenBlock: { ReturnValue(0) }
+        live = Ent_Alive(id)
+        IfCondition EqualTo(live, 0) ThenBlock: { ReturnValue(0) }
+        live = Ent_Alive(Gyre.hive)
+        IfCondition EqualTo(live, 0) ThenBlock: { ReturnValue(0) }
+        di = Ent_Get(id, EField.ACC)
+        IfCondition GreaterThan(di, 56) ThenBlock: { ReturnValue(0) }
+        ai = Ent_Get(id, EField.SLOT)
+        aj = Ent_Get(Gyre.hive, EField.SLOT)
+        gap = Gyre_AngGap(ai, aj)
+        half = Gyre_QueenGap()
+        IfCondition GreaterThan(gap, half) ThenBlock: {
+            IfCondition LessEqual(di, 40) ThenBlock: { Ent_Kill(id) }
+            ReturnValue(0)
+        }
+        hp = Ent_Get(Gyre.hive, EField.HP)
+        hp = Subtract(hp, 1)
+        Ent_Set(Gyre.hive, EField.HP, hp)
+        Gyre.hh = hp
+        Ent_Kill(id)
+        IfCondition LessEqual(hp, 0) ThenBlock: {
+            Gyre_BoomAt(aj, 48)
+            Ent_Kill(Gyre.hive)
+            Gyre.hive = -1
+            Gyre_ScoreHit()
+            Gyre.score = Add(Gyre.score, 1000)
+            Gyre_LifeUp()
+            ReturnValue(0)
+        }
+        Sfx_Emit(SfxCode.HIT)
+        Gyre_ScoreHit()
+    }
+}
+
+Function.Gyre_QueenUp {
+    Output: Integer
+    Body: {
+        live = 0
+        IfCondition LessThan(Gyre.hive, 0) ThenBlock: { ReturnValue(0) }
+        live = Ent_Alive(Gyre.hive)
+        ReturnValue(live)
+    }
+}
+
+Function.Gyre_QueenMark {
+    Body: {
+        live = 0
+        y = 0
+        n = 0
+        col = 0
+        IfCondition LessThan(Gyre.hive, 0) ThenBlock: { ReturnValue(0) }
+        live = Ent_Alive(Gyre.hive)
+        IfCondition EqualTo(live, 0) ThenBlock: { ReturnValue(0) }
+        col = Gyre_QueenInk()
+        y = Divide(World.fh, 8)
+        Hud_Center(y, "QUEEN", 5, col)
+        y = Add(y, Arcade.fsize)
+        y = Add(y, 6)
+        n = Hud_ItoA(World.font, Gyre.hh)
+        Hud_Center(y, World.font, n, col)
+    }
+}
+
+Function.Gyre_EmitFrom {
+    Body: {
+        live = 0
+        IfCondition LessThan(Gyre.hive, 0) ThenBlock: { ReturnValue(0) }
+        live = Ent_Alive(Gyre.hive)
+        IfCondition EqualTo(live, 0) ThenBlock: { ReturnValue(0) }
+        Gyre.nxt = Ent_Get(Gyre.hive, EField.SLOT)
+    }
+}
+
+Function.Gyre_FoeGap {
+    Output: Integer
+    Body: {
+        g = Multiply(Gyre.wave, 2)
+        g = Subtract(38, g)
+        IfCondition LessThan(g, 16) ThenBlock: { g = 16 }
+        ReturnValue(g)
+    }
+}
+
+Function.Gyre_Arm {
+    Body: {
+        n = Gyre_FoeCount()
+        hop = 8
+        Gyre.many = n
+        Gyre.left = n
+        Gyre.step = Gyre_FoeStep()
+        Gyre.gap = Gyre_FoeGap()
+        hop = Divide(256, n)
+        IfCondition LessThan(hop, 8) ThenBlock: { hop = 8 }
+        Gyre.hop = hop
+        Gyre.nxt = Modulo(Multiply(Gyre.wave, 20), 256)
+        Gyre.wait = Gyre.gap
+        Gyre.fired = 0
+        Gyre.hits = 0
+        Gyre.gave = 0
+        Gyre.bonus = 0
+        Gyre_QueenArm()
+    }
+}
+
+Function.Gyre_Start {
+    Body: {
+        Ent_Clear()
+        Gyre.lives = 3
+        Gyre.score = 0
+        Gyre.fired = 0
+        Gyre.hits = 0
+        Gyre.paid = 0
+        Gyre.sh = 2
+        Gyre.st = 0
+        Gyre.wave = 1
+        Gyre.cd = 0
+        Gyre.inv = 0
+        Gyre.hold = 0
+        Gyre.hive = -1
+        Gyre.hh = 0
+        Gyre.frac = 0
+        Gyre.clock = 0
+        Gyre.hue = 0
+        Arcade.mode = Mode.PLAY
+        Arcade.pause = 0
+        Gyre_Pilot()
+        Gyre_Arm()
+        Sfx_Emit(SfxCode.START)
+    }
+}
+
+Function.Gyre_BoomAt {
+    Input: ang: Integer
+    Input: depth: Integer
+    Body: {
+        id = Gyre_SpawnAt(Kind.BOOM, ang, depth, 0)
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(0) }
+        Ent_Set(id, EField.FR, 0)
+        Ent_Set(id, EField.ACC, depth)
+        Ent_Set(id, EField.LIFE, 16)
+        World.shake = Add(World.shake, 4)
+        Sfx_Emit(SfxCode.BOOM)
+    }
+}
+
+Function.Gyre_Absorb {
+    Output: Integer
+    Body: {
+        IfCondition LessEqual(Gyre.sh, 0) ThenBlock: { ReturnValue(0) }
+        Gyre.sh = Subtract(Gyre.sh, 1)
+        Gyre.st = 0
+        World.shake = Add(World.shake, 3)
+        Sfx_Emit(SfxCode.HIT)
+        ReturnValue(1)
+    }
+}
+
+Function.Gyre_Regen {
+    Body: {
+        need = 132
+        IfCondition LessThan(Gyre.pilot, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(Gyre.sh, 2) ThenBlock: {
+            Gyre.st = 0
+            ReturnValue(0)
+        }
+        Gyre.st = Add(Gyre.st, 1)
+        IfCondition EqualTo(Gyre.sh, 0) ThenBlock: { need = 240 }
+        IfCondition GreaterEqual(Gyre.st, need) ThenBlock: {
+            Gyre.sh = Add(Gyre.sh, 1)
+            Gyre.st = 0
+            Sfx_Emit(SfxCode.HIT)
+        }
+    }
+}
+
+Function.Gyre_ShieldCol {
+    Input: br: Integer
+    Output: Integer
+    Body: {
+        tmp = 0
+        cr = 0
+        cg = 0
+        cb = 0
+        col = 0
+        IfCondition EqualTo(Gyre.sh, 1) ThenBlock: {
+            br = Divide(br, 2)
+            br = Add(br, 20)
+        }
+        tmp = Multiply(br, 140)
+        tmp = Divide(tmp, 255)
+        cr = Add(28, tmp)
+        tmp = Multiply(br, 165)
+        tmp = Divide(tmp, 255)
+        cg = Add(90, tmp)
+        tmp = Multiply(br, 105)
+        tmp = Divide(tmp, 255)
+        cb = Add(150, tmp)
+        col = Arc_RGBA(cr, cg, cb)
+        ReturnValue(col)
+    }
+}
+
+Function.Gyre_Shield {
+    Body: {
+        ang = 0
+        px = 0
+        py = 0
+        base = 0
+        ry0 = 0
+        nring = 3
+        ring = 0
+        br = 0
+        col = 0
+        rx = 0
+        ry = 0
+        IfCondition LessEqual(Gyre.sh, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Gyre.pilot, 0) ThenBlock: { ReturnValue(0) }
+        ang = Ent_Get(Gyre.pilot, EField.SLOT)
+        Ring_Place(ang, 256)
+        px = World_X(Ring.x)
+        py = World_Y(Ring.y)
+        base = Divide(Gyre.near, 2)
+        base = Add(base, 4)
+        ry0 = Subtract(base, 2)
+        IfCondition EqualTo(Gyre.sh, 1) ThenBlock: { nring = 2 }
+        WhileLoop LessThan(ring, nring) {
+            br = Draw_ShieldBr(ring)
+            col = Gyre_ShieldCol(br)
+            rx = Add(base, Multiply(ring, 5))
+            ry = Add(ry0, Multiply(ring, 3))
+            Draw_Oval(px, py, rx, ry, col)
+            ring = Add(ring, 1)
+        }
+    }
+}
+
+Function.Gyre_Hurt {
+    Body: {
+        ang = 0
+        held = 0
+        IfCondition GreaterThan(Gyre.inv, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition NotEqual(Arcade.mode, Mode.PLAY) ThenBlock: { ReturnValue(0) }
+        held = Gyre_Absorb()
+        IfCondition EqualTo(held, 1) ThenBlock: { ReturnValue(0) }
+        ang = 64
+        IfCondition GreaterEqual(Gyre.pilot, 0) ThenBlock: {
+            ang = Ent_Get(Gyre.pilot, EField.SLOT)
+        }
+        Gyre_BoomAt(ang, 256)
+        Gyre.lives = Subtract(Gyre.lives, 1)
+        Sfx_Emit(SfxCode.DEATH)
+        IfCondition LessEqual(Gyre.lives, 0) ThenBlock: {
+            Ent_Kill(Gyre.pilot)
+            Gyre.pilot = -1
+            Arcade.mode = Mode.DEAD
+            Gyre.hold = 80
+            ReturnValue(0)
+        }
+        Gyre.inv = 80
+    }
+}
+
+Function.Gyre_Fire {
+    Body: {
+        ang = 64
+        n = 0
+        IfCondition GreaterThan(Gyre.cd, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition NotEqual(Key.f, 1) ThenBlock: { ReturnValue(0) }
+        n = Gyre_Count(Kind.PBULLET)
+        IfCondition GreaterEqual(n, 3) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(Gyre.pilot, 0) ThenBlock: {
+            ang = Ent_Get(Gyre.pilot, EField.SLOT)
+        }
+        Gyre_SpawnAt(Kind.PBULLET, ang, 240, -14)
+        Gyre.fired = Add(Gyre.fired, 1)
+        Gyre.cd = 7
+        Sfx_Emit(SfxCode.SHOT)
+    }
+}
+
+Function.Gyre_Steer {
+    Body: {
+        ang = 64
+        step = 0
+        IfCondition LessThan(Gyre.pilot, 0) ThenBlock: { ReturnValue(0) }
+        ang = Ent_Get(Gyre.pilot, EField.SLOT)
+        step = Gyre_ShipStep()
+        IfCondition EqualTo(Key.l, 1) ThenBlock: { ang = Add(ang, step) }
+        IfCondition EqualTo(Key.r, 1) ThenBlock: { ang = Subtract(ang, step) }
+        ang = Add(ang, 256)
+        ang = Modulo(ang, 256)
+        Ent_Set(Gyre.pilot, EField.SLOT, ang)
+        Ent_Set(Gyre.pilot, EField.ACC, 256)
+    }
+}
+
+Function.Gyre_Form {
+    Output: Integer
+    Body: {
+        f = Subtract(Gyre.wave, 1)
+        f = Modulo(f, 4)
+        ReturnValue(f)
+    }
+}
+
+Function.Gyre_SpawnOne {
+    Input: ang: Integer
+    Input: depth: Integer
+    Output: Integer
+    Body: {
+        id = Gyre_SpawnAt(Kind.BEE, ang, depth, Gyre.step)
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(-1) }
+        IfCondition GreaterEqual(Gyre.wave, 3) ThenBlock: {
+            Ent_Set(id, EField.ARM, 1)
+        }
+        ReturnValue(id)
+    }
+}
+
+Function.Gyre_SpawnStream {
+    Body: {
+        id = Gyre_SpawnOne(Gyre.nxt, 8)
+        IfCondition LessThan(id, 0) ThenBlock: { ReturnValue(0) }
+        Gyre.nxt = Add(Gyre.nxt, Gyre.hop)
+        Gyre.nxt = Modulo(Gyre.nxt, 256)
+        Gyre.left = Subtract(Gyre.left, 1)
+        Gyre.wait = Gyre.gap
+    }
+}
+
+Function.Gyre_SpawnRing {
+    Body: {
+        n = 6
+        hop = 8
+        ang = 0
+        i = 0
+        got = 0
+        id = 0
+        IfCondition LessThan(Gyre.left, n) ThenBlock: { n = Gyre.left }
+        IfCondition LessThan(n, 1) ThenBlock: { ReturnValue(0) }
+        hop = Divide(256, n)
+        IfCondition LessThan(hop, 8) ThenBlock: { hop = 8 }
+        ang = Gyre.nxt
+        WhileLoop LessThan(i, n) {
+            id = Gyre_SpawnOne(ang, 8)
+            IfCondition LessThan(id, 0) ThenBlock: { i = n }
+            IfCondition GreaterEqual(id, 0) ThenBlock: {
+                ang = Add(ang, hop)
+                ang = Modulo(ang, 256)
+                got = Add(got, 1)
+                i = Add(i, 1)
+            }
+        }
+        Gyre.left = Subtract(Gyre.left, got)
+        Gyre.nxt = ang
+        Gyre.wait = Add(Gyre.gap, 24)
+    }
+}
+
+Function.Gyre_SpawnColumn {
+    Body: {
+        ang = Gyre.nxt
+        got = 0
+        id = 0
+        IfCondition LessThan(Gyre.left, 3) ThenBlock: {
+            Gyre_SpawnStream()
+            ReturnValue(0)
+        }
+        id = Gyre_SpawnOne(ang, 8)
+        IfCondition GreaterEqual(id, 0) ThenBlock: { got = Add(got, 1) }
+        id = Gyre_SpawnOne(ang, 28)
+        IfCondition GreaterEqual(id, 0) ThenBlock: { got = Add(got, 1) }
+        id = Gyre_SpawnOne(ang, 48)
+        IfCondition GreaterEqual(id, 0) ThenBlock: { got = Add(got, 1) }
+        Gyre.left = Subtract(Gyre.left, got)
+        Gyre.nxt = Add(ang, 40)
+        Gyre.nxt = Modulo(Gyre.nxt, 256)
+        Gyre.wait = Gyre.gap
+    }
+}
+
+Function.Gyre_SpawnPair {
+    Body: {
+        ang = Gyre.nxt
+        opp = 0
+        got = 0
+        id = 0
+        IfCondition LessThan(Gyre.left, 2) ThenBlock: {
+            Gyre_SpawnStream()
+            ReturnValue(0)
+        }
+        id = Gyre_SpawnOne(ang, 8)
+        IfCondition GreaterEqual(id, 0) ThenBlock: { got = Add(got, 1) }
+        opp = Add(ang, 128)
+        opp = Modulo(opp, 256)
+        id = Gyre_SpawnOne(opp, 8)
+        IfCondition GreaterEqual(id, 0) ThenBlock: { got = Add(got, 1) }
+        Gyre.left = Subtract(Gyre.left, got)
+        Gyre.nxt = Add(ang, Gyre.hop)
+        Gyre.nxt = Modulo(Gyre.nxt, 256)
+        Gyre.wait = Gyre.gap
+    }
+}
+
+Function.Gyre_SpawnFoe {
+    Body: {
+        f = 0
+        IfCondition LessEqual(Gyre.left, 0) ThenBlock: { ReturnValue(0) }
+        Gyre_EmitFrom()
+        f = Gyre_Form()
+        IfCondition EqualTo(f, 1) ThenBlock: {
+            Gyre_SpawnRing()
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(f, 2) ThenBlock: {
+            Gyre_SpawnColumn()
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(f, 3) ThenBlock: {
+            Gyre_SpawnPair()
+            ReturnValue(0)
+        }
+        Gyre_SpawnStream()
+    }
+}
+
+Function.Gyre_FoeFire {
+    Input: id: Integer
+    Body: {
+        arm = Ent_Get(id, EField.ARM)
+        depth = Ent_Get(id, EField.ACC)
+        ang = Ent_Get(id, EField.SLOT)
+        IfCondition NotEqual(arm, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(depth, 90) ThenBlock: { ReturnValue(0) }
+        Gyre_SpawnAt(Kind.EBULLET, ang, depth, 7)
+        Ent_Set(id, EField.ARM, 0)
+        Sfx_Emit(SfxCode.ESHOT)
+    }
+}
+
+Function.Gyre_Advance {
+    Input: id: Integer
+    Body: {
+        depth = Ent_Get(id, EField.ACC)
+        vel = Ent_Get(id, EField.VY)
+        kind = Ent_Get(id, EField.KIND)
+        ang = Ent_Get(id, EField.SLOT)
+        IfCondition EqualTo(kind, Kind.BEE) ThenBlock: { vel = Gyre.step }
+        depth = Add(depth, vel)
+        IfCondition LessThan(depth, 4) ThenBlock: {
+            Ent_Kill(id)
+            ReturnValue(0)
+        }
+        IfCondition GreaterThan(depth, 256) ThenBlock: {
+            IfCondition EqualTo(kind, Kind.BEE) ThenBlock: {
+                gap = 64
+                IfCondition GreaterEqual(Gyre.pilot, 0) ThenBlock: {
+                    pang = Ent_Get(Gyre.pilot, EField.SLOT)
+                    gap = Gyre_AngGap(ang, pang)
+                }
+                IfCondition LessEqual(gap, 12) ThenBlock: { Gyre_Hurt() }
+            }
+            IfCondition EqualTo(kind, Kind.EBULLET) ThenBlock: {
+                gap = 64
+                IfCondition GreaterEqual(Gyre.pilot, 0) ThenBlock: {
+                    pang = Ent_Get(Gyre.pilot, EField.SLOT)
+                    gap = Gyre_AngGap(ang, pang)
+                }
+                IfCondition LessEqual(gap, 14) ThenBlock: { Gyre_Hurt() }
+            }
+            Ent_Kill(id)
+            ReturnValue(0)
+        }
+        Ent_Set(id, EField.ACC, depth)
+        IfCondition EqualTo(kind, Kind.BEE) ThenBlock: { Gyre_FoeFire(id) }
+    }
+}
+
+Function.Gyre_MoveActors {
+    Body: {
+        i = 0
+        k = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                k = Ent_Get(i, EField.KIND)
+                IfCondition EqualTo(k, Kind.BEE) ThenBlock: { Gyre_Advance(i) }
+                IfCondition EqualTo(k, Kind.PBULLET) ThenBlock: { Gyre_Advance(i) }
+                IfCondition EqualTo(k, Kind.EBULLET) ThenBlock: { Gyre_Advance(i) }
+            }
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Gyre_LifeUp {
+    Body: {
+        mark = Divide(Gyre.score, 40000)
+        gain = 0
+        IfCondition LessEqual(mark, Gyre.paid) ThenBlock: { ReturnValue(0) }
+        gain = Subtract(mark, Gyre.paid)
+        Gyre.lives = Add(Gyre.lives, gain)
+        Gyre.paid = mark
+    }
+}
+
+Function.Gyre_ScoreHit {
+    Body: {
+        pct = 0
+        Gyre.hits = Add(Gyre.hits, 1)
+        IfCondition GreaterThan(Gyre.fired, 0) ThenBlock: {
+            pct = Multiply(Gyre.hits, 100)
+            pct = Divide(pct, Gyre.fired)
+        }
+        Gyre.score = Add(Gyre.score, 100)
+        Gyre.score = Add(Gyre.score, pct)
+        Gyre_LifeUp()
+    }
+}
+
+Function.Gyre_Hits {
+    Body: {
+        i = 0
+        j = 0
+        ki = 0
+        kj = 0
+        gap = 0
+        dd = 0
+        live = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: {
+                ki = Ent_Get(i, EField.KIND)
+                IfCondition EqualTo(ki, Kind.PBULLET) ThenBlock: {
+                    j = 0
+                    WhileLoop LessThan(j, Ent.n) {
+                        IfCondition EqualTo(Ent_Alive(j), 1) ThenBlock: {
+                            kj = Ent_Get(j, EField.KIND)
+                            IfCondition EqualTo(kj, Kind.BEE) ThenBlock: {
+                                ai = Ent_Get(i, EField.SLOT)
+                                aj = Ent_Get(j, EField.SLOT)
+                                di = Ent_Get(i, EField.ACC)
+                                dj = Ent_Get(j, EField.ACC)
+                                gap = Gyre_AngGap(ai, aj)
+                                dd = Subtract(di, dj)
+                                IfCondition LessThan(dd, 0) ThenBlock: { dd = Subtract(0, dd) }
+                                IfCondition LessEqual(gap, 10) ThenBlock: {
+                                    IfCondition LessEqual(dd, 20) ThenBlock: {
+                                        Gyre_BoomAt(aj, dj)
+                                        Ent_Kill(j)
+                                        Ent_Kill(i)
+                                        Gyre_ScoreHit()
+                                    }
+                                }
+                            }
+                        }
+                        j = Add(j, 1)
+                    }
+                    live = Ent_Alive(i)
+                    IfCondition EqualTo(live, 1) ThenBlock: { Gyre_QueenCatch(i) }
+                }
+            }
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Gyre_WaveBonus {
+    Body: {
+        pct = 0
+        pay = 0
+        IfCondition EqualTo(Gyre.gave, 1) ThenBlock: { ReturnValue(0) }
+        Gyre.gave = 1
+        IfCondition GreaterThan(Gyre.fired, 0) ThenBlock: {
+            pct = Multiply(Gyre.hits, 100)
+            pct = Divide(pct, Gyre.fired)
+        }
+        IfCondition GreaterThan(pct, 100) ThenBlock: { pct = 100 }
+        pay = Multiply(Gyre.hits, pct)
+        pay = Multiply(pay, 10)
+        Gyre.bonus = pay
+        Gyre.score = Add(Gyre.score, pay)
+        Gyre_LifeUp()
+    }
+}
+
+Function.Gyre_WaveCard {
+    Body: {
+        fs = Arcade.fsize
+        y = 0
+        gap = 0
+        x = 0
+        nx = 0
+        n = 0
+        pct = 0
+        col = Arc_RGBA(255, 230, 120)
+        dim = Arc_RGBA(180, 210, 230)
+        IfCondition LessThan(fs, 14) ThenBlock: { fs = 14 }
+        y = Divide(World.fh, 6)
+        gap = Multiply(fs, 2)
+        x = Divide(World.fw, 6)
+        nx = Add(x, Multiply(fs, 10))
+        Hud_Center(y, "WAVE", 4, col)
+        y = Add(y, gap)
+        Hud_Text(x, y, "ENEMIES", 7, dim)
+        n = Hud_ItoA(World.font, Gyre.many)
+        Hud_Text(nx, y, World.font, n, col)
+        y = Add(y, gap)
+        Hud_Text(x, y, "KILLED", 6, dim)
+        n = Hud_ItoA(World.font, Gyre.hits)
+        Hud_Text(nx, y, World.font, n, col)
+        y = Add(y, gap)
+        Hud_Text(x, y, "SHOTS", 5, dim)
+        n = Hud_ItoA(World.font, Gyre.fired)
+        Hud_Text(nx, y, World.font, n, col)
+        y = Add(y, gap)
+        Hud_Text(x, y, "ACCURACY", 8, dim)
+        pct = 0
+        IfCondition GreaterThan(Gyre.fired, 0) ThenBlock: {
+            pct = Multiply(Gyre.hits, 100)
+            pct = Divide(pct, Gyre.fired)
+        }
+        IfCondition GreaterThan(pct, 100) ThenBlock: { pct = 100 }
+        n = Hud_ItoA(World.font, pct)
+        Hud_Text(nx, y, World.font, n, col)
+        y = Add(y, gap)
+        Hud_Text(x, y, "BONUS", 5, dim)
+        n = Hud_ItoA(World.font, Gyre.bonus)
+        Hud_Text(nx, y, World.font, n, col)
+    }
+}
+
+Function.Gyre_WaveClear {
+    Output: Integer
+    Body: {
+        n = 0
+        IfCondition GreaterThan(Gyre.left, 0) ThenBlock: { ReturnValue(0) }
+        n = Gyre_Count(Kind.BEE)
+        IfCondition GreaterThan(n, 0) ThenBlock: { ReturnValue(0) }
+        ReturnValue(1)
+    }
+}
+
+Function.Gyre_TickTitle {
+    Body: {
+        ang = 0
+        go = 0
+        Gyre_Near()
+        IfCondition GreaterEqual(Gyre.pilot, 0) ThenBlock: {
+            ang = Ent_Get(Gyre.pilot, EField.SLOT)
+            ang = Add(ang, 1)
+            ang = Modulo(ang, 256)
+            Ent_Set(Gyre.pilot, EField.SLOT, ang)
+        }
+        go = Set_Start()
+        IfCondition EqualTo(go, 1) ThenBlock: { Gyre_Start() }
+        Arcade.sk = Key.s
+    }
+}
+
+Function.Gyre_WaveDone {
+    Output: Integer
+    Body: {
+        ok = 0
+        up = 0
+        ok = Gyre_WaveClear()
+        IfCondition EqualTo(ok, 0) ThenBlock: { ReturnValue(0) }
+        up = Gyre_QueenUp()
+        IfCondition EqualTo(up, 1) ThenBlock: { ReturnValue(0) }
+        ReturnValue(1)
+    }
+}
+
+Function.Gyre_TickPlay {
+    Body: {
+        done = 0
+        Gyre.clock = Add(Gyre.clock, 1)
+        Gyre.hue = Add(Gyre.hue, 4)
+        Gyre.hue = Modulo(Gyre.hue, 256)
+        Gyre.step = Gyre_FoePace()
+        Gyre_QueenSpin()
+        Gyre_Near()
+        Gyre_Regen()
+        IfCondition GreaterThan(Gyre.cd, 0) ThenBlock: {
+            Gyre.cd = Subtract(Gyre.cd, 1)
+        }
+        IfCondition GreaterThan(Gyre.inv, 0) ThenBlock: {
+            Gyre.inv = Subtract(Gyre.inv, 1)
+        }
+        Gyre_Steer()
+        Gyre_Fire()
+        IfCondition GreaterThan(Gyre.left, 0) ThenBlock: {
+            Gyre.wait = Subtract(Gyre.wait, 1)
+            IfCondition LessEqual(Gyre.wait, 0) ThenBlock: { Gyre_SpawnFoe() }
+        }
+        Gyre_MoveActors()
+        Gyre_Hits()
+        Boom_Tick()
+        IfCondition EqualTo(Arcade.mode, Mode.PLAY) ThenBlock: {
+            done = Gyre_WaveDone()
+            IfCondition EqualTo(done, 1) ThenBlock: {
+                Arcade.mode = Mode.WAVE
+                Gyre.hold = 300
+                Gyre_WaveBonus()
+                Sfx_Emit(SfxCode.WAVE)
+            }
+        }
+    }
+}
+
+Function.Gyre_TickWave {
+    Body: {
+        go = Set_Start()
+        IfCondition EqualTo(go, 1) ThenBlock: { Gyre.hold = 0 }
+        Arcade.sk = Key.s
+        Gyre.hold = Subtract(Gyre.hold, 1)
+        Boom_Tick()
+        IfCondition GreaterThan(Gyre.hold, 0) ThenBlock: { ReturnValue(0) }
+        Gyre.wave = Add(Gyre.wave, 1)
+        Arcade.mode = Mode.PLAY
+        Gyre_Arm()
+    }
+}
+
+Function.Gyre_TickDead {
+    Body: {
+        Gyre.hold = Subtract(Gyre.hold, 1)
+        Boom_Tick()
+        IfCondition GreaterThan(Gyre.hold, 0) ThenBlock: { ReturnValue(0) }
+        Gyre_Open()
+    }
+}
+
+Function.Gyre_Tick {
+    Body: {
+        Star_TubeTick()
+        held = Set_Tick()
+        IfCondition EqualTo(held, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Arcade.pause, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Arcade.mode, Mode.TITLE) ThenBlock: {
+            Gyre_TickTitle()
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Arcade.mode, Mode.PLAY) ThenBlock: {
+            Gyre_TickPlay()
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Arcade.mode, Mode.WAVE) ThenBlock: {
+            Gyre_TickWave()
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Arcade.mode, Mode.DEAD) ThenBlock: {
+            Gyre_TickDead()
+            ReturnValue(0)
+        }
+    }
+}
+
+Function.Gyre_Put {
+    Input: id: Integer
+    Body: {
+        kind = Ent_Get(id, EField.KIND)
+        ang = Ent_Get(id, EField.SLOT)
+        depth = Ent_Get(id, EField.ACC)
+        sz = 0
+        fr = 0
+        IfCondition EqualTo(kind, Kind.QUEEN) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(kind, Kind.PLAYER) ThenBlock: {
+            IfCondition GreaterThan(Gyre.inv, 0) ThenBlock: {
+                fr = Modulo(Arcade.t, 4)
+                IfCondition LessThan(fr, 2) ThenBlock: { ReturnValue(0) }
+            }
+        }
+        sz = Gyre_Size(depth)
+        Gyre_Prep(kind, sz)
+        IfCondition EqualTo(Gyre.surf, 0) ThenBlock: { ReturnValue(0) }
+        Gyre.col = Gyre_View(ang)
+        IfCondition EqualTo(kind, Kind.BOOM) ThenBlock: {
+            fr = Ent_Get(id, EField.FR)
+            fr = Modulo(fr, 8)
+            Gyre.col = fr
+        }
+        Ring_Place(ang, depth)
+        Ent_Set(id, EField.X, Ring.x)
+        Ent_Set(id, EField.Y, Ring.y)
+        Blit.glow = 0
+        Blit.ghost = 0
+        Blit.nx = 0
+        Blit.ny = 0
+        Blit.tint = 0
+        Blit.cycle = 0
+        Blit.turn = 0
+        Ent_Blit(id, Gyre.surf, Gyre.fw, sz, Gyre.col)
+    }
+}
+
+Function.Gyre_Actors {
+    Body: {
+        i = 0
+        WhileLoop LessThan(i, Ent.n) {
+            IfCondition EqualTo(Ent_Alive(i), 1) ThenBlock: { Gyre_Put(i) }
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Gyre_Ring {
+    Input: depth: Integer
+    Input: col: Integer
+    Body: {
+        a = 0
+        x = 0
+        y = 0
+        WhileLoop LessThan(a, 256) {
+            Ring_Place(a, depth)
+            x = World_X(Ring.x)
+            y = World_Y(Ring.y)
+            FB_SetPixel(x, y, col)
+            a = Add(a, 4)
+        }
+    }
+}
+
+Function.Gyre_Rings {
+    Body: {
+        Gyre_Ring(48, Arc_RGBA(30, 50, 80))
+        Gyre_Ring(96, Arc_RGBA(40, 70, 110))
+        Gyre_Ring(144, Arc_RGBA(50, 90, 140))
+        Gyre_Ring(192, Arc_RGBA(70, 120, 170))
+        Gyre_Ring(240, Arc_RGBA(110, 160, 210))
+    }
+}
+
+Function.Gyre_LifeIcon {
+    Input: x: Integer
+    Body: {
+        sz = 16
+        y = Subtract(World.fh, Add(sz, 8))
+        Gyre_Prep(Kind.PLAYER, sz)
+        IfCondition EqualTo(Gyre.surf, 0) ThenBlock: { ReturnValue(0) }
+        Blit.glow = 0
+        Blit.ghost = 0
+        Blit.nx = 0
+        Blit.ny = 0
+        Blit.tint = 0
+        Blit.cycle = 0
+        Blit.turn = 0
+        Blit.dx = x
+        Blit.dy = y
+        sx = Multiply(sz, 2)
+        Blit_Cell(Gyre.surf, sx, 0, sz, sz)
+    }
+}
+
+Function.Gyre_Lives {
+    Body: {
+        sz = 16
+        gap = 4
+        step = 0
+        span = 0
+        x = 0
+        i = 0
+        n = Gyre.lives
+        IfCondition LessThan(n, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(n, 8) ThenBlock: { n = 8 }
+        step = Add(sz, gap)
+        span = Multiply(n, step)
+        x = Subtract(World.fw, span)
+        x = Subtract(x, 8)
+        WhileLoop LessThan(i, n) {
+            Gyre_LifeIcon(x)
+            x = Add(x, step)
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Gyre_Hud {
+    Body: {
+        n = 0
+        y = 0
+        col = Arc_RGBA(255, 230, 120)
+        dim = Arc_RGBA(180, 210, 230)
+        IfCondition EqualTo(World.font, 0) ThenBlock: { World.font = Allocate(32) }
+        IfCondition EqualTo(World.font, 0) ThenBlock: { ReturnValue(0) }
+        Hud_Resize()
+        IfCondition EqualTo(Arcade.mode, Mode.TITLE) ThenBlock: {
+            Hud_Center(Divide(World.fh, 3), "GYRE", 4, col)
+            Hud_Center(Divide(World.fh, 2), "ENTER", 5, dim)
+            ReturnValue(0)
+        }
+        y = Subtract(World.fh, Add(Arcade.fsize, 8))
+        IfCondition LessThan(y, 4) ThenBlock: { y = 4 }
+        n = Hud_ItoA(World.font, Gyre.score)
+        Hud_Text(12, y, World.font, n, col)
+        IfCondition GreaterThan(Gyre.fired, 0) ThenBlock: {
+            n = Multiply(Gyre.hits, 100)
+            n = Divide(n, Gyre.fired)
+        }
+        IfCondition EqualTo(Gyre.fired, 0) ThenBlock: { n = 0 }
+        n = Hud_ItoA(World.font, n)
+        Hud_Center(y, World.font, n, dim)
+        Gyre_Lives()
+        Gyre_QueenMark()
+        IfCondition EqualTo(Arcade.mode, Mode.WAVE) ThenBlock: {
+            Gyre_WaveCard()
+        }
+        IfCondition EqualTo(Arcade.mode, Mode.DEAD) ThenBlock: {
+            Hud_Center(Divide(World.fh, 2), "GYRE", 4, col)
+        }
+        IfCondition EqualTo(Arcade.pause, 1) ThenBlock: { Hud_Settings() }
+    }
+}
+
+Function.Gyre_Draw {
+    Body: {
+        Prof_Mark()
+        FB_FillRectFast(0, 0, World.fw, World.fh, FB_RGB(2, 4, 12))
+        Prof_Lap(4)
+        Star_TubeDraw()
+        Gyre_Rings()
+        Prof_Lap(5)
+        Gyre_QueenDraw()
+        Gyre_Actors()
+        Gyre_Shield()
+        Prof_Lap(6)
+        Gyre_Hud()
+        Prof_Lap(7)
+    }
+}

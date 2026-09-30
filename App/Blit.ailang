@@ -31,6 +31,8 @@ FixedPool.Blit {
     "pa":    Initialize=0, CanChange=True
     "n":     Initialize=0, CanChange=True
     "tint":  Initialize=0, CanChange=True
+    "cycle": Initialize=0, CanChange=True
+    "turn":  Initialize=0, CanChange=True
     "glow":  Initialize=0, CanChange=True
     "ghost": Initialize=0, CanChange=True
     "nx":    Initialize=0, CanChange=True
@@ -177,8 +179,91 @@ Function.Blit_GhostRow {
     }
 }
 
+Function.Blit_CycleRow {
+    Body: {
+        phase = Subtract(Blit.cycle, 1)
+        phase = Add(phase, Blit.turn)
+        phase = Add(phase, 1024)
+        phase = Modulo(phase, 256)
+        midx = Divide(Blit.w, 2)
+        midy = Divide(Blit.h, 2)
+        Blit.col = 0
+        WhileLoop LessThan(Blit.col, Blit.w) {
+            Blit.off = Multiply(Blit.col, 4)
+            Blit.pa = GetByte(Blit.srow, Add(Blit.off, 3))
+            IfCondition GreaterThan(Blit.pa, 0) ThenBlock: {
+                b = GetByte(Blit.srow, Blit.off)
+                g = GetByte(Blit.srow, Add(Blit.off, 1))
+                r = GetByte(Blit.srow, Add(Blit.off, 2))
+                luma = Add(r, g)
+                luma = Add(luma, b)
+                luma = Divide(luma, 3)
+                IfCondition LessThan(luma, 28) ThenBlock: {
+                    SetByte(Blit.drow, Blit.off, b)
+                    SetByte(Blit.drow, Add(Blit.off, 1), g)
+                    SetByte(Blit.drow, Add(Blit.off, 2), r)
+                    SetByte(Blit.drow, Add(Blit.off, 3), Blit.pa)
+                }
+                IfCondition GreaterEqual(luma, 28) ThenBlock: {
+                    dx = Subtract(Blit.col, midx)
+                    dy = Subtract(Blit.row, midy)
+                    spin = Multiply(dx, 2)
+                    spin = Add(spin, Multiply(dy, 3))
+                    spin = Add(spin, phase)
+                    spin = Add(spin, Divide(luma, 2))
+                    spin = Add(spin, 8192)
+                    spin = Modulo(spin, 256)
+                    seg = Divide(spin, 64)
+                    u = Modulo(spin, 64)
+                    cr = 210
+                    cg = 214
+                    cb = 220
+                    IfCondition EqualTo(seg, 0) ThenBlock: {
+                        cr = Add(180, u)
+                        cg = Subtract(210, Divide(u, 2))
+                        cb = Subtract(220, u)
+                    }
+                    IfCondition EqualTo(seg, 1) ThenBlock: {
+                        cr = 255
+                        cg = Subtract(190, u)
+                        cb = Add(48, u)
+                    }
+                    IfCondition EqualTo(seg, 2) ThenBlock: {
+                        cr = Subtract(255, Multiply(u, 2))
+                        cg = Add(140, u)
+                        cb = Add(60, u)
+                    }
+                    IfCondition EqualTo(seg, 3) ThenBlock: {
+                        cr = Add(90, Multiply(u, 2))
+                        cg = Subtract(220, u)
+                        cb = Subtract(180, u)
+                    }
+                    IfCondition GreaterThan(cr, 255) ThenBlock: { cr = 255 }
+                    IfCondition LessThan(cr, 0) ThenBlock: { cr = 0 }
+                    IfCondition GreaterThan(cg, 255) ThenBlock: { cg = 255 }
+                    IfCondition LessThan(cg, 0) ThenBlock: { cg = 0 }
+                    IfCondition GreaterThan(cb, 255) ThenBlock: { cb = 255 }
+                    IfCondition LessThan(cb, 0) ThenBlock: { cb = 0 }
+                    r = Divide(Add(r, cr), 2)
+                    g = Divide(Add(g, cg), 2)
+                    b = Divide(Add(b, cb), 2)
+                    SetByte(Blit.drow, Blit.off, b)
+                    SetByte(Blit.drow, Add(Blit.off, 1), g)
+                    SetByte(Blit.drow, Add(Blit.off, 2), r)
+                    SetByte(Blit.drow, Add(Blit.off, 3), Blit.pa)
+                }
+            }
+            Blit.col = Add(Blit.col, 1)
+        }
+    }
+}
+
 Function.Blit_Row {
     Body: {
+        IfCondition GreaterThan(Blit.cycle, 0) ThenBlock: {
+            Blit_CycleRow()
+            ReturnValue(0)
+        }
         IfCondition GreaterThan(Blit.ghost, 0) ThenBlock: {
             Prof.ghost = Add(Prof.ghost, 1)
             Blit_GhostRow()

@@ -1,0 +1,172 @@
+// App/Ring.ailang — 256-step circle. Angle 0 is +X, 64 is +Y (down).
+// Sine is Q10: 1024 means 1. Depth 0 is the vanishing point, 256 is the rim.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+FixedPool.Ring {
+    "tab": Initialize=0, CanChange=True
+    "ok":  Initialize=0, CanChange=True
+    "x":   Initialize=512, CanChange=True
+    "y":   Initialize=512, CanChange=True
+}
+
+Function.Ring_Put {
+    Input: i: Integer
+    Input: v: Integer
+    Body: {
+        off = Multiply(i, 8)
+        StoreValue(Add(Ring.tab, off), v)
+    }
+}
+
+Function.Ring_Fill {
+    Body: {
+        Ring_Put(0, 0)
+        Ring_Put(1, 25)
+        Ring_Put(2, 50)
+        Ring_Put(3, 75)
+        Ring_Put(4, 100)
+        Ring_Put(5, 125)
+        Ring_Put(6, 150)
+        Ring_Put(7, 175)
+        Ring_Put(8, 200)
+        Ring_Put(9, 224)
+        Ring_Put(10, 249)
+        Ring_Put(11, 273)
+        Ring_Put(12, 297)
+        Ring_Put(13, 321)
+        Ring_Put(14, 345)
+        Ring_Put(15, 369)
+        Ring_Put(16, 392)
+        Ring_Put(17, 415)
+        Ring_Put(18, 438)
+        Ring_Put(19, 460)
+        Ring_Put(20, 483)
+        Ring_Put(21, 505)
+        Ring_Put(22, 526)
+        Ring_Put(23, 548)
+        Ring_Put(24, 569)
+        Ring_Put(25, 590)
+        Ring_Put(26, 610)
+        Ring_Put(27, 630)
+        Ring_Put(28, 650)
+        Ring_Put(29, 669)
+        Ring_Put(30, 688)
+        Ring_Put(31, 706)
+        Ring_Put(32, 724)
+        Ring_Put(33, 742)
+        Ring_Put(34, 759)
+        Ring_Put(35, 775)
+        Ring_Put(36, 792)
+        Ring_Put(37, 807)
+        Ring_Put(38, 822)
+        Ring_Put(39, 837)
+        Ring_Put(40, 851)
+        Ring_Put(41, 865)
+        Ring_Put(42, 878)
+        Ring_Put(43, 891)
+        Ring_Put(44, 903)
+        Ring_Put(45, 915)
+        Ring_Put(46, 926)
+        Ring_Put(47, 936)
+        Ring_Put(48, 946)
+        Ring_Put(49, 955)
+        Ring_Put(50, 964)
+        Ring_Put(51, 972)
+        Ring_Put(52, 980)
+        Ring_Put(53, 987)
+        Ring_Put(54, 993)
+        Ring_Put(55, 999)
+        Ring_Put(56, 1004)
+        Ring_Put(57, 1009)
+        Ring_Put(58, 1013)
+        Ring_Put(59, 1016)
+        Ring_Put(60, 1019)
+        Ring_Put(61, 1021)
+        Ring_Put(62, 1023)
+        Ring_Put(63, 1024)
+        Ring_Put(64, 1024)
+    }
+}
+
+Function.Ring_Init {
+    Body: {
+        IfCondition EqualTo(Ring.ok, 1) ThenBlock: { ReturnValue(0) }
+        Ring.tab = Allocate(520)
+        IfCondition EqualTo(Ring.tab, 0) ThenBlock: { ReturnValue(0) }
+        Ring_Fill()
+        Ring.ok = 1
+    }
+}
+
+Function.Ring_Quarter {
+    Input: i: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessThan(i, 0) ThenBlock: { i = 0 }
+        IfCondition GreaterThan(i, 64) ThenBlock: { i = 64 }
+        IfCondition EqualTo(Ring.ok, 0) ThenBlock: { Ring_Init() }
+        IfCondition EqualTo(Ring.tab, 0) ThenBlock: { ReturnValue(0) }
+        off = Multiply(i, 8)
+        ReturnValue(Dereference(Add(Ring.tab, off)))
+    }
+}
+
+Function.Ring_Sin {
+    Input: a: Integer
+    Output: Integer
+    Body: {
+        a = Add(a, 256)
+        a = Modulo(a, 256)
+        quad = Divide(a, 64)
+        i = Modulo(a, 64)
+        v = 0
+        IfCondition EqualTo(quad, 0) ThenBlock: { v = Ring_Quarter(i) }
+        IfCondition EqualTo(quad, 1) ThenBlock: {
+            i = Subtract(64, i)
+            v = Ring_Quarter(i)
+        }
+        IfCondition EqualTo(quad, 2) ThenBlock: {
+            v = Ring_Quarter(i)
+            v = Subtract(0, v)
+        }
+        IfCondition EqualTo(quad, 3) ThenBlock: {
+            i = Subtract(64, i)
+            v = Ring_Quarter(i)
+            v = Subtract(0, v)
+        }
+        ReturnValue(v)
+    }
+}
+
+Function.Ring_Cos {
+    Input: a: Integer
+    Output: Integer
+    Body: {
+        a = Add(a, 64)
+        ReturnValue(Ring_Sin(a))
+    }
+}
+
+Function.Ring_Place {
+    Input: ang: Integer
+    Input: depth: Integer
+    Body: {
+        r = 0
+        c = 0
+        s = 0
+        x = 0
+        y = 0
+        IfCondition LessThan(depth, 0) ThenBlock: { depth = 0 }
+        IfCondition GreaterThan(depth, 256) ThenBlock: { depth = 256 }
+        r = Multiply(430, depth)
+        r = Divide(r, 256)
+        c = Ring_Cos(ang)
+        s = Ring_Sin(ang)
+        x = Multiply(c, r)
+        x = Divide(x, 1024)
+        y = Multiply(s, r)
+        y = Divide(y, 1024)
+        Ring.x = Add(512, x)
+        Ring.y = Add(512, y)
+    }
+}

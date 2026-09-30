@@ -35,6 +35,7 @@ static int stage_n;
 static char title_file[512];
 static char queen_file[512];
 static char gyre_file[512];
+static char lobby_file[512];
 static int music_cur = -1;
 static int music_mode;
 static ma_sound bgm;
@@ -76,6 +77,7 @@ static void scan_music(const char *root) {
     title_file[0] = 0;
     queen_file[0] = 0;
     gyre_file[0] = 0;
+    lobby_file[0] = 0;
     snprintf(music_dir, sizeof music_dir, "%s/assets/music", root);
     DIR *d = opendir(music_dir);
     if (!d) return;
@@ -88,7 +90,9 @@ static void scan_music(const char *root) {
         if (music_n >= MUSIC_CAP) break;
         snprintf(music_files[music_n], sizeof music_files[0], "%s", n);
         music_n++;
-        if (has_ci(n, "turn us around")) {
+        if (has_ci(n, "melow") || has_ci(n, "mellow") || has_ci(n, "lobby")) {
+            snprintf(lobby_file, sizeof lobby_file, "%s", n);
+        } else if (has_ci(n, "turn us around")) {
             snprintf(title_file, sizeof title_file, "%s", n);
         } else if (has_ci(n, "queen")) {
             snprintf(queen_file, sizeof queen_file, "%s", n);
@@ -146,6 +150,13 @@ static void bgm_title(void) {
     else bgm_next();
 }
 
+/* Mode 5. The select menu loops the lobby track. */
+static void bgm_lobby(void) {
+    if (lobby_file[0]) bgm_play_file(lobby_file, 1, 5);
+    else if (title_file[0]) bgm_play_file(title_file, 1, 2);
+    else bgm_next();
+}
+
 static void bgm_queen(void) {
     if (queen_file[0]) bgm_play_file(queen_file, 1, 3);
     else bgm_next();
@@ -186,9 +197,10 @@ int arcade_audio_init(const char *root) {
     engine_ok = 1;
     primed = 0;
     seen = 0;
-    fprintf(stderr, "arcade audio: sfx from %s/assets/sfx  music=%d stage=%d title=%s queen=%s gyre=%s\n",
+    fprintf(stderr, "arcade audio: sfx from %s/assets/sfx  music=%d stage=%d title=%s queen=%s gyre=%s lobby=%s\n",
             use, music_n, stage_n, title_file[0] ? title_file : "-",
-            queen_file[0] ? queen_file : "-", gyre_file[0] ? gyre_file : "-");
+            queen_file[0] ? queen_file : "-", gyre_file[0] ? gyre_file : "-",
+            lobby_file[0] ? lobby_file : "-");
     return 1;
 }
 
@@ -199,6 +211,7 @@ void arcade_audio_play(int code) {
     if (code == 10) { bgm_title(); return; }
     if (code == 11) { bgm_queen(); return; }
     if (code == 12) { bgm_gyre(); return; }
+    if (code == 13) { bgm_lobby(); return; }
     if (code < 1 || code > 7) return;
     if (clip[code][0] == 0) return;
     ma_sound_group *g = grp_ok ? &grp_sfx : NULL;

@@ -8,8 +8,11 @@ Import.App.Ipc
 Import.App.Sfx
 
 FixedPool.SetIo {
-    "buf": Initialize=0, CanChange=True
-    "ok":  Initialize=0, CanChange=True
+    "buf":   Initialize=0, CanChange=True
+    "ok":    Initialize=0, CanChange=True
+    "u0":    Initialize=0, CanChange=True
+    "d0":    Initialize=0, CanChange=True
+    "leave": Initialize=0, CanChange=True
 }
 
 Function.Set_Clamp {
@@ -94,6 +97,7 @@ Function.Set_Load {
 Function.Set_Bump {
     Input: d: Integer
     Body: {
+        IfCondition GreaterThan(Arcade.sel, 1) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Arcade.sel, 0) ThenBlock: {
             v = Add(Arcade.mv, d)
             Arcade.mv = Set_Clamp(v)
@@ -112,6 +116,32 @@ Function.Set_Close {
         Arcade.pause = 0
         Arcade.sw = 18
         Arcade.sk = 1
+    }
+}
+
+Function.Set_Row {
+    Body: {
+        IfCondition EqualTo(Key.u, 1) ThenBlock: {
+            IfCondition EqualTo(SetIo.u0, 0) ThenBlock: {
+                Arcade.sel = Subtract(Arcade.sel, 1)
+                IfCondition LessThan(Arcade.sel, 0) ThenBlock: { Arcade.sel = 0 }
+            }
+        }
+        IfCondition EqualTo(Key.d, 1) ThenBlock: {
+            IfCondition EqualTo(SetIo.d0, 0) ThenBlock: {
+                Arcade.sel = Add(Arcade.sel, 1)
+                IfCondition GreaterThan(Arcade.sel, 2) ThenBlock: { Arcade.sel = 2 }
+            }
+        }
+        SetIo.u0 = Key.u
+        SetIo.d0 = Key.d
+    }
+}
+
+Function.Set_Confirm {
+    Body: {
+        IfCondition EqualTo(Arcade.sel, 2) ThenBlock: { SetIo.leave = 1 }
+        Set_Close()
     }
 }
 
@@ -146,8 +176,7 @@ Function.Set_Tick {
         }
         Arcade.pk = pnow
         IfCondition EqualTo(Arcade.pause, 0) ThenBlock: { ReturnValue(0) }
-        IfCondition EqualTo(Key.u, 1) ThenBlock: { Arcade.sel = 0 }
-        IfCondition EqualTo(Key.d, 1) ThenBlock: { Arcade.sel = 1 }
+        Set_Row()
         IfCondition GreaterThan(Arcade.rw, 0) ThenBlock: {
             Arcade.rw = Subtract(Arcade.rw, 1)
         }
@@ -165,7 +194,7 @@ Function.Set_Tick {
         snow = Key.s
         IfCondition EqualTo(snow, 1) ThenBlock: {
             IfCondition EqualTo(Arcade.sk, 0) ThenBlock: {
-                Set_Close()
+                Set_Confirm()
             }
         }
         Arcade.sk = snow

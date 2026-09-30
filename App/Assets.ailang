@@ -230,10 +230,10 @@ Function.Gfx_KeepSheet {
         hit = Gfx_FindSheet(path, w, h)
         IfCondition NotEqual(hit, 0) ThenBlock: { ReturnValue(hit) }
         IfCondition EqualTo(Sheet.base, 0) ThenBlock: {
-            Sheet.base = Allocate(4096)
+            Sheet.base = Allocate(65536)
         }
         IfCondition EqualTo(Sheet.base, 0) ThenBlock: { ReturnValue(surf) }
-        IfCondition GreaterEqual(Sheet.n, 128) ThenBlock: { ReturnValue(surf) }
+        IfCondition GreaterEqual(Sheet.n, 2048) ThenBlock: { ReturnValue(surf) }
         rec = Add(Sheet.base, Multiply(Sheet.n, 32))
         StoreValue(rec, path)
         StoreValue(Add(rec, 8), w)
@@ -535,6 +535,15 @@ Function.Gfx_Take {
     }
 }
 
+Function.Gfx_Arm {
+    Body: {
+        IfCondition EqualTo(Sheet.ready, 1) ThenBlock: { ReturnValue(0) }
+        SVG_Init()
+        VIF_Init()
+        Sheet.ready = 1
+    }
+}
+
 Function.Gfx_Reload {
     Output: Integer
     Body: {
@@ -543,11 +552,7 @@ Function.Gfx_Reload {
         IfCondition And(EqualTo(Gfx.ok, 1), EqualTo(Gfx.cell, cell)) ThenBlock: {
             ReturnValue(0)
         }
-        IfCondition EqualTo(Sheet.ready, 0) ThenBlock: {
-            SVG_Init()
-            VIF_Init()
-            Sheet.ready = 1
-        }
+        Gfx_Arm()
         wide = Multiply(5, cell)
         Gfx.player = Gfx_Sheet("assets/ships/player.svg", "assets/ships/player.tvg", wide, cell, 0)
         Gfx.bee = Gfx_Sheet("assets/enemies/bee.svg", "assets/enemies/bee.tvg", wide, cell, 1)

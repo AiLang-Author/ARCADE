@@ -486,7 +486,7 @@ static gboolean on_tick(GtkWidget *w, GdkFrameClock *, gpointer) {
     hp_prev = t0;
     hp_ticks++;
     g = read_gen(&slot);
-    if (g != last_gen && g >= 0) {
+    if (g != last_gen && g > 0) {
         long long a, d;
         if (last_gen >= 0 && g > last_gen + 1) hp_skips += g - last_gen - 1;
         a = mono_us();
@@ -643,7 +643,7 @@ int main(int argc, char **argv) {
     {
         int slot = 0;
         int g = read_gen(&slot);
-        if (g >= 0 && load_frame(slot)) {
+        if (g > 0 && load_frame(slot)) {
             last_gen = g;
             if (use_shm) shm_put();
             else gtk_widget_queue_draw(draw_area);
