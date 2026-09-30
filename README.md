@@ -25,6 +25,10 @@ only and are not in this repository.
 The desktop launcher is named ARCADE. Its icon is the neon cabinet in
 `assets/hud/icons`.
 
+
+![Cabinet screen](noway-home/arcade.png)
+
+
 ## NOWAY HOME
 
 A hive has captured a carrier near Earth and is using the fleet for food. You
@@ -36,7 +40,7 @@ home.
 - Captures that can be reversed by destroying the captor
 - Queen battles, drive-part pickups, shields, extra lives, and score bonuses
 
-![Cabinet screen](noway-home/arcade.png)
+
 
 ![Title screen](noway-home/Intro.png)
 
@@ -63,6 +67,8 @@ memory is unavailable.
 The kernel writes two frame slots and a generation count. The host shows the
 slot the kernel is not drawing, and it ignores generation 0 so a leftover
 frame from the previous session is not painted at startup.
+
+![Grye screen](noway-home/gyre.png)
 
 ## Performance
 
