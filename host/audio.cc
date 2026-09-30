@@ -4,7 +4,6 @@
 #define MINIAUDIO_IMPLEMENTATION
 #define MA_NO_ENCODING
 #define MA_NO_FLAC
-#define MA_NO_MP3
 #define MA_NO_GENERATION
 #include "miniaudio.h"
 
@@ -35,6 +34,7 @@ static char stage_files[MUSIC_CAP][512];
 static int stage_n;
 static char title_file[512];
 static char queen_file[512];
+static char gyre_file[512];
 static int music_cur = -1;
 static int music_mode;
 static ma_sound bgm;
@@ -75,6 +75,7 @@ static void scan_music(const char *root) {
     stage_n = 0;
     title_file[0] = 0;
     queen_file[0] = 0;
+    gyre_file[0] = 0;
     snprintf(music_dir, sizeof music_dir, "%s/assets/music", root);
     DIR *d = opendir(music_dir);
     if (!d) return;
@@ -83,7 +84,7 @@ static void scan_music(const char *root) {
         const char *n = e->d_name;
         size_t L = strlen(n);
         if (L < 5) continue;
-        if (strcasecmp(n + L - 4, ".wav") != 0) continue;
+        if (strcasecmp(n + L - 4, ".mp3") != 0) continue;
         if (music_n >= MUSIC_CAP) break;
         snprintf(music_files[music_n], sizeof music_files[0], "%s", n);
         music_n++;
@@ -91,6 +92,8 @@ static void scan_music(const char *root) {
             snprintf(title_file, sizeof title_file, "%s", n);
         } else if (has_ci(n, "queen")) {
             snprintf(queen_file, sizeof queen_file, "%s", n);
+        } else if (has_ci(n, "gyre") || has_ci(n, "iron cluster")) {
+            snprintf(gyre_file, sizeof gyre_file, "%s", n);
         } else if (stage_n < MUSIC_CAP) {
             snprintf(stage_files[stage_n], sizeof stage_files[0], "%s", n);
             stage_n++;
@@ -148,6 +151,16 @@ static void bgm_queen(void) {
     else bgm_next();
 }
 
+/* Mode 4. Missing file stays silent so the NOWAY HOME title cannot leak in. */
+static void bgm_gyre(void) {
+    if (!gyre_file[0]) {
+        bgm_stop();
+        return;
+    }
+    if (bgm_loaded && music_mode == 4) return;
+    bgm_play_file(gyre_file, 1, 4);
+}
+
 int arcade_audio_init(const char *root) {
     const char *use = ".";
     if (root && try_root(root)) use = root;
@@ -173,9 +186,9 @@ int arcade_audio_init(const char *root) {
     engine_ok = 1;
     primed = 0;
     seen = 0;
-    fprintf(stderr, "arcade audio: sfx from %s/assets/sfx  music=%d stage=%d title=%s queen=%s\n",
-            use, music_n, stage_n, title_file[0] ? title_file : "-", queen_file[0] ? queen_file : "-");
-    bgm_title();
+    fprintf(stderr, "arcade audio: sfx from %s/assets/sfx  music=%d stage=%d title=%s queen=%s gyre=%s\n",
+            use, music_n, stage_n, title_file[0] ? title_file : "-",
+            queen_file[0] ? queen_file : "-", gyre_file[0] ? gyre_file : "-");
     return 1;
 }
 
@@ -185,6 +198,7 @@ void arcade_audio_play(int code) {
     if (code == 9) { bgm_stop(); return; }
     if (code == 10) { bgm_title(); return; }
     if (code == 11) { bgm_queen(); return; }
+    if (code == 12) { bgm_gyre(); return; }
     if (code < 1 || code > 7) return;
     if (clip[code][0] == 0) return;
     ma_sound_group *g = grp_ok ? &grp_sfx : NULL;

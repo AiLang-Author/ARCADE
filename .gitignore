@@ -8,3 +8,4 @@ a.out
 scripts/__pycache__/
 __pycache__/
 wave.png
+assets/music/*.wav
