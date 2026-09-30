@@ -36,6 +36,8 @@ home.
 - Captures that can be reversed by destroying the captor
 - Queen battles, drive-part pickups, shields, extra lives, and score bonuses
 
+![Cabinet screen](noway-home/arcade.png)
+
 ![Title screen](noway-home/Intro.png)
 
 ![Gameplay](noway-home/gameplay.png)
