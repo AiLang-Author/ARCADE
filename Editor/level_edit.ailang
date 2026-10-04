@@ -1,0 +1,81 @@
+// Editor/level_edit.ailang — standalone level editor.
+// Does not link the cabinet. Pictures come from svg, tvg, and png files on disk.
+//
+// Build: ailang.x Editor/level_edit.ailang level_edit.x
+// Run:   ./scripts/run_editor.sh
+//
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.SVG
+LibraryImport.Display.Render.Framebuffer
+LibraryImport.Display.Render.VIF
+LibraryImport.Display.Render.DSurface
+LibraryImport.Browser.ImageDecode
+Import.App.State
+Import.App.World
+Import.App.Blit
+Import.Editor.Ipc
+Import.Editor.Edit
+Import.Editor.Ui
+
+Function.DebugLog_Push {
+    Input: tag: Address
+    Input: n: Integer
+    Output: Integer
+    Body: { ReturnValue(0) }
+}
+
+SubRoutine.Main {
+    ok = 0
+    hit = 0
+    PrintMessage("level editor /dev/shm/level_edit\n")
+    Ed_Ensure()
+    Arena_Init()
+    SVG_Init()
+    VIF_Init()
+    ok = Ed_Boot()
+    IfCondition EqualTo(ok, 0) ThenBlock: {
+        PrintMessage("FAIL alloc\n")
+        SystemCall(60, 1, 0, 0)
+    }
+    Ed_PollSize()
+    IfCondition NotEqual(World.ok, 1) ThenBlock: {
+        hit = World_SetSize(900, 720)
+        IfCondition EqualTo(hit, Subtract(0, 1)) ThenBlock: {
+            PrintMessage("FAIL fb\n")
+            SystemCall(60, 1, 0, 0)
+        }
+    }
+    Ed_FitPx()
+    Ed_Arm()
+    Ed.run = 1
+    WhileLoop EqualTo(Ed.run, 1) {
+        Ed.tick = Add(Ed.tick, 1)
+        Ed_PollSize()
+        IfCondition GreaterThan(Ed.tick, 1) ThenBlock: { Ed_Fit() }
+        ElseBlock: { Ed_FitPx() }
+        Ed_PollKeys()
+        hit = Ed_PollCmd()
+        IfCondition EqualTo(hit, 1) ThenBlock: { Ed.run = 0 }
+        Ed_Mouse()
+        Ed_Input()
+        IfCondition EqualTo(Ed.page, 1) ThenBlock: { Ed_DrawBeh() }
+        ElseBlock: {
+            IfCondition EqualTo(Ed.page, 2) ThenBlock: { Ed_DrawChar() }
+            ElseBlock: {
+                IfCondition EqualTo(Ed.page, 3) ThenBlock: { Ed_DrawFile() }
+                ElseBlock: {
+                    IfCondition EqualTo(Ed.page, 4) ThenBlock: { Ed_DrawSfx() }
+                    ElseBlock: {
+                        Ed_Draw()
+                        Ed_Chrome()
+                    }
+                }
+            }
+        }
+        Ed_Present()
+        Ed_Sleep(16)
+    }
+}
+RunTask(Main)

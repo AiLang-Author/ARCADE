@@ -1,0 +1,291 @@
+// Circuit/Ipc.ailang — present a frame on /dev/shm/circuit.
+// The cabinet stays on /dev/shm/arcade_app. The editor stays on level_edit.
+// Copyright (c) 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.Display.Render.Framebuffer
+Import.App.State
+Import.App.World
+
+Function.Ci_Ensure {
+    Output: Integer
+    Body: {
+        SystemCall(83, "/dev/shm", 493)
+        SystemCall(83, "/dev/shm/circuit", 493)
+        ReturnValue(1)
+    }
+}
+
+Function.Ci_Open {
+    Input: kind: Integer
+    Input: flags: Integer
+    Input: mode: Integer
+    Output: Integer
+    Body: {
+        fd = Subtract(0, 1)
+        IfCondition EqualTo(kind, 1) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/meta.bin", flags, mode) }
+        IfCondition EqualTo(kind, 2) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/frame.tmp", flags, mode) }
+        IfCondition EqualTo(kind, 3) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/gen.tmp", flags, mode) }
+        IfCondition EqualTo(kind, 4) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/size.txt", flags, mode) }
+        IfCondition EqualTo(kind, 5) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/keys.txt", flags, mode) }
+        IfCondition EqualTo(kind, 6) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/cmd.txt", flags, mode) }
+        IfCondition EqualTo(kind, 7) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/pointer.bin", 0, 0) }
+        IfCondition EqualTo(kind, 8) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/sfx.bin", flags, mode) }
+        ReturnValue(fd)
+    }
+}
+
+Function.Ci_Rename {
+    Input: kind: Integer
+    Body: {
+        IfCondition EqualTo(kind, 0) ThenBlock: {
+            SystemCall(82, "/dev/shm/circuit/frame.tmp", "/dev/shm/circuit/frame0.raw")
+        }
+        IfCondition EqualTo(kind, 1) ThenBlock: {
+            SystemCall(82, "/dev/shm/circuit/frame.tmp", "/dev/shm/circuit/frame1.raw")
+        }
+        IfCondition EqualTo(kind, 2) ThenBlock: {
+            SystemCall(82, "/dev/shm/circuit/gen.tmp", "/dev/shm/circuit/gen.txt")
+        }
+    }
+}
+
+Function.Ci_Sleep {
+    Input: ms: Integer
+    Body: {
+        sec = 0
+        nsec = 0
+        IfCondition EqualTo(Ipc.ts, 0) ThenBlock: { Ipc.ts = Allocate(16) }
+        IfCondition LessThan(ms, 1) ThenBlock: { ms = 1 }
+        sec = Divide(ms, 1000)
+        nsec = Modulo(ms, 1000)
+        nsec = Multiply(nsec, 1000000)
+        StoreValue(Ipc.ts, sec)
+        StoreValue(Add(Ipc.ts, 8), nsec)
+        SystemCall(35, Ipc.ts, 0)
+    }
+}
+
+Function.Ci_WriteAll {
+    Input: fd: Integer
+    Input: ptr: Address
+    Input: n: Integer
+    Output: Integer
+    Body: {
+        left = 0
+        at = 0
+        got = 0
+        left = n
+        at = ptr
+        WhileLoop GreaterThan(left, 0) {
+            got = SystemCall(1, fd, at, left)
+            IfCondition LessEqual(got, 0) ThenBlock: { ReturnValue(0) }
+            at = Add(at, got)
+            left = Subtract(left, got)
+        }
+        ReturnValue(1)
+    }
+}
+
+Function.Ci_Skip {
+    Input: s: Address
+    Input: off: Integer
+    Output: Integer
+    Body: {
+        Ipc.i = off
+        WhileLoop LessThan(Ipc.i, 96) {
+            Ipc.c = GetByte(s, Ipc.i)
+            IfCondition EqualTo(Ipc.c, 0) ThenBlock: { ReturnValue(Ipc.i) }
+            IfCondition EqualTo(Ipc.c, 32) ThenBlock: { ReturnValue(Add(Ipc.i, 1)) }
+            IfCondition EqualTo(Ipc.c, 10) ThenBlock: { ReturnValue(Ipc.i) }
+            Ipc.i = Add(Ipc.i, 1)
+        }
+        ReturnValue(Ipc.i)
+    }
+}
+
+Function.Ci_U32 {
+    Input: p: Address
+    Input: off: Integer
+    Output: Integer
+    Body: {
+        q = 0
+        b = 0
+        v = 0
+        q = Add(p, off)
+        b = GetByte(q, 0)
+        v = b
+        b = GetByte(q, 1)
+        v = Add(v, Multiply(b, 256))
+        b = GetByte(q, 2)
+        v = Add(v, Multiply(b, 65536))
+        b = GetByte(q, 3)
+        v = Add(v, Multiply(b, 16777216))
+        ReturnValue(v)
+    }
+}
+
+Function.Ci_Present {
+    Output: Integer
+    Body: {
+        back = 0
+        wrote = 0
+        Ci_Ensure()
+        IfCondition EqualTo(Ipc.hdr, 0) ThenBlock: { Ipc.hdr = Allocate(16) }
+        IfCondition EqualTo(Ipc.hdr, 0) ThenBlock: { ReturnValue(0) }
+        Arc_LE32(Ipc.hdr, 0, FB.width)
+        Arc_LE32(Ipc.hdr, 4, FB.height)
+        Arc_LE32(Ipc.hdr, 8, FB.pitch)
+        Ipc.fd = Ci_Open(1, 577, 420)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(1, Ipc.fd, Ipc.hdr, 12)
+        SystemCall(3, Ipc.fd)
+        back = Subtract(1, Ipc.pub)
+        IfCondition NotEqual(back, 0) ThenBlock: {
+            IfCondition NotEqual(back, 1) ThenBlock: { back = 0 }
+        }
+        Ipc.n = Multiply(FB.pitch, FB.height)
+        Ipc.fd = Ci_Open(2, 577, 420)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        wrote = Ci_WriteAll(Ipc.fd, FB_GetDrawBuffer(), Ipc.n)
+        SystemCall(3, Ipc.fd)
+        IfCondition EqualTo(wrote, 0) ThenBlock: { ReturnValue(0) }
+        Ci_Rename(back)
+        Ipc.pub = back
+        Ipc.gen = Add(Ipc.gen, 1)
+        IfCondition LessThan(Ipc.gen, 1) ThenBlock: { Ipc.gen = 1 }
+        IfCondition EqualTo(Ipc.genb, 0) ThenBlock: { Ipc.genb = Allocate(32) }
+        IfCondition EqualTo(Ipc.genb, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.n = 0
+        Ipc.i = Ipc.gen
+        WhileLoop GreaterThan(Ipc.i, 0) {
+            SetByte(Add(Ipc.genb, 16), Ipc.n, Add(48, Modulo(Ipc.i, 10)))
+            Ipc.n = Add(Ipc.n, 1)
+            Ipc.i = Divide(Ipc.i, 10)
+        }
+        Ipc.w = 0
+        WhileLoop LessThan(Ipc.w, Ipc.n) {
+            SetByte(Ipc.genb, Ipc.w, GetByte(Add(Ipc.genb, 16), Subtract(Subtract(Ipc.n, 1), Ipc.w)))
+            Ipc.w = Add(Ipc.w, 1)
+        }
+        SetByte(Ipc.genb, Ipc.n, 32)
+        SetByte(Ipc.genb, Add(Ipc.n, 1), Add(48, Ipc.pub))
+        SetByte(Ipc.genb, Add(Ipc.n, 2), 10)
+        Ipc.fd = Ci_Open(3, 577, 420)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(1, Ipc.fd, Ipc.genb, Add(Ipc.n, 3))
+        SystemCall(3, Ipc.fd)
+        Ci_Rename(2)
+        ReturnValue(1)
+    }
+}
+
+Function.Ci_PollSize {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.size, 0) ThenBlock: { Ipc.size = Allocate(64) }
+        Ipc.fd = Ci_Open(4, 0, 0)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.n = SystemCall(0, Ipc.fd, Ipc.size, 48)
+        SystemCall(3, Ipc.fd)
+        IfCondition LessEqual(Ipc.n, 0) ThenBlock: { ReturnValue(0) }
+        SetByte(Ipc.size, Ipc.n, 0)
+        Scratch.a = Arc_Atoi(Ipc.size)
+        Ipc.i = Ci_Skip(Ipc.size, 0)
+        Scratch.b = Arc_Atoi(Add(Ipc.size, Ipc.i))
+        IfCondition LessThan(Scratch.a, 32) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Scratch.b, 32) ThenBlock: { ReturnValue(0) }
+        ReturnValue(World_SetSize(Scratch.a, Scratch.b))
+    }
+}
+
+Function.Ci_PollKeys {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.keys, 0) ThenBlock: { Ipc.keys = Allocate(64) }
+        Ipc.fd = Ci_Open(5, 0, 0)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.n = SystemCall(0, Ipc.fd, Ipc.keys, 48)
+        SystemCall(3, Ipc.fd)
+        IfCondition LessEqual(Ipc.n, 0) ThenBlock: { ReturnValue(0) }
+        SetByte(Ipc.keys, Ipc.n, 0)
+        Key.l = Arc_Atoi(Ipc.keys)
+        Ipc.i = Ci_Skip(Ipc.keys, 0)
+        Key.r = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ci_Skip(Ipc.keys, Ipc.i)
+        Key.u = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ci_Skip(Ipc.keys, Ipc.i)
+        Key.d = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ci_Skip(Ipc.keys, Ipc.i)
+        Key.f = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ci_Skip(Ipc.keys, Ipc.i)
+        Key.s = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ci_Skip(Ipc.keys, Ipc.i)
+        Key.p = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ci_Skip(Ipc.keys, Ipc.i)
+        Ipc.i = Ci_Skip(Ipc.keys, Ipc.i)
+        Cv.xk = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        ReturnValue(1)
+    }
+}
+
+Function.Ci_PollCmd {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.cmd, 0) ThenBlock: { Ipc.cmd = Allocate(64) }
+        Ipc.fd = Ci_Open(6, 0, 0)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.n = SystemCall(0, Ipc.fd, Ipc.cmd, 48)
+        SystemCall(3, Ipc.fd)
+        IfCondition LessEqual(Ipc.n, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.c = GetByte(Ipc.cmd, 0)
+        Ipc.fd = Ci_Open(6, 577, 420)
+        IfCondition GreaterEqual(Ipc.fd, 0) ThenBlock: { SystemCall(3, Ipc.fd) }
+        IfCondition EqualTo(Ipc.c, 113) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(Ipc.c, 81) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Ci_PollPtr {
+    Output: Integer
+    Body: {
+        n = 0
+        seq = 0
+        behind = 0
+        base = 0
+        i = 0
+        slot = 0
+        off = 0
+        cmd = 0
+        quit = 0
+        IfCondition EqualTo(Cv.pbuf, 0) ThenBlock: { Cv.pbuf = Allocate(544) }
+        IfCondition EqualTo(Cv.pbuf, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.fd = Ci_Open(7, 0, 0)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        n = SystemCall(0, Ipc.fd, Cv.pbuf, 544)
+        SystemCall(3, Ipc.fd)
+        IfCondition LessThan(n, 32) ThenBlock: { ReturnValue(0) }
+        seq = Ci_U32(Cv.pbuf, 0)
+        behind = Subtract(seq, Cv.seq)
+        IfCondition GreaterThan(behind, 32) ThenBlock: { behind = 32 }
+        IfCondition LessThan(behind, 0) ThenBlock: { behind = 0 }
+        base = Subtract(seq, behind)
+        i = 0
+        quit = 0
+        WhileLoop LessThan(i, behind) {
+            slot = Add(base, i)
+            slot = Modulo(slot, 32)
+            off = Multiply(slot, 16)
+            off = Add(32, off)
+            off = Add(off, 12)
+            cmd = Ci_U32(Cv.pbuf, off)
+            IfCondition EqualTo(cmd, 113) ThenBlock: { quit = 1 }
+            IfCondition EqualTo(cmd, 81) ThenBlock: { quit = 1 }
+            IfCondition EqualTo(cmd, 27) ThenBlock: { quit = 1 }
+            i = Add(i, 1)
+        }
+        Cv.seq = seq
+        ReturnValue(quit)
+    }
+}

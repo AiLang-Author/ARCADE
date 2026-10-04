@@ -32,6 +32,12 @@
 static char dir[512];
 static char path_meta[600], path_frame[600], path_gen[600];
 static char path_cmd[600], path_keys[600], path_size[600], path_sfx[600], path_vol[600];
+static char path_ptr[600];
+static int fd_ptr = -1;
+static int ed_down = 0;
+static int ed_x = 0;
+static int ed_y = 0;
+static uint32_t ed_kseq = 0;
 
 static GtkWidget *win, *draw_area, *menu_bar, *status;
 static cairo_surface_t *surf;
@@ -41,7 +47,9 @@ static XShmSegmentInfo xshm;
 static GC xgc;
 static int use_shm, xw, xh;
 static int last_gen = -1, fw = 800, fh = 600;
-static int k_l, k_r, k_u, k_d, k_f, k_s, k_p;
+static int k_l, k_r, k_u, k_d, k_f, k_s, k_p, k_n, k_x;
+static char win_title[128];
+static int editor_keys;
 static int last_dw, last_dh;
 
 /* Host side of prof.txt. gap is the tick period. idle is the wait until
@@ -141,9 +149,134 @@ static void write_cmd(const char *s) {
 
 static void write_keys(void) {
     char buf[64];
-    snprintf(buf, sizeof buf, "%d %d %d %d %d %d %d\n",
-             k_l, k_r, k_u, k_d, k_f, k_s, k_p);
+    snprintf(buf, sizeof buf, "%d %d %d %d %d %d %d %d %d\n",
+             k_l, k_r, k_u, k_d, k_f, k_s, k_p, k_n, k_x);
     write_file(path_keys, buf);
+}
+
+/* Pointer file: 32-byte head, then 32 edges of 16 bytes.
+ * Motions update the head only. Presses, releases, and keys append an
+ * edge so a click is still there when the editor next reads. */
+enum { ED_RING = 32 };
+struct EdEv { uint32_t x, y, btn, cmd; };
+static EdEv ed_ring[ED_RING];
+static uint32_t ed_edge = 0;
+static uint32_t cur_x = 0, cur_y = 0, cur_btn = 0;
+
+static void publish_ptr(void) {
+    uint32_t head[8];
+    if (fd_ptr < 0) return;
+    head[0] = ed_edge;
+    head[1] = cur_x;
+    head[2] = cur_y;
+    head[3] = cur_btn;
+    head[4] = 0;
+    head[5] = 0;
+    head[6] = 0;
+    head[7] = 0;
+    if (lseek(fd_ptr, 32, SEEK_SET) < 0) return;
+    if (write(fd_ptr, ed_ring, sizeof ed_ring) < 0) return;
+    if (lseek(fd_ptr, 0, SEEK_SET) < 0) return;
+    if (write(fd_ptr, head, sizeof head) < 0) return;
+}
+
+static void push_edge(int btn, int cmd) {
+    EdEv *e;
+    if (fd_ptr < 0) return;
+    e = &ed_ring[ed_edge % ED_RING];
+    e->x = cur_x;
+    e->y = cur_y;
+    e->btn = (uint32_t)btn;
+    e->cmd = (uint32_t)cmd;
+    ed_edge++;
+    publish_ptr();
+}
+
+static void write_ptr(int x, int y, int btn, int cmd) {
+    cur_x = (uint32_t)x;
+    cur_y = (uint32_t)y;
+    ed_x = x;
+    ed_y = y;
+    if (cmd) {
+        push_edge(btn, cmd);
+        return;
+    }
+    cur_btn = (uint32_t)btn;
+    push_edge(btn, 0);
+}
+
+static gboolean on_motion(GtkWidget *, GdkEventMotion *ev, gpointer) {
+    cur_x = (uint32_t)ev->x;
+    cur_y = (uint32_t)ev->y;
+    ed_x = (int)ev->x;
+    ed_y = (int)ev->y;
+    publish_ptr();
+    return FALSE;
+}
+
+static gboolean on_button(GtkWidget *w, GdkEventButton *ev, gpointer) {
+    gtk_widget_grab_focus(w);
+    if (ev->button == 1) {
+        ed_down = (ev->type == GDK_BUTTON_PRESS) ? 1 : 0;
+        write_ptr((int)ev->x, (int)ev->y, ed_down, 0);
+        return TRUE;
+    }
+    if (ev->button == 3) {
+        int btn = (ev->type == GDK_BUTTON_PRESS) ? 2 : ed_down;
+        write_ptr((int)ev->x, (int)ev->y, btn, 0);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+/* Keypad scan codes are not in numeric order. KEY_KP7 is 71 and KEY_KP1
+ * is 79, so a range from KP1 to KP9 never matches. Map each key. */
+static int editor_char(int code) {
+    if (code >= KEY_1 && code <= KEY_9) return '1' + (code - KEY_1);
+    if (code == KEY_0 || code == KEY_KP0) return '0';
+    if (code == KEY_KP1) return '1';
+    if (code == KEY_KP2) return '2';
+    if (code == KEY_KP3) return '3';
+    if (code == KEY_KP4) return '4';
+    if (code == KEY_KP5) return '5';
+    if (code == KEY_KP6) return '6';
+    if (code == KEY_KP7) return '7';
+    if (code == KEY_KP8) return '8';
+    if (code == KEY_KP9) return '9';
+    if (code == KEY_BACKSPACE || code == KEY_DELETE) return 8;
+    if (code == KEY_ENTER || code == KEY_KPENTER) return 13;
+    if (code == KEY_MINUS || code == KEY_KPMINUS) return '-';
+    if (code == KEY_A) return 'a';
+    if (code == KEY_B) return 'b';
+    if (code == KEY_C) return 'c';
+    if (code == KEY_D) return 'd';
+    if (code == KEY_E) return 'e';
+    if (code == KEY_F) return 'f';
+    if (code == KEY_G) return 'g';
+    if (code == KEY_H) return 'h';
+    if (code == KEY_I) return 'i';
+    if (code == KEY_J) return 'j';
+    if (code == KEY_K) return 'k';
+    if (code == KEY_L) return 'l';
+    if (code == KEY_M) return 'm';
+    if (code == KEY_N) return 'n';
+    if (code == KEY_O) return 'o';
+    if (code == KEY_P) return 'p';
+    if (code == KEY_Q) return 'q';
+    if (code == KEY_R) return 'r';
+    if (code == KEY_S) return 's';
+    if (code == KEY_T) return 't';
+    if (code == KEY_U) return 'u';
+    if (code == KEY_V) return 'v';
+    if (code == KEY_W) return 'w';
+    if (code == KEY_X) return 'x';
+    if (code == KEY_Y) return 'y';
+    if (code == KEY_Z) return 'z';
+    return 0;
+}
+
+static gboolean on_edit_key(GtkWidget *, GdkEventKey *, gpointer) {
+    return FALSE;
 }
 
 static void write_size(int w, int h) {
@@ -431,12 +564,26 @@ static void note_key(int code, int down, int edge) {
     else if (code == KEY_Z || code == KEY_SPACE) slot = &k_f;
     else if (code == KEY_ENTER || code == KEY_KPENTER) slot = &k_s;
     else if (code == KEY_P) slot = &k_p;
+    else if (code == KEY_N) slot = &k_n;
+    else if (code == KEY_X) slot = &k_x;
     else if (edge && (code == KEY_ESC || code == KEY_Q)) {
         if (win && gtk_window_is_active(GTK_WINDOW(win))) {
+            if (editor_keys && code == KEY_ESC) {
+                push_edge((int)cur_btn, 27);
+                return;
+            }
+            if (editor_keys && code == KEY_Q) {
+                push_edge((int)cur_btn, 'q');
+                return;
+            }
             write_cmd("quit");
             gtk_main_quit();
         }
         return;
+    }
+    if (editor_keys && down && win && gtk_window_is_active(GTK_WINDOW(win))) {
+        int ch = editor_char(code);
+        if (ch && (edge || ch == 8)) push_edge((int)cur_btn, ch);
     }
     if (!slot) return;
     *slot = down ? 1 : 0;
@@ -459,7 +606,7 @@ static void evdev_poll(void) {
 
 static void publish_keys(void) {
     if (!win || !gtk_window_is_active(GTK_WINDOW(win))) {
-        write_file(path_keys, "0 0 0 0 0 0 0\n");
+        write_file(path_keys, "0 0 0 0 0 0 0 0 0\n");
         return;
     }
     write_keys();
@@ -569,6 +716,13 @@ int main(int argc, char **argv) {
     const char *d = "/dev/shm/arcade_app";
     if (argc > 1 && argv[1] && argv[1][0]) d = argv[1];
     snprintf(dir, sizeof dir, "%s", d);
+    /* Copy before gtk_init, which permutes argv. No title keeps "Arcade". */
+    snprintf(win_title, sizeof win_title, "%s", "Arcade");
+    editor_keys = 0;
+    if (argc > 2 && argv[2] && argv[2][0]) {
+        snprintf(win_title, sizeof win_title, "%s", argv[2]);
+        editor_keys = 1;
+    }
     mkdir(dir, 0755);
     snprintf(path_meta, sizeof path_meta, "%s/meta.bin", dir);
     snprintf(path_frame, sizeof path_frame, "%s/frame.raw", dir);
@@ -581,7 +735,7 @@ int main(int argc, char **argv) {
 
     gtk_init(&argc, &argv);
     win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(win), "Arcade");
+    gtk_window_set_title(GTK_WINDOW(win), win_title);
     gtk_window_set_default_size(GTK_WINDOW(win), 900, 720);
     gtk_window_set_resizable(GTK_WINDOW(win), TRUE);
     g_signal_connect(win, "delete-event", G_CALLBACK(on_delete), NULL);
@@ -599,25 +753,27 @@ int main(int argc, char **argv) {
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_container_add(GTK_CONTAINER(win), vbox);
 
-    GtkWidget *menu = gtk_menu_bar_new();
-    menu_bar = menu;
-    GtkWidget *game_item = gtk_menu_item_new_with_label("Game");
-    GtkWidget *game_menu = gtk_menu_new();
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(game_item), game_menu);
-    GtkWidget *mi;
-    mi = gtk_menu_item_new_with_label("Start");
-    g_signal_connect(mi, "activate", G_CALLBACK(cb_menu), (gpointer)"start");
-    gtk_menu_shell_append(GTK_MENU_SHELL(game_menu), mi);
-    mi = gtk_menu_item_new_with_label("Pause / Settings");
-    g_signal_connect(mi, "activate", G_CALLBACK(cb_menu), (gpointer)"pause");
-    gtk_menu_shell_append(GTK_MENU_SHELL(game_menu), mi);
-    mi = gtk_menu_item_new_with_label("Quit");
-    g_signal_connect(mi, "activate", G_CALLBACK(cb_menu), (gpointer)"quit");
-    g_signal_connect(mi, "activate", G_CALLBACK(gtk_main_quit), NULL);
-    gtk_menu_shell_append(GTK_MENU_SHELL(game_menu), mi);
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu), game_item);
-    gtk_widget_set_can_focus(menu, FALSE);
-    gtk_box_pack_start(GTK_BOX(vbox), menu, FALSE, FALSE, 0);
+    if (!editor_keys) {
+        GtkWidget *menu = gtk_menu_bar_new();
+        menu_bar = menu;
+        GtkWidget *game_item = gtk_menu_item_new_with_label("Game");
+        GtkWidget *game_menu = gtk_menu_new();
+        gtk_menu_item_set_submenu(GTK_MENU_ITEM(game_item), game_menu);
+        GtkWidget *mi;
+        mi = gtk_menu_item_new_with_label("Start");
+        g_signal_connect(mi, "activate", G_CALLBACK(cb_menu), (gpointer)"start");
+        gtk_menu_shell_append(GTK_MENU_SHELL(game_menu), mi);
+        mi = gtk_menu_item_new_with_label("Pause / Settings");
+        g_signal_connect(mi, "activate", G_CALLBACK(cb_menu), (gpointer)"pause");
+        gtk_menu_shell_append(GTK_MENU_SHELL(game_menu), mi);
+        mi = gtk_menu_item_new_with_label("Quit");
+        g_signal_connect(mi, "activate", G_CALLBACK(cb_menu), (gpointer)"quit");
+        g_signal_connect(mi, "activate", G_CALLBACK(gtk_main_quit), NULL);
+        gtk_menu_shell_append(GTK_MENU_SHELL(game_menu), mi);
+        gtk_menu_shell_append(GTK_MENU_SHELL(menu), game_item);
+        gtk_widget_set_can_focus(menu, FALSE);
+        gtk_box_pack_start(GTK_BOX(vbox), menu, FALSE, FALSE, 0);
+    }
 
     draw_area = gtk_drawing_area_new();
     gtk_widget_set_app_paintable(draw_area, TRUE);
@@ -629,9 +785,28 @@ int main(int argc, char **argv) {
     g_signal_connect(draw_area, "configure-event", G_CALLBACK(on_configure), NULL);
     gtk_box_pack_start(GTK_BOX(vbox), draw_area, TRUE, TRUE, 0);
 
-    status = gtk_label_new("Arrows move · Z/Space fire · Enter start · P pause/settings · Esc quit");
-    gtk_widget_set_halign(status, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(vbox), status, FALSE, FALSE, 2);
+    if (editor_keys) {
+        snprintf(path_ptr, sizeof path_ptr, "%s/pointer.bin", dir);
+        fd_ptr = open(path_ptr, O_RDWR | O_CREAT, 0644);
+        if (fd_ptr >= 0 && ftruncate(fd_ptr, 32 + ED_RING * 16) != 0) {
+            /* a short pointer file is ignored by the editor */
+        }
+        gtk_widget_set_can_focus(draw_area, TRUE);
+        gtk_widget_add_events(draw_area,
+            GDK_POINTER_MOTION_MASK | GDK_BUTTON_PRESS_MASK |
+            GDK_BUTTON_RELEASE_MASK | GDK_BUTTON1_MOTION_MASK |
+            GDK_KEY_PRESS_MASK);
+        g_signal_connect(draw_area, "motion-notify-event", G_CALLBACK(on_motion), NULL);
+        g_signal_connect(draw_area, "button-press-event", G_CALLBACK(on_button), NULL);
+        g_signal_connect(draw_area, "button-release-event", G_CALLBACK(on_button), NULL);
+        g_signal_connect(draw_area, "key-press-event", G_CALLBACK(on_edit_key), NULL);
+    }
+
+    if (!editor_keys) {
+        status = gtk_label_new("Arrows move · Z/Space fire · Enter start · P pause/settings · Esc quit");
+        gtk_widget_set_halign(status, GTK_ALIGN_START);
+        gtk_box_pack_start(GTK_BOX(vbox), status, FALSE, FALSE, 2);
+    }
 
     evdev_open_all();
     write_keys();

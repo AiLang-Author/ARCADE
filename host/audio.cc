@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -25,7 +26,7 @@ static ma_engine engine;
 static int engine_ok;
 static int primed;
 static uint32_t seen;
-static char clip[8][640];
+static char clip[32][640];
 
 static char music_dir[512];
 static char music_files[MUSIC_CAP][512];
@@ -51,6 +52,31 @@ static const char *kName[8] = {
     "", "shot.wav", "eshot.wav", "boom.wav",
     "hit.wav", "death.wav", "wave.wav", "start.wav"
 };
+
+/* Circuit codes 14..23. ray.wav is the gun; enemy-shot.wav fills in
+ * until that file is dropped in the same folder. */
+static const char *kCircuit[10] = {
+    "jump.wav", "land.wav", "hurt.wav", "stomp.wav", "ray.wav",
+    "goal.wav", "checkpoint.wav", "powerup.wav", "derez.wav", "crouch.wav"
+};
+
+static void load_circuit(const char *use) {
+    char path[640];
+    int i;
+    for (i = 0; i < 10; i++) {
+        int code = 14 + i;
+        snprintf(path, sizeof path, "%s/assets/circuit/audio/sfx/%s", use, kCircuit[i]);
+        if (access(path, R_OK) == 0) {
+            snprintf(clip[code], sizeof clip[code], "%s", path);
+            continue;
+        }
+        if (code == 18) {
+            snprintf(path, sizeof path, "%s/assets/circuit/audio/sfx/enemy-shot.wav", use);
+            if (access(path, R_OK) == 0)
+                snprintf(clip[code], sizeof clip[code], "%s", path);
+        }
+    }
+}
 
 static int le32u(const uint8_t *p) {
     return (int)(p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24));
@@ -180,6 +206,7 @@ int arcade_audio_init(const char *root) {
     for (int i = 1; i < 8; i++) {
         snprintf(clip[i], sizeof clip[i], "%s/assets/sfx/%s", use, kName[i]);
     }
+    load_circuit(use);
     scan_music(use);
     srand((unsigned)time(NULL) ^ (unsigned)getpid());
     ma_engine_config cfg = ma_engine_config_init();
@@ -212,6 +239,12 @@ void arcade_audio_play(int code) {
     if (code == 11) { bgm_queen(); return; }
     if (code == 12) { bgm_gyre(); return; }
     if (code == 13) { bgm_lobby(); return; }
+    if (code >= 14 && code < 32) {
+        if (clip[code][0] == 0) return;
+        ma_sound_group *g = grp_ok ? &grp_sfx : NULL;
+        ma_engine_play_sound(&engine, clip[code], g);
+        return;
+    }
     if (code < 1 || code > 7) return;
     if (clip[code][0] == 0) return;
     ma_sound_group *g = grp_ok ? &grp_sfx : NULL;
@@ -243,8 +276,160 @@ void arcade_audio_poll_vol(const char *vol_path) {
     arcade_audio_set_vol(m, s);
 }
 
+/* Editor writes "<gen> <path>" into <shm>/preview.txt. One gen plays once. */
+static ma_sound preview_snd;
+static int preview_live;
+static int preview_gen;
+
+static void preview_stop(void) {
+    if (!preview_live) return;
+    ma_sound_stop(&preview_snd);
+    ma_sound_uninit(&preview_snd);
+    preview_live = 0;
+}
+
+static void poll_preview(const char *sfx_bin) {
+    if (!sfx_bin) return;
+    size_t n = strlen(sfx_bin);
+    if (n < 8 || n + 16 >= 600) return;
+    if (strcmp(sfx_bin + n - 7, "sfx.bin") != 0) return;
+    char path[600];
+    memcpy(path, sfx_bin, n - 7);
+    memcpy(path + (n - 7), "preview.txt", 12);
+    int fd = open(path, O_RDWR);
+    if (fd < 0) return;
+    char buf[640];
+    ssize_t got = read(fd, buf, sizeof buf - 1);
+    if (got <= 0) {
+        close(fd);
+        return;
+    }
+    buf[got] = 0;
+    while (got > 0 && (buf[got - 1] == '\n' || buf[got - 1] == '\r' || buf[got - 1] == ' '))
+        buf[--got] = 0;
+    char *s = buf;
+    while (*s == ' ' || *s == '\t') s++;
+    int gen = 0;
+    while (*s >= '0' && *s <= '9') {
+        gen = gen * 10 + (*s - '0');
+        s++;
+    }
+    while (*s == ' ' || *s == '\t') s++;
+    int cleared = -1;
+    if (lseek(fd, 0, SEEK_SET) >= 0)
+        cleared = ftruncate(fd, 0);
+    close(fd);
+    if (cleared != 0 && gen == preview_gen) return;
+    if (gen == 0 || gen == preview_gen) return;
+    preview_gen = gen;
+    if (!engine_ok) return;
+    preview_stop();
+    if (s[0] == 0 || access(s, R_OK) != 0) return;
+    fprintf(stderr, "preview %d %s\n", gen, s);
+    ma_sound_group *g = grp_ok ? &grp_sfx : NULL;
+    ma_uint32 flags = MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_NO_SPATIALIZATION | MA_SOUND_FLAG_NO_PITCH;
+    if (ma_sound_init_from_file(&engine, s, flags, g, NULL, &preview_snd) != MA_SUCCESS) return;
+    ma_sound_set_looping(&preview_snd, MA_FALSE);
+    if (ma_sound_start(&preview_snd) != MA_SUCCESS) {
+        ma_sound_uninit(&preview_snd);
+        return;
+    }
+    preview_live = 1;
+}
+
+/* Circuit publishes code + path lines after it reads the level. */
+static time_t map_m;
+static off_t map_sz;
+static int map_seen;
+
+static char level_music[640];
+static time_t mus_m;
+static off_t mus_sz;
+static int mus_seen;
+
+static void bgm_play_path(const char *path) {
+    if (!engine_ok || !path || !path[0]) return;
+    bgm_stop();
+    ma_uint32 flags = MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_NO_PITCH | MA_SOUND_FLAG_NO_SPATIALIZATION;
+    if (ma_sound_init_from_file(&engine, path, flags, NULL, NULL, &bgm) != MA_SUCCESS) {
+        fprintf(stderr, "arcade audio: bgm failed %s\n", path);
+        level_music[0] = 0;
+        return;
+    }
+    ma_sound_set_volume(&bgm, vol_music);
+    ma_sound_set_looping(&bgm, MA_TRUE);
+    ma_sound_start(&bgm);
+    bgm_loaded = 1;
+    music_mode = 6;
+    snprintf(level_music, sizeof level_music, "%s", path);
+    fprintf(stderr, "arcade audio: bgm %s\n", path);
+}
+
+/* Circuit writes one path, or a blank line for silence. */
+static void poll_music(void) {
+    const char *p = "/dev/shm/circuit/music.txt";
+    struct stat st;
+    if (stat(p, &st) != 0) return;
+    if (mus_seen && st.st_mtime == mus_m && st.st_size == mus_sz) return;
+    mus_seen = 1;
+    mus_m = st.st_mtime;
+    mus_sz = st.st_size;
+    FILE *f = fopen(p, "r");
+    if (!f) return;
+    char line[700];
+    if (!fgets(line, sizeof line, f)) {
+        fclose(f);
+        if (music_mode == 6) bgm_stop();
+        level_music[0] = 0;
+        return;
+    }
+    fclose(f);
+    size_t len = strlen(line);
+    while (len && (line[len - 1] == '\n' || line[len - 1] == '\r' || line[len - 1] == ' '))
+        line[--len] = 0;
+    if (len == 0 || access(line, R_OK) != 0) {
+        if (music_mode == 6) bgm_stop();
+        level_music[0] = 0;
+        return;
+    }
+    if (music_mode == 6 && strcmp(level_music, line) == 0 && bgm_loaded) return;
+    bgm_play_path(line);
+}
+
+static void poll_sfx_map(void) {
+    const char *p = "/dev/shm/circuit/sfx.map";
+    struct stat st;
+    if (stat(p, &st) != 0) return;
+    if (map_seen && st.st_mtime == map_m && st.st_size == map_sz) return;
+    map_seen = 1;
+    map_m = st.st_mtime;
+    map_sz = st.st_size;
+    FILE *f = fopen(p, "r");
+    if (!f) return;
+    char line[700];
+    while (fgets(line, sizeof line, f)) {
+        char *s = line;
+        while (*s == ' ' || *s == '\t') s++;
+        if (*s < '0' || *s > '9') continue;
+        int code = 0;
+        while (*s >= '0' && *s <= '9') {
+            code = code * 10 + (*s - '0');
+            s++;
+        }
+        while (*s == ' ' || *s == '\t') s++;
+        size_t len = strlen(s);
+        while (len && (s[len - 1] == '\n' || s[len - 1] == '\r')) s[--len] = 0;
+        if (code >= 14 && code < 32 && len > 0 && len < 640 && access(s, R_OK) == 0)
+            snprintf(clip[code], sizeof clip[code], "%s", s);
+    }
+    fclose(f);
+}
+
 void arcade_audio_poll(const char *sfx_bin) {
     if (!sfx_bin) return;
+    poll_preview(sfx_bin);
+    poll_sfx_map();
+    poll_music();
     int fd = open(sfx_bin, O_RDONLY);
     if (fd < 0) return;
     uint8_t buf[72];
@@ -271,6 +456,7 @@ void arcade_audio_poll(const char *sfx_bin) {
 }
 
 void arcade_audio_shutdown(void) {
+    preview_stop();
     bgm_stop();
     if (grp_ok) {
         ma_sound_group_uninit(&grp_sfx);

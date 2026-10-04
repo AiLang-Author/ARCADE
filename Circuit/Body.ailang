@@ -1,0 +1,2215 @@
+// Circuit/Body.ailang — the character used to try parallax and the level's
+// stored run, jump, gravity, and fall. World y increases up. Row 0 is the
+// bottom of the map. Feet sit on hy. The sheet faces right, so face 1
+// mirrors it. The sprite fills the same 1 by 2 tile box the body tests.
+// The file run speed is turbo, held with Enter. Walk, wind, and leap come
+// from the level. Missing lines keep a quarter of run, three seconds to
+// double that walk, and a jump that covers twice the walking distance.
+// Gravity is four times the file value, so the file jump peaks
+// near four tiles instead of flying out of the view.
+// Enemies leave the grid and move in millimeters. A behave line wins.
+// With no line, a sweeper walks, a scrubbit hops, an arc beetle chases
+// inside its zone, and a zapfly flies.
+// Copyright (c) 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.Display.Render.Framebuffer
+LibraryImport.Display.Render.DSurface
+Import.App.State
+Import.App.World
+Import.App.Blit
+Import.Circuit.View
+
+Function.Cv_IsHero {
+    Input: idx: Integer
+    Output: Integer
+    Body: {
+        IfCondition LessThan(idx, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(idx, Cv.hidle) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(idx, Cv.hrun) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(idx, Cv.hjump) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Cv_Use {
+    Input: idx: Integer
+    Body: {
+        IfCondition GreaterEqual(idx, 0) ThenBlock: { SetByte(Cv.used, idx, 1) }
+    }
+}
+
+Function.Cv_Pick {
+    Body: {
+        id = 0
+        hit = 0
+        Cv.hidle = Cv_Find("hero-idle")
+        IfCondition LessThan(Cv.hidle, 0) ThenBlock: {
+            Cv.hidle = Cv_Find("hero-idle-sheet")
+        }
+        hit = StringCompare(Cv.anim, "none")
+        IfCondition NotEqual(hit, 0) ThenBlock: {
+            id = Cv_Find(Cv.anim)
+            IfCondition GreaterEqual(id, 0) ThenBlock: { Cv.hidle = id }
+        }
+        Cv.hrun = Cv_Find("hero-run-sheet")
+        Cv.hjump = Cv_Find("hero-jump")
+        Cv_Use(Cv.hidle)
+        Cv_Use(Cv.hrun)
+        Cv_Use(Cv.hjump)
+    }
+}
+
+Function.Cv_TileMm {
+    Output: Integer
+    Body: {
+        t = 0
+        t = Cv.tile
+        IfCondition LessThan(t, 1) ThenBlock: { t = 200 }
+        ReturnValue(t)
+    }
+}
+
+Function.Cv_Solid {
+    Input: col: Integer
+    Input: row: Integer
+    Output: Integer
+    Body: {
+        id = 0
+        g = 0
+        at = 0
+        IfCondition LessThan(col, 0) ThenBlock: { ReturnValue(1) }
+        IfCondition GreaterEqual(col, Cv.mapw) ThenBlock: { ReturnValue(1) }
+        IfCondition LessThan(row, 0) ThenBlock: { ReturnValue(1) }
+        IfCondition GreaterEqual(row, Cv.maph) ThenBlock: { ReturnValue(0) }
+        at = Cv_At(col, row)
+        id = GetByte(Cv.grid, at)
+        IfCondition EqualTo(id, 0) ThenBlock: { ReturnValue(0) }
+        id = Subtract(id, 1)
+        g = Cv_IGet(Cv.grp, id)
+        IfCondition NotEqual(Cv_AGet(id, 7), 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(g, 1) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Cv_Spawn {
+    Body: {
+        t = 0
+        col = 0
+        row = 0
+        found = 0
+        above = 0
+        up2 = 0
+        t = Cv_TileMm()
+        Cv.tile = t
+        col = 2
+        found = 0
+        WhileLoop LessThan(col, Cv.mapw) {
+            row = 0
+            WhileLoop LessThan(row, Cv.maph) {
+                above = Cv_Solid(col, row)
+                IfCondition EqualTo(above, 1) ThenBlock: {
+                    above = Cv_Solid(col, Add(row, 1))
+                    up2 = Cv_Solid(col, Add(row, 2))
+                    IfCondition EqualTo(above, 0) ThenBlock: {
+                        IfCondition EqualTo(up2, 0) ThenBlock: {
+                            Cv.hx = Multiply(col, t)
+                            Cv.hy = Multiply(Add(row, 1), t)
+                            found = 1
+                            BreakLoop
+                        }
+                    }
+                }
+                row = Add(row, 1)
+            }
+            IfCondition EqualTo(found, 1) ThenBlock: { BreakLoop }
+            col = Add(col, 1)
+        }
+        IfCondition EqualTo(found, 0) ThenBlock: {
+            Cv.hx = Multiply(2, t)
+            Cv.hy = Multiply(2, t)
+        }
+        Cv.vx = 0
+        Cv.vy = 0
+        Cv.ground = 1
+        Cv.face = 0
+        Cv.hcol = Divide(Cv.hx, t)
+        Cv.hrow = Divide(Cv.hy, t)
+        Cv.sx0 = Cv.hx
+        Cv.sy0 = Cv.hy
+        Cv.hp = 3
+        Cv.hp0 = 3
+        PrintMessage("spawn ")
+        PrintNumber(Cv.hcol)
+        PrintMessage(" ")
+        PrintNumber(Cv.hrow)
+        PrintMessage("\n")
+        PrintMessage("hp ")
+        PrintNumber(Cv.hp)
+        PrintMessage("\n")
+    }
+}
+
+Function.Cv_BoxHit {
+    Input: x: Integer
+    Input: y: Integer
+    Output: Integer
+    Body: {
+        t = 0
+        w = 0
+        h = 0
+        right = 0
+        top = 0
+        c0 = 0
+        c1 = 0
+        r0 = 0
+        r1 = 0
+        c = 0
+        r = 0
+        hit = 0
+        t = Cv_TileMm()
+        w = t
+        h = Multiply(t, Cv.hh)
+        IfCondition LessThan(h, t) ThenBlock: { h = t }
+        right = Add(x, w)
+        right = Subtract(right, 1)
+        top = Add(y, h)
+        top = Subtract(top, 1)
+        IfCondition LessThan(x, 0) ThenBlock: { c0 = Subtract(0, 1) }
+        ElseBlock: { c0 = Divide(x, t) }
+        IfCondition LessThan(right, 0) ThenBlock: { c1 = Subtract(0, 1) }
+        ElseBlock: { c1 = Divide(right, t) }
+        IfCondition LessThan(y, 0) ThenBlock: { r0 = Subtract(0, 1) }
+        ElseBlock: { r0 = Divide(y, t) }
+        IfCondition LessThan(top, 0) ThenBlock: { r1 = Subtract(0, 1) }
+        ElseBlock: { r1 = Divide(top, t) }
+        r = r0
+        WhileLoop LessEqual(r, r1) {
+            c = c0
+            WhileLoop LessEqual(c, c1) {
+                hit = Cv_Solid(c, r)
+                IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(1) }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Cv_SnapDown {
+    Input: x: Integer
+    Input: y: Integer
+    Input: prev: Integer
+    Output: Integer
+    Body: {
+        t = 0
+        w = 0
+        h = 0
+        right = 0
+        top = 0
+        c0 = 0
+        c1 = 0
+        r0 = 0
+        r1 = 0
+        c = 0
+        r = 0
+        best = 0
+        surf = 0
+        hit = 0
+        t = Cv_TileMm()
+        w = t
+        h = Multiply(t, Cv.hh)
+        right = Add(x, w)
+        right = Subtract(right, 1)
+        top = Add(y, h)
+        top = Subtract(top, 1)
+        IfCondition LessThan(x, 0) ThenBlock: { c0 = Subtract(0, 1) }
+        ElseBlock: { c0 = Divide(x, t) }
+        IfCondition LessThan(right, 0) ThenBlock: { c1 = Subtract(0, 1) }
+        ElseBlock: { c1 = Divide(right, t) }
+        IfCondition LessThan(y, 0) ThenBlock: { r0 = Subtract(0, 1) }
+        ElseBlock: { r0 = Divide(y, t) }
+        IfCondition LessThan(top, 0) ThenBlock: { r1 = Subtract(0, 1) }
+        ElseBlock: { r1 = Divide(top, t) }
+        best = Subtract(0, 1)
+        r = r0
+        WhileLoop LessEqual(r, r1) {
+            c = c0
+            WhileLoop LessEqual(c, c1) {
+                hit = Cv_Solid(c, r)
+                IfCondition EqualTo(hit, 1) ThenBlock: {
+                    surf = Add(r, 1)
+                    surf = Multiply(surf, t)
+                    IfCondition LessEqual(surf, prev) ThenBlock: {
+                        IfCondition GreaterThan(surf, best) ThenBlock: { best = surf }
+                    }
+                }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+        ReturnValue(best)
+    }
+}
+
+Function.Cv_SnapUp {
+    Input: x: Integer
+    Input: y: Integer
+    Input: prev: Integer
+    Output: Integer
+    Body: {
+        t = 0
+        w = 0
+        h = 0
+        right = 0
+        top = 0
+        c0 = 0
+        c1 = 0
+        r0 = 0
+        r1 = 0
+        c = 0
+        r = 0
+        best = 0
+        ceil = 0
+        head = 0
+        hit = 0
+        t = Cv_TileMm()
+        w = t
+        h = Multiply(t, Cv.hh)
+        right = Add(x, w)
+        right = Subtract(right, 1)
+        top = Add(y, h)
+        top = Subtract(top, 1)
+        IfCondition LessThan(x, 0) ThenBlock: { c0 = Subtract(0, 1) }
+        ElseBlock: { c0 = Divide(x, t) }
+        IfCondition LessThan(right, 0) ThenBlock: { c1 = Subtract(0, 1) }
+        ElseBlock: { c1 = Divide(right, t) }
+        IfCondition LessThan(y, 0) ThenBlock: { r0 = Subtract(0, 1) }
+        ElseBlock: { r0 = Divide(y, t) }
+        IfCondition LessThan(top, 0) ThenBlock: { r1 = Subtract(0, 1) }
+        ElseBlock: { r1 = Divide(top, t) }
+        head = Add(prev, h)
+        best = Subtract(0, 1)
+        r = r0
+        WhileLoop LessEqual(r, r1) {
+            c = c0
+            WhileLoop LessEqual(c, c1) {
+                hit = Cv_Solid(c, r)
+                IfCondition EqualTo(hit, 1) ThenBlock: {
+                    ceil = Multiply(r, t)
+                    IfCondition GreaterEqual(ceil, head) ThenBlock: {
+                        IfCondition LessThan(best, 0) ThenBlock: { best = ceil }
+                        IfCondition LessThan(ceil, best) ThenBlock: { best = ceil }
+                    }
+                }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+        IfCondition LessThan(best, 0) ThenBlock: { ReturnValue(Subtract(0, 1)) }
+        best = Subtract(best, h)
+        ReturnValue(best)
+    }
+}
+
+Function.Cv_MoveX {
+    Body: {
+        t = 0
+        step = 0
+        move = 0
+        chunk = 0
+        left = 0
+        guard = 0
+        nx = 0
+        hit = 0
+        t = Cv_TileMm()
+        step = Divide(t, 2)
+        IfCondition LessThan(step, 1) ThenBlock: { step = 1 }
+        move = Multiply(Cv.vx, 16)
+        move = Divide(move, 1000)
+        guard = 0
+        WhileLoop NotEqual(move, 0) {
+            IfCondition GreaterEqual(guard, 8) ThenBlock: { BreakLoop }
+            guard = Add(guard, 1)
+            chunk = step
+            left = move
+            IfCondition LessThan(left, 0) ThenBlock: { left = Subtract(0, left) }
+            IfCondition LessThan(left, chunk) ThenBlock: { chunk = left }
+            IfCondition LessThan(move, 0) ThenBlock: { chunk = Subtract(0, chunk) }
+            nx = Add(Cv.hx, chunk)
+            hit = Cv_BoxHit(nx, Cv.hy)
+            IfCondition EqualTo(hit, 1) ThenBlock: { BreakLoop }
+            Cv.hx = nx
+            move = Subtract(move, chunk)
+        }
+    }
+}
+
+Function.Cv_MoveY {
+    Body: {
+        t = 0
+        step = 0
+        move = 0
+        chunk = 0
+        left = 0
+        guard = 0
+        ny = 0
+        prev = 0
+        hit = 0
+        snap = 0
+        t = Cv_TileMm()
+        step = Divide(t, 2)
+        IfCondition LessThan(step, 1) ThenBlock: { step = 1 }
+        move = Multiply(Cv.vy, 16)
+        move = Divide(move, 1000)
+        guard = 0
+        WhileLoop NotEqual(move, 0) {
+            IfCondition GreaterEqual(guard, 8) ThenBlock: { BreakLoop }
+            guard = Add(guard, 1)
+            chunk = step
+            left = move
+            IfCondition LessThan(left, 0) ThenBlock: { left = Subtract(0, left) }
+            IfCondition LessThan(left, chunk) ThenBlock: { chunk = left }
+            IfCondition LessThan(move, 0) ThenBlock: { chunk = Subtract(0, chunk) }
+            prev = Cv.hy
+            ny = Add(Cv.hy, chunk)
+            hit = Cv_BoxHit(Cv.hx, ny)
+            IfCondition EqualTo(hit, 0) ThenBlock: {
+                Cv.hy = ny
+                move = Subtract(move, chunk)
+            }
+            ElseBlock: {
+                IfCondition LessThan(chunk, 0) ThenBlock: {
+                    snap = Cv_SnapDown(Cv.hx, ny, prev)
+                    IfCondition GreaterEqual(snap, 0) ThenBlock: { Cv.hy = snap }
+                    Cv.ground = 1
+                    Cv.vy = 0
+                }
+                ElseBlock: {
+                    snap = Cv_SnapUp(Cv.hx, ny, prev)
+                    IfCondition GreaterEqual(snap, 0) ThenBlock: { Cv.hy = snap }
+                    Cv.vy = 0
+                }
+                BreakLoop
+            }
+        }
+    }
+}
+
+Function.Cv_Probe {
+    Body: {
+        below = 0
+        hit = 0
+        below = Subtract(Cv.hy, 1)
+        hit = Cv_BoxHit(Cv.hx, below)
+        IfCondition EqualTo(hit, 1) ThenBlock: { Cv.ground = 1 }
+        ElseBlock: { Cv.ground = 0 }
+    }
+}
+
+Function.Cv_AGet {
+    Input: idx: Integer
+    Input: field: Integer
+    Output: Integer
+    Body: {
+        i = 0
+        IfCondition EqualTo(Cv.attr, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(idx, 0) ThenBlock: { ReturnValue(0) }
+        i = Multiply(idx, 17)
+        i = Add(i, field)
+        ReturnValue(Cv_IGet(Cv.attr, i))
+    }
+}
+
+Function.Cv_ASet {
+    Input: idx: Integer
+    Input: field: Integer
+    Input: v: Integer
+    Body: {
+        i = 0
+        IfCondition EqualTo(Cv.attr, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(idx, 0) ThenBlock: { ReturnValue(0) }
+        i = Multiply(idx, 17)
+        i = Add(i, field)
+        Cv_ISet(Cv.attr, i, v)
+    }
+}
+
+Function.Cv_AttrKey {
+    Input: idx: Integer
+    Input: key: Address
+    Input: w: Address
+    Body: {
+        hit = 0
+        v = 0
+        id = 0
+        hit = StringCompare(key, "dir")
+        IfCondition EqualTo(hit, 0) ThenBlock: {
+            v = 0
+            hit = StringCompare(w, "left")
+            IfCondition EqualTo(hit, 0) ThenBlock: { v = 1 }
+            hit = StringCompare(w, "right")
+            IfCondition EqualTo(hit, 0) ThenBlock: { v = 2 }
+            hit = StringCompare(w, "up")
+            IfCondition EqualTo(hit, 0) ThenBlock: { v = 3 }
+            hit = StringCompare(w, "down")
+            IfCondition EqualTo(hit, 0) ThenBlock: { v = 4 }
+            Cv_ASet(idx, 11, v)
+            ReturnValue(0)
+        }
+        hit = StringCompare(key, "rkind")
+        IfCondition EqualTo(hit, 0) ThenBlock: {
+            v = 0
+            hit = StringCompare(w, "1up")
+            IfCondition EqualTo(hit, 0) ThenBlock: { v = 1 }
+            hit = StringCompare(w, "points")
+            IfCondition EqualTo(hit, 0) ThenBlock: { v = 2 }
+            Cv_ASet(idx, 12, v)
+            ReturnValue(0)
+        }
+        hit = StringCompare(key, "emit")
+        IfCondition EqualTo(hit, 0) ThenBlock: {
+            id = Cv_Find(w)
+            v = 0
+            IfCondition GreaterEqual(id, 0) ThenBlock: { v = Add(id, 1) }
+            Cv_ASet(idx, 10, v)
+            ReturnValue(0)
+        }
+        v = Arc_Atoi(w)
+        hit = StringCompare(key, "break")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 0, v) }
+        hit = StringCompare(key, "grav")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 1, v) }
+        hit = StringCompare(key, "spring")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 2, v) }
+        hit = StringCompare(key, "reward")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 3, v) }
+        hit = StringCompare(key, "hurt")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 4, v) }
+        hit = StringCompare(key, "heal")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 5, v) }
+        hit = StringCompare(key, "slip")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 6, v) }
+        hit = StringCompare(key, "climb")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 7, v) }
+        hit = StringCompare(key, "goal")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 8, v) }
+        hit = StringCompare(key, "crumble")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 9, v) }
+        hit = StringCompare(key, "check")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 15, v) }
+        hit = StringCompare(key, "boost")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 16, v) }
+    }
+}
+
+Function.Cv_IdxAt {
+    Input: col: Integer
+    Input: row: Integer
+    Output: Integer
+    Body: {
+        id = 0
+        at = 0
+        IfCondition LessThan(col, 0) ThenBlock: { ReturnValue(Subtract(0, 1)) }
+        IfCondition GreaterEqual(col, Cv.mapw) ThenBlock: { ReturnValue(Subtract(0, 1)) }
+        IfCondition LessThan(row, 0) ThenBlock: { ReturnValue(Subtract(0, 1)) }
+        IfCondition GreaterEqual(row, Cv.maph) ThenBlock: { ReturnValue(Subtract(0, 1)) }
+        at = Cv_At(col, row)
+        id = GetByte(Cv.grid, at)
+        IfCondition EqualTo(id, 0) ThenBlock: { ReturnValue(Subtract(0, 1)) }
+        ReturnValue(Subtract(id, 1))
+    }
+}
+
+Function.Cv_Foot {
+    Input: field: Integer
+    Output: Integer
+    Body: {
+        t = 0
+        col = 0
+        row = 0
+        idx = 0
+        best = 0
+        v = 0
+        t = Cv_TileMm()
+        IfCondition LessThan(Cv.hy, t) ThenBlock: { ReturnValue(0) }
+        col = Divide(Cv.hx, t)
+        row = Divide(Cv.hy, t)
+        row = Subtract(row, 1)
+        idx = Cv_IdxAt(col, row)
+        best = 0
+        IfCondition GreaterEqual(idx, 0) ThenBlock: { best = Cv_AGet(idx, field) }
+        v = Add(Cv.hx, t)
+        v = Subtract(v, 1)
+        v = Divide(v, t)
+        IfCondition NotEqual(v, col) ThenBlock: {
+            idx = Cv_IdxAt(v, row)
+            IfCondition GreaterEqual(idx, 0) ThenBlock: {
+                col = Cv_AGet(idx, field)
+                IfCondition GreaterThan(col, best) ThenBlock: { best = col }
+            }
+        }
+        ReturnValue(best)
+    }
+}
+
+Function.Cv_Near {
+    Input: field: Integer
+    Output: Integer
+    Body: {
+        t = 0
+        c0 = 0
+        c1 = 0
+        r0 = 0
+        r1 = 0
+        c = 0
+        r = 0
+        idx = 0
+        best = 0
+        v = 0
+        t = Cv_TileMm()
+        c0 = 0
+        IfCondition GreaterEqual(Cv.hx, 0) ThenBlock: { c0 = Divide(Cv.hx, t) }
+        c1 = Add(Cv.hx, t)
+        c1 = Subtract(c1, 1)
+        IfCondition GreaterEqual(c1, 0) ThenBlock: { c1 = Divide(c1, t) }
+        r0 = 0
+        IfCondition GreaterEqual(Cv.hy, 0) ThenBlock: { r0 = Divide(Cv.hy, t) }
+        r1 = Multiply(Cv.hh, t)
+        r1 = Add(Cv.hy, r1)
+        r1 = Subtract(r1, 1)
+        IfCondition GreaterEqual(r1, 0) ThenBlock: { r1 = Divide(r1, t) }
+        best = 0
+        r = r0
+        WhileLoop LessEqual(r, r1) {
+            c = c0
+            WhileLoop LessEqual(c, c1) {
+                idx = Cv_IdxAt(c, r)
+                IfCondition GreaterEqual(idx, 0) ThenBlock: {
+                    v = Cv_AGet(idx, field)
+                    IfCondition GreaterThan(v, best) ThenBlock: { best = v }
+                }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+        ReturnValue(best)
+    }
+}
+
+Function.Cv_ClearFoot {
+    Input: field: Integer
+    Body: {
+        t = 0
+        col = 0
+        row = 0
+        idx = 0
+        at = 0
+        v = 0
+        t = Cv_TileMm()
+        IfCondition LessThan(Cv.hy, t) ThenBlock: { ReturnValue(0) }
+        row = Divide(Cv.hy, t)
+        row = Subtract(row, 1)
+        col = Divide(Cv.hx, t)
+        idx = Cv_IdxAt(col, row)
+        IfCondition GreaterEqual(idx, 0) ThenBlock: {
+            v = Cv_AGet(idx, field)
+            IfCondition GreaterThan(v, 0) ThenBlock: {
+                at = Cv_At(col, row)
+                SetByte(Cv.grid, at, 0)
+            }
+        }
+        v = Add(Cv.hx, t)
+        v = Subtract(v, 1)
+        v = Divide(v, t)
+        IfCondition NotEqual(v, col) ThenBlock: {
+            idx = Cv_IdxAt(v, row)
+            IfCondition GreaterEqual(idx, 0) ThenBlock: {
+                col = Cv_AGet(idx, field)
+                IfCondition GreaterThan(col, 0) ThenBlock: {
+                    at = Cv_At(v, row)
+                    SetByte(Cv.grid, at, 0)
+                }
+            }
+        }
+    }
+}
+
+Function.Cv_TouchCell {
+    Input: idx: Integer
+    Input: col: Integer
+    Input: row: Integer
+    Body: {
+        kind = 0
+        reward = 0
+        g = 0
+        at = 0
+        kind = Cv_AGet(idx, 8)
+        IfCondition GreaterThan(kind, 0) ThenBlock: {
+            IfCondition EqualTo(Cv.won, 0) ThenBlock: {
+                Cv.won = 1
+                PrintMessage("goal\n")
+                Cv_Noise(19)
+            }
+        }
+        kind = Cv_AGet(idx, 4)
+        IfCondition GreaterThan(kind, 0) ThenBlock: {
+            IfCondition EqualTo(Cv.pain, 0) ThenBlock: {
+                Cv.pain = 25
+                Cv.vy = Multiply(Cv.jmp, 500)
+                IfCondition GreaterThan(Cv.vx, 0) ThenBlock: {
+                    Cv.vx = Subtract(0, Cv.vx)
+                }
+                ElseBlock: {
+                    IfCondition EqualTo(Cv.vx, 0) ThenBlock: {
+                        Cv.vx = Multiply(Cv.spd, 1000)
+                        Cv.vx = Subtract(0, Cv.vx)
+                    }
+                    ElseBlock: { Cv.vx = Subtract(0, Cv.vx) }
+                }
+                PrintMessage("hurt\n")
+                Cv_Hit()
+            }
+        }
+        kind = Cv_AGet(idx, 15)
+        IfCondition GreaterThan(kind, 0) ThenBlock: {
+            Cv.sx0 = Cv.hx
+            Cv.sy0 = Cv.hy
+            at = Multiply(col, 128)
+            at = Add(at, row)
+            IfCondition NotEqual(Cv.mark, at) ThenBlock: {
+                Cv.mark = at
+                PrintMessage("check\n")
+                Cv_Noise(20)
+            }
+            ReturnValue(0)
+        }
+        kind = Cv_AGet(idx, 16)
+        IfCondition GreaterThan(kind, 0) ThenBlock: {
+            at = Cv_At(col, row)
+            SetByte(Cv.grid, at, 0)
+            Cv.boost = kind
+            PrintMessage("overclock\n")
+            ReturnValue(0)
+        }
+        g = Cv_IGet(Cv.grp, idx)
+        IfCondition NotEqual(g, 3) ThenBlock: { ReturnValue(0) }
+        kind = Cv_AGet(idx, 12)
+        reward = Cv_AGet(idx, 3)
+        IfCondition EqualTo(kind, 0) ThenBlock: {
+            IfCondition LessEqual(reward, 0) ThenBlock: { ReturnValue(0) }
+        }
+        at = Cv_At(col, row)
+        SetByte(Cv.grid, at, 0)
+        Cv.score = Add(Cv.score, reward)
+        IfCondition EqualTo(kind, 1) ThenBlock: {
+            IfCondition LessThan(reward, 1) ThenBlock: { reward = 1 }
+            Cv.hp = Add(Cv.hp, reward)
+            Cv.hp0 = Add(Cv.hp0, reward)
+            PrintMessage("life\n")
+            Cv_Noise(21)
+        }
+        ElseBlock: {
+            PrintMessage("bit ")
+            PrintNumber(Cv.score)
+            PrintMessage("\n")
+        }
+    }
+}
+
+Function.Cv_Touch {
+    Body: {
+        t = 0
+        c0 = 0
+        c1 = 0
+        r0 = 0
+        r1 = 0
+        c = 0
+        r = 0
+        idx = 0
+        t = Cv_TileMm()
+        c0 = 0
+        IfCondition GreaterEqual(Cv.hx, 0) ThenBlock: { c0 = Divide(Cv.hx, t) }
+        c1 = Add(Cv.hx, t)
+        c1 = Subtract(c1, 1)
+        IfCondition GreaterEqual(c1, 0) ThenBlock: { c1 = Divide(c1, t) }
+        r0 = 0
+        IfCondition GreaterEqual(Cv.hy, 0) ThenBlock: { r0 = Divide(Cv.hy, t) }
+        r1 = Multiply(Cv.hh, t)
+        r1 = Add(Cv.hy, r1)
+        r1 = Subtract(r1, 1)
+        IfCondition GreaterEqual(r1, 0) ThenBlock: { r1 = Divide(r1, t) }
+        r = r0
+        WhileLoop LessEqual(r, r1) {
+            c = c0
+            WhileLoop LessEqual(c, c1) {
+                idx = Cv_IdxAt(c, r)
+                IfCondition GreaterEqual(idx, 0) ThenBlock: { Cv_TouchCell(idx, c, r) }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+    }
+}
+
+Function.Cv_Effects {
+    Body: {
+        sp = 0
+        d = 0
+        idx = 0
+        col = 0
+        IfCondition EqualTo(Cv.ground, 1) ThenBlock: {
+            sp = Cv_Foot(2)
+            IfCondition GreaterThan(sp, 0) ThenBlock: {
+                Cv.vy = Multiply(sp, 1000)
+                Cv.ground = 0
+            }
+            sp = Cv_Foot(9)
+            IfCondition GreaterThan(sp, 0) ThenBlock: {
+                Cv.crumb = Add(Cv.crumb, 1)
+                IfCondition GreaterEqual(Cv.crumb, 24) ThenBlock: {
+                    Cv_ClearFoot(9)
+                    Cv.ground = 0
+                    Cv.crumb = 0
+                }
+            }
+            ElseBlock: { Cv.crumb = 0 }
+        }
+        ElseBlock: { Cv.crumb = 0 }
+        IfCondition EqualTo(Cv.hy, 0) ThenBlock: {
+            IfCondition EqualTo(Cv.ground, 1) ThenBlock: {
+                col = 0
+                IfCondition GreaterEqual(Cv.hx, 0) ThenBlock: {
+                    sp = Cv_TileMm()
+                    col = Divide(Cv.hx, sp)
+                }
+                idx = Cv_IdxAt(col, 0)
+                IfCondition LessThan(idx, 0) ThenBlock: {
+                    Cv.hx = Cv.sx0
+                    Cv.hy = Cv.sy0
+                    Cv.vx = 0
+                    Cv.vy = 0
+                    Cv.ground = 1
+                    PrintMessage("back\n")
+                }
+            }
+        }
+        d = 0
+    }
+}
+
+Function.Cv_Follow {
+    Body: {
+        t = 0
+        third = 0
+        fourth = 0
+        max = 0
+        t = Cv_TileMm()
+        third = Divide(Cv.vieww, 3)
+        fourth = Divide(Cv.viewh, 4)
+        third = Multiply(third, t)
+        fourth = Multiply(fourth, t)
+        Cv.cx = Subtract(Cv.hx, third)
+        Cv.cy = Subtract(Cv.hy, fourth)
+        max = Subtract(Cv.mapw, Cv.vieww)
+        IfCondition LessThan(max, 0) ThenBlock: { max = 0 }
+        max = Multiply(max, t)
+        IfCondition LessThan(Cv.cx, 0) ThenBlock: { Cv.cx = 0 }
+        IfCondition GreaterThan(Cv.cx, max) ThenBlock: { Cv.cx = max }
+        max = Subtract(Cv.maph, Cv.viewh)
+        IfCondition LessThan(max, 0) ThenBlock: { max = 0 }
+        max = Multiply(max, t)
+        IfCondition LessThan(Cv.cy, 0) ThenBlock: { Cv.cy = 0 }
+        IfCondition GreaterThan(Cv.cy, max) ThenBlock: { Cv.cy = max }
+        Cv.camx = Divide(Cv.cx, t)
+        Cv.camy = Divide(Cv.cy, t)
+    }
+}
+
+Function.Cv_Tune {
+    Body: {
+        n = 0
+        IfCondition LessThan(Cv.walk, 1) ThenBlock: {
+            n = Divide(Cv.spd, 4)
+            IfCondition LessThan(n, 1) ThenBlock: {
+                IfCondition GreaterThan(Cv.spd, 0) ThenBlock: { n = 1 }
+            }
+            Cv.walk = n
+        }
+        IfCondition LessThan(Cv.wind, 1) ThenBlock: { Cv.wind = 3 }
+        IfCondition LessThan(Cv.leap, 1) ThenBlock: { Cv.leap = 2 }
+    }
+}
+
+Function.Cv_BGet {
+    Input: idx: Integer
+    Input: field: Integer
+    Output: Integer
+    Body: {
+        at = 0
+        IfCondition EqualTo(Cv.beh, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(idx, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(idx, 128) ThenBlock: { ReturnValue(0) }
+        at = Multiply(idx, 8)
+        at = Add(at, field)
+        ReturnValue(Cv_IGet(Cv.beh, at))
+    }
+}
+
+Function.Cv_BSet {
+    Input: idx: Integer
+    Input: field: Integer
+    Input: v: Integer
+    Body: {
+        at = 0
+        IfCondition EqualTo(Cv.beh, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(idx, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(idx, 128) ThenBlock: { ReturnValue(0) }
+        at = Multiply(idx, 8)
+        at = Add(at, field)
+        Cv_ISet(Cv.beh, at, v)
+    }
+}
+
+Function.Cv_BehLine {
+    Input: idx: Integer
+    Input: key: Address
+    Input: word: Address
+    Body: {
+        val = 0
+        hit = 0
+        val = Cx_Num(word)
+        Cv_BSet(idx, 6, 1)
+        hit = StringCompare(key, "motion")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_BSet(idx, 0, val) }
+        hit = StringCompare(key, "speed")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_BSet(idx, 1, val) }
+        hit = StringCompare(key, "health")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_BSet(idx, 2, val) }
+        hit = StringCompare(key, "stomp")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_BSet(idx, 3, val) }
+        hit = StringCompare(key, "ledge")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_BSet(idx, 4, val) }
+        hit = StringCompare(key, "zone")
+        IfCondition EqualTo(hit, 0) ThenBlock: { Cv_BSet(idx, 5, val) }
+    }
+}
+
+Function.Cv_ActGet {
+    Input: i: Integer
+    Input: field: Integer
+    Output: Integer
+    Body: {
+        at = 0
+        IfCondition EqualTo(Cv.act, 0) ThenBlock: { ReturnValue(0) }
+        at = Multiply(i, 16)
+        at = Add(at, field)
+        ReturnValue(Cv_IGet(Cv.act, at))
+    }
+}
+
+Function.Cv_ActSet {
+    Input: i: Integer
+    Input: field: Integer
+    Input: v: Integer
+    Body: {
+        at = 0
+        IfCondition EqualTo(Cv.act, 0) ThenBlock: { ReturnValue(0) }
+        at = Multiply(i, 16)
+        at = Add(at, field)
+        Cv_ISet(Cv.act, at, v)
+    }
+}
+
+Function.Cv_FoeHit {
+    Input: x: Integer
+    Input: y: Integer
+    Output: Integer
+    Body: {
+        t = 0
+        right = 0
+        top = 0
+        c0 = 0
+        c1 = 0
+        r0 = 0
+        r1 = 0
+        c = 0
+        r = 0
+        hit = 0
+        t = Cv_TileMm()
+        right = Add(x, t)
+        right = Subtract(right, 1)
+        top = Add(y, t)
+        top = Subtract(top, 1)
+        IfCondition LessThan(x, 0) ThenBlock: { c0 = Subtract(0, 1) }
+        ElseBlock: { c0 = Divide(x, t) }
+        IfCondition LessThan(right, 0) ThenBlock: { c1 = Subtract(0, 1) }
+        ElseBlock: { c1 = Divide(right, t) }
+        IfCondition LessThan(y, 0) ThenBlock: { r0 = Subtract(0, 1) }
+        ElseBlock: { r0 = Divide(y, t) }
+        IfCondition LessThan(top, 0) ThenBlock: { r1 = Subtract(0, 1) }
+        ElseBlock: { r1 = Divide(top, t) }
+        r = r0
+        WhileLoop LessEqual(r, r1) {
+            c = c0
+            WhileLoop LessEqual(c, c1) {
+                hit = Cv_Solid(c, r)
+                IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(1) }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Cv_FoeLedge {
+    Input: x: Integer
+    Input: y: Integer
+    Input: dir: Integer
+    Output: Integer
+    Body: {
+        t = 0
+        ahead = 0
+        col = 0
+        row = 0
+        hit = 0
+        t = Cv_TileMm()
+        ahead = x
+        IfCondition GreaterThan(dir, 0) ThenBlock: {
+            ahead = Add(x, t)
+            ahead = Subtract(ahead, 1)
+        }
+        IfCondition LessThan(ahead, 0) ThenBlock: { ReturnValue(1) }
+        col = Divide(ahead, t)
+        IfCondition LessThan(y, t) ThenBlock: { ReturnValue(1) }
+        row = Divide(y, t)
+        row = Subtract(row, 1)
+        hit = Cv_Solid(col, row)
+        IfCondition EqualTo(hit, 0) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Cv_FoeAdd {
+    Input: idx: Integer
+    Input: col: Integer
+    Input: row: Integer
+    Body: {
+        i = 0
+        t = 0
+        motion = 0
+        spd = 0
+        dir = 0
+        at = 0
+        p = 0
+        hp = 0
+        IfCondition EqualTo(Cv.act, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(Cv.nact, 64) ThenBlock: { ReturnValue(0) }
+        i = Cv.nact
+        t = Cv_TileMm()
+        motion = Cv_BGet(idx, 0)
+        spd = Cv_BGet(idx, 1)
+        dir = 1
+        IfCondition EqualTo(motion, 0) ThenBlock: { dir = 0 }
+        IfCondition LessThan(spd, 1) ThenBlock: { dir = 0 }
+        Cv_ActSet(i, 0, idx)
+        Cv_ActSet(i, 1, Multiply(col, t))
+        Cv_ActSet(i, 2, Multiply(row, t))
+        Cv_ActSet(i, 3, 0)
+        hp = Cv_BGet(idx, 2)
+        IfCondition LessThan(hp, 1) ThenBlock: { hp = 1 }
+        Cv_ActSet(i, 4, hp)
+        Cv_ActSet(i, 5, 0)
+        Cv_ActSet(i, 6, motion)
+        Cv_ActSet(i, 7, spd)
+        Cv_ActSet(i, 8, Cv_BGet(idx, 3))
+        Cv_ActSet(i, 9, Cv_BGet(idx, 4))
+        Cv_ActSet(i, 10, Cv_BGet(idx, 5))
+        Cv_ActSet(i, 11, Multiply(col, t))
+        Cv_ActSet(i, 12, Multiply(row, t))
+        Cv_ActSet(i, 13, dir)
+        Cv_ActSet(i, 14, 0)
+        Cv_ActSet(i, 15, col)
+        Cv.nact = Add(Cv.nact, 1)
+        at = Cv_At(col, row)
+        SetByte(Cv.grid, at, 0)
+        p = Cv_Name(idx)
+        PrintMessage("foe ")
+        PrintMessage(p)
+        PrintMessage(" ")
+        PrintNumber(col)
+        PrintMessage(" ")
+        PrintNumber(row)
+        PrintMessage(" ")
+        PrintNumber(motion)
+        PrintMessage(" ")
+        PrintNumber(hp)
+        PrintMessage("\n")
+    }
+}
+
+Function.Cv_FoeBoot {
+    Body: {
+        col = 0
+        row = 0
+        id = 0
+        g = 0
+        at = 0
+        IfCondition EqualTo(Cv.act, 0) ThenBlock: { ReturnValue(0) }
+        row = 0
+        WhileLoop LessThan(row, Cv.maph) {
+            col = 0
+            WhileLoop LessThan(col, Cv.mapw) {
+                at = Cv_At(col, row)
+                id = GetByte(Cv.grid, at)
+                IfCondition GreaterThan(id, 0) ThenBlock: {
+                    id = Subtract(id, 1)
+                    g = Cv_IGet(Cv.grp, id)
+                    IfCondition EqualTo(g, 2) ThenBlock: { Cv_FoeAdd(id, col, row) }
+                }
+                col = Add(col, 1)
+            }
+            row = Add(row, 1)
+        }
+    }
+}
+
+Function.Cv_Noise {
+    Input: code: Integer
+    Body: {
+        i = 0
+        fd = 0
+        IfCondition EqualTo(Cv.sbuf, 0) ThenBlock: {
+            Cv.sbuf = Allocate(72)
+            IfCondition EqualTo(Cv.sbuf, 0) ThenBlock: { ReturnValue(0) }
+            MemorySet(Cv.sbuf, 0, 72)
+            Cv.sw = 0
+        }
+        i = Modulo(Cv.sw, 64)
+        i = Add(8, i)
+        SetByte(Cv.sbuf, i, code)
+        Cv.sw = Add(Cv.sw, 1)
+        Arc_LE32(Cv.sbuf, 0, Cv.sw)
+        fd = Ci_Open(8, 577, 420)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(1, fd, Cv.sbuf, 72)
+        SystemCall(3, fd)
+    }
+}
+
+Function.Cv_Arm {
+    Body: {
+        Cv_Noise(0)
+    }
+}
+
+Function.Cv_SfxEv {
+    Input: w: Address
+    Output: Integer
+    Body: {
+        hit = 0
+        hit = Cx_Eq(w, "jump")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(0) }
+        hit = Cx_Eq(w, "land")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(1) }
+        hit = Cx_Eq(w, "hurt")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(2) }
+        hit = Cx_Eq(w, "stomp")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(3) }
+        hit = Cx_Eq(w, "ray")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(4) }
+        hit = Cx_Eq(w, "goal")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(5) }
+        hit = Cx_Eq(w, "checkpoint")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(6) }
+        hit = Cx_Eq(w, "powerup")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(7) }
+        hit = Cx_Eq(w, "derez")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(8) }
+        hit = Cx_Eq(w, "crouch")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(9) }
+        ReturnValue(Subtract(0, 1))
+    }
+}
+
+Function.Cv_Sound {
+    Input: ev: Address
+    Input: rel: Address
+    Body: {
+        n = 0
+        dst = 0
+        IfCondition EqualTo(Cv.sfx, 0) ThenBlock: { ReturnValue(0) }
+        n = Cv_SfxEv(ev)
+        IfCondition LessThan(n, 0) ThenBlock: { ReturnValue(0) }
+        dst = Multiply(n, 64)
+        dst = Add(Cv.sfx, dst)
+        Cv_Copy(dst, rel, 64)
+    }
+}
+
+Function.Cv_SfxMap {
+    Body: {
+        i = 0
+        k = 0
+        n = 0
+        c = 0
+        any = 0
+        fd = 0
+        code = 0
+        p = 0
+        IfCondition EqualTo(Cv.sfx, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Cv.smap, 0) ThenBlock: { ReturnValue(0) }
+        i = 0
+        WhileLoop LessThan(i, 10) {
+            p = Add(Cv.sfx, Multiply(i, 64))
+            c = GetByte(p, 0)
+            IfCondition NotEqual(c, 0) ThenBlock: { any = 1 }
+            i = Add(i, 1)
+        }
+        IfCondition EqualTo(any, 0) ThenBlock: { ReturnValue(0) }
+        MemorySet(Cv.smap, 0, 2048)
+        Cv_Copy(Cv.msg, "assets/circuit/audio/sfx/", 64)
+        k = 0
+        i = 0
+        WhileLoop LessThan(i, 10) {
+            p = Add(Cv.sfx, Multiply(i, 64))
+            c = GetByte(p, 0)
+            IfCondition NotEqual(c, 0) ThenBlock: {
+                code = Add(14, i)
+                IfCondition LessThan(k, 1900) ThenBlock: {
+                    SetByte(Cv.smap, k, Add(48, Divide(code, 10)))
+                    k = Add(k, 1)
+                    SetByte(Cv.smap, k, Add(48, Modulo(code, 10)))
+                    k = Add(k, 1)
+                    SetByte(Cv.smap, k, 32)
+                    k = Add(k, 1)
+                }
+                n = 0
+                WhileLoop LessThan(n, 40) {
+                    c = GetByte(Cv.msg, n)
+                    IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+                    IfCondition LessThan(k, 1900) ThenBlock: {
+                        SetByte(Cv.smap, k, c)
+                        k = Add(k, 1)
+                    }
+                    n = Add(n, 1)
+                }
+                n = 0
+                WhileLoop LessThan(n, 63) {
+                    c = GetByte(p, n)
+                    IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+                    IfCondition LessThan(k, 1900) ThenBlock: {
+                        SetByte(Cv.smap, k, c)
+                        k = Add(k, 1)
+                    }
+                    n = Add(n, 1)
+                }
+                IfCondition LessThan(k, 1900) ThenBlock: {
+                    SetByte(Cv.smap, k, 10)
+                    k = Add(k, 1)
+                }
+            }
+            i = Add(i, 1)
+        }
+        SetByte(Cv.smap, k, 0)
+        fd = SystemCall(2, "/dev/shm/circuit/sfx.map", 577, 420)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(1, fd, Cv.smap, k)
+        SystemCall(3, fd)
+        PrintMessage("sfx map\n")
+    }
+}
+
+Function.Cv_MusicPub {
+    Body: {
+        fd = 0
+        n = 0
+        c = 0
+        IfCondition EqualTo(Cv.mus, 0) ThenBlock: { ReturnValue(0) }
+        MemorySet(Cv.msg, 0, 96)
+        c = GetByte(Cv.mus, 0)
+        n = 0
+        IfCondition NotEqual(c, 0) ThenBlock: {
+            Cv_Copy(Cv.msg, Cv.mus, 90)
+            n = 0
+            WhileLoop LessThan(n, 90) {
+                c = GetByte(Cv.msg, n)
+                IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+                n = Add(n, 1)
+            }
+        }
+        IfCondition LessThan(n, 95) ThenBlock: {
+            SetByte(Cv.msg, n, 10)
+            n = Add(n, 1)
+        }
+        fd = SystemCall(2, "/dev/shm/circuit/music.txt", 577, 420)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(1, fd, Cv.msg, n)
+        SystemCall(3, fd)
+    }
+}
+
+Function.Cv_Fire {
+    Body: {
+        t = 0
+        step = 0
+        x = 0
+        y = 0
+        prev = 0
+        n = 0
+        i = 0
+        fx = 0
+        fy = 0
+        hp = 0
+        col = 0
+        row = 0
+        hit = 0
+        lo = 0
+        hi = 0
+        t = Cv_TileMm()
+        step = t
+        IfCondition EqualTo(Cv.face, 1) ThenBlock: { step = Subtract(0, t) }
+        x = Cv.hx
+        IfCondition GreaterThan(step, 0) ThenBlock: { x = Add(Cv.hx, t) }
+        y = Divide(t, 2)
+        y = Add(Cv.hy, y)
+        IfCondition EqualTo(Cv.duck, 1) ThenBlock: {
+            y = Divide(t, 4)
+            y = Add(Cv.hy, y)
+        }
+        Cv.bx = x
+        Cv.by = y
+        n = 0
+        hit = 0
+        WhileLoop LessThan(n, 6) {
+            prev = x
+            x = Add(x, step)
+            IfCondition LessThan(x, 0) ThenBlock: {
+                x = prev
+                BreakLoop
+            }
+            col = Divide(x, t)
+            row = 0
+            IfCondition GreaterEqual(y, 0) ThenBlock: { row = Divide(y, t) }
+            IfCondition EqualTo(Cv_Solid(col, row), 1) ThenBlock: {
+                x = prev
+                BreakLoop
+            }
+            lo = prev
+            hi = x
+            IfCondition GreaterThan(lo, hi) ThenBlock: {
+                lo = x
+                hi = prev
+            }
+            i = 0
+            WhileLoop LessThan(i, Cv.nact) {
+                hp = Cv_ActGet(i, 4)
+                IfCondition GreaterThan(hp, 0) ThenBlock: {
+                    fx = Cv_ActGet(i, 1)
+                    fy = Cv_ActGet(i, 2)
+                    IfCondition LessThan(lo, Add(fx, t)) ThenBlock: {
+                        IfCondition GreaterThan(hi, fx) ThenBlock: {
+                            IfCondition GreaterEqual(y, fy) ThenBlock: {
+                                IfCondition LessThan(y, Add(fy, t)) ThenBlock: {
+                                    hp = Subtract(hp, 1)
+                                    Cv_ActSet(i, 4, hp)
+                                    PrintMessage("foe hp ")
+                                    PrintNumber(hp)
+                                    PrintMessage("\n")
+                                    hit = 1
+                                    x = fx
+                                    BreakLoop
+                                }
+                            }
+                        }
+                    }
+                }
+                i = Add(i, 1)
+            }
+            IfCondition EqualTo(hit, 1) ThenBlock: { BreakLoop }
+            n = Add(n, 1)
+        }
+        Cv.ex = x
+        Cv.beam = 6
+        PrintMessage("shot\n")
+        Cv_Noise(18)
+    }
+}
+
+Function.Cv_Beam {
+    Body: {
+        x0 = 0
+        x1 = 0
+        y = 0
+        w = 0
+        c = 0
+        IfCondition LessEqual(Cv.beam, 0) ThenBlock: { ReturnValue(0) }
+        x0 = Cv_SX(Cv.bx)
+        x1 = Cv_SX(Cv.ex)
+        IfCondition GreaterThan(x0, x1) ThenBlock: {
+            w = x0
+            x0 = x1
+            x1 = w
+        }
+        w = Subtract(x1, x0)
+        IfCondition LessThan(w, 4) ThenBlock: { w = 4 }
+        y = Cv_SY(Cv.by)
+        y = Subtract(y, 3)
+        IfCondition LessThan(y, 0) ThenBlock: { y = 0 }
+        c = FB_RGB(80, 220, 255)
+        FB_FillRectFast(x0, y, w, 6, c)
+        c = FB_RGB(255, 255, 255)
+        y = Add(y, 2)
+        FB_FillRectFast(x0, y, w, 2, c)
+    }
+}
+
+Function.Cv_Down {
+    Body: {
+        Cv.hx = Cv.sx0
+        Cv.hy = Cv.sy0
+        Cv.vx = 0
+        Cv.vy = 0
+        Cv.ground = 1
+        Cv.pain = 0
+        Cv.adir = 0
+        Cv.hp = Cv.hp0
+        PrintMessage("down\n")
+        Cv_Noise(22)
+        PrintMessage("hp ")
+        PrintNumber(Cv.hp)
+        PrintMessage("\n")
+    }
+}
+
+Function.Cv_Hit {
+    Body: {
+        IfCondition LessEqual(Cv.hp, 0) ThenBlock: { ReturnValue(0) }
+        Cv.hp = Subtract(Cv.hp, 1)
+        PrintMessage("hp ")
+        PrintNumber(Cv.hp)
+        PrintMessage("\n")
+        Cv_Noise(16)
+        IfCondition LessEqual(Cv.hp, 0) ThenBlock: { Cv_Down() }
+    }
+}
+
+Function.Cv_FoeTouch {
+    Input: i: Integer
+    Body: {
+        x = 0
+        y = 0
+        t = 0
+        stomp = 0
+        h = 0
+        over = 0
+        dir = 0
+        nx = 0
+        mid = 0
+        foe = 0
+        hp = 0
+        t = Cv_TileMm()
+        hp = Cv_ActGet(i, 4)
+        IfCondition LessEqual(hp, 0) ThenBlock: { ReturnValue(0) }
+        x = Cv_ActGet(i, 1)
+        y = Cv_ActGet(i, 2)
+        stomp = Cv_ActGet(i, 8)
+        h = Multiply(t, Cv.hh)
+        over = 0
+        IfCondition LessThan(Cv.hx, Add(x, t)) ThenBlock: {
+            IfCondition GreaterThan(Add(Cv.hx, t), x) ThenBlock: {
+                IfCondition LessThan(Cv.hy, Add(y, t)) ThenBlock: {
+                    IfCondition GreaterThan(Add(Cv.hy, h), y) ThenBlock: { over = 1 }
+                }
+            }
+        }
+        IfCondition EqualTo(over, 0) ThenBlock: { ReturnValue(0) }
+        mid = Add(Cv.hx, Divide(t, 2))
+        foe = 0
+        IfCondition GreaterEqual(mid, x) ThenBlock: {
+            IfCondition LessThan(mid, Add(x, t)) ThenBlock: { foe = 1 }
+        }
+        IfCondition NotEqual(stomp, 0) ThenBlock: {
+            IfCondition LessThan(Cv.vy, 0) ThenBlock: {
+                IfCondition EqualTo(foe, 1) ThenBlock: {
+                    IfCondition GreaterEqual(Cv.hy, Subtract(y, Divide(t, 4))) ThenBlock: {
+                        IfCondition EqualTo(Cv.pain, 0) ThenBlock: {
+                            Cv.hy = Add(y, t)
+                            Cv.vy = Multiply(Cv.jmp, 700)
+                            Cv.ground = 0
+                            Cv.adir = 0
+                            Cv.pain = 10
+                            dir = Cv_ActGet(i, 13)
+                            dir = Subtract(0, dir)
+                            IfCondition EqualTo(dir, 0) ThenBlock: { dir = Subtract(0, 1) }
+                            Cv_ActSet(i, 13, dir)
+                            Cv_ActSet(i, 3, 12)
+                            IfCondition LessThan(dir, 0) ThenBlock: { Cv_ActSet(i, 5, 1) }
+                            IfCondition GreaterThan(dir, 0) ThenBlock: { Cv_ActSet(i, 5, 0) }
+                            hp = Cv_ActGet(i, 4)
+                            IfCondition GreaterThan(hp, 0) ThenBlock: { hp = Subtract(hp, 1) }
+                            Cv_ActSet(i, 4, hp)
+                            PrintMessage("stomp\n")
+                            Cv_Noise(17)
+                            PrintMessage("foe hp ")
+                            PrintNumber(hp)
+                            PrintMessage("\n")
+                            ReturnValue(0)
+                        }
+                    }
+                }
+            }
+        }
+        dir = 1
+        IfCondition GreaterThan(Cv.vx, 0) ThenBlock: { dir = Subtract(0, 1) }
+        IfCondition LessThan(Cv.vx, 0) ThenBlock: { dir = 1 }
+        IfCondition EqualTo(Cv.vx, 0) ThenBlock: {
+            IfCondition LessThan(mid, Add(x, Divide(t, 2))) ThenBlock: { dir = Subtract(0, 1) }
+        }
+        nx = Add(x, t)
+        IfCondition LessThan(dir, 0) ThenBlock: { nx = Subtract(x, t) }
+        over = Cv_BoxHit(nx, Cv.hy)
+        IfCondition EqualTo(over, 0) ThenBlock: { Cv.hx = nx }
+        IfCondition EqualTo(Cv.pain, 0) ThenBlock: {
+            Cv.vx = 4500
+            IfCondition LessThan(dir, 0) ThenBlock: { Cv.vx = Subtract(0, Cv.vx) }
+            IfCondition LessThan(dir, 0) ThenBlock: { Cv.face = 1 }
+            IfCondition GreaterThan(dir, 0) ThenBlock: { Cv.face = 0 }
+            Cv.vy = Multiply(Cv.jmp, 450)
+            Cv.ground = 0
+            Cv.adir = 0
+            Cv.pain = 18
+            foe = 1
+            IfCondition LessThan(dir, 0) ThenBlock: { foe = Subtract(0, 1) }
+            Cv_ActSet(i, 13, foe)
+            Cv_ActSet(i, 3, 14)
+            IfCondition LessThan(foe, 0) ThenBlock: { Cv_ActSet(i, 5, 1) }
+            IfCondition GreaterThan(foe, 0) ThenBlock: { Cv_ActSet(i, 5, 0) }
+            PrintMessage("hurt\n")
+            Cv_Hit()
+        }
+    }
+}
+
+Function.Cv_FoeOne {
+    Input: i: Integer
+    Body: {
+        motion = 0
+        spd = 0
+        dir = 0
+        x = 0
+        y = 0
+        t = 0
+        rate = 0
+        nx = 0
+        hit = 0
+        zone = 0
+        home = 0
+        feet = 0
+        hold = 0
+        phase = 0
+        p = 0
+        goal = 0
+        dx = 0
+        lim = 0
+        ledge = 0
+        col = 0
+        last = 0
+        t = Cv_TileMm()
+        IfCondition LessEqual(Cv_ActGet(i, 4), 0) ThenBlock: { ReturnValue(0) }
+        motion = Cv_ActGet(i, 6)
+        spd = Cv_ActGet(i, 7)
+        dir = Cv_ActGet(i, 13)
+        x = Cv_ActGet(i, 1)
+        feet = Cv_ActGet(i, 12)
+        hold = Cv_ActGet(i, 3)
+        phase = Cv_ActGet(i, 14)
+        zone = Cv_ActGet(i, 10)
+        home = Cv_ActGet(i, 11)
+        ledge = Cv_ActGet(i, 9)
+        y = feet
+        IfCondition GreaterThan(hold, 0) ThenBlock: { hold = Subtract(hold, 1) }
+        ElseBlock: {
+            IfCondition EqualTo(motion, 5) ThenBlock: {
+                IfCondition GreaterThan(spd, 0) ThenBlock: {
+                    goal = Cv.hx
+                    IfCondition GreaterThan(zone, 0) ThenBlock: {
+                        lim = Multiply(zone, t)
+                        dx = Add(home, lim)
+                        IfCondition GreaterThan(goal, dx) ThenBlock: { goal = dx }
+                        dx = Subtract(home, lim)
+                        IfCondition LessThan(goal, dx) ThenBlock: { goal = dx }
+                    }
+                    ElseBlock: { goal = home }
+                    dx = Subtract(goal, x)
+                    dir = 0
+                    IfCondition GreaterThan(dx, 80) ThenBlock: { dir = 1 }
+                    IfCondition LessThan(dx, Subtract(0, 80)) ThenBlock: { dir = Subtract(0, 1) }
+                }
+            }
+        }
+        IfCondition EqualTo(motion, 3) ThenBlock: {
+            phase = Add(phase, 1)
+            p = Modulo(phase, 80)
+            IfCondition GreaterThan(p, 40) ThenBlock: { p = Subtract(80, p) }
+            dx = Subtract(p, 20)
+            dx = Multiply(dx, t)
+            dx = Divide(dx, 40)
+            y = Add(feet, dx)
+            hit = Cv_FoeHit(x, y)
+            IfCondition EqualTo(hit, 1) ThenBlock: { y = feet }
+            IfCondition GreaterThan(zone, 0) ThenBlock: {
+                IfCondition GreaterThan(spd, 0) ThenBlock: {
+                    IfCondition EqualTo(dir, 0) ThenBlock: { dir = 1 }
+                    rate = Multiply(spd, 1000)
+                    dx = Multiply(rate, 16)
+                    dx = Divide(dx, 1000)
+                    IfCondition LessThan(dir, 0) ThenBlock: { dx = Subtract(0, dx) }
+                    nx = Add(x, dx)
+                    hit = Cv_FoeHit(nx, y)
+                    IfCondition EqualTo(hit, 1) ThenBlock: {
+                        dir = Subtract(0, dir)
+                        hold = 8
+                    }
+                    ElseBlock: { x = nx }
+                    lim = Multiply(zone, t)
+                    dx = Add(home, lim)
+                    IfCondition GreaterThan(x, dx) ThenBlock: {
+                        x = dx
+                        dir = Subtract(0, 1)
+                    }
+                    dx = Subtract(home, lim)
+                    IfCondition LessThan(x, dx) ThenBlock: {
+                        x = dx
+                        dir = 1
+                    }
+                }
+            }
+            ElseBlock: { x = home }
+        }
+        ElseBlock: {
+            IfCondition EqualTo(motion, 0) ThenBlock: { dir = 0 }
+            IfCondition LessThan(spd, 1) ThenBlock: { dir = 0 }
+            IfCondition LessEqual(zone, 0) ThenBlock: {
+                x = home
+                dir = 0
+            }
+            IfCondition NotEqual(dir, 0) ThenBlock: {
+                rate = Multiply(spd, 1000)
+                IfCondition EqualTo(motion, 2) ThenBlock: { rate = Multiply(rate, 2) }
+                dx = Multiply(rate, 16)
+                dx = Divide(dx, 1000)
+                IfCondition LessThan(dir, 0) ThenBlock: { dx = Subtract(0, dx) }
+                nx = Add(x, dx)
+                hit = Cv_FoeHit(nx, feet)
+                IfCondition EqualTo(hit, 0) ThenBlock: {
+                    IfCondition NotEqual(ledge, 0) ThenBlock: {
+                        p = Cv_FoeLedge(nx, feet, dir)
+                        IfCondition EqualTo(p, 1) ThenBlock: { hit = 1 }
+                    }
+                }
+                IfCondition EqualTo(hit, 1) ThenBlock: {
+                    dir = Subtract(0, dir)
+                    hold = 8
+                }
+                ElseBlock: { x = nx }
+            }
+            IfCondition GreaterThan(zone, 0) ThenBlock: {
+                lim = Multiply(zone, t)
+                dx = Add(home, lim)
+                IfCondition GreaterThan(x, dx) ThenBlock: {
+                    x = dx
+                    dir = Subtract(0, 1)
+                    hold = 8
+                }
+                dx = Subtract(home, lim)
+                IfCondition LessThan(x, dx) ThenBlock: {
+                    x = dx
+                    dir = 1
+                    hold = 8
+                }
+            }
+            IfCondition EqualTo(motion, 4) ThenBlock: {
+                phase = Add(phase, 1)
+                p = Modulo(phase, 48)
+                y = feet
+                IfCondition LessThan(p, 16) ThenBlock: {
+                    dx = p
+                    IfCondition GreaterThan(dx, 8) ThenBlock: { dx = Subtract(16, dx) }
+                    dx = Multiply(dx, t)
+                    dx = Divide(dx, 8)
+                    y = Add(feet, dx)
+                }
+            }
+        }
+        IfCondition LessThan(dir, 0) ThenBlock: { Cv_ActSet(i, 5, 1) }
+        IfCondition GreaterThan(dir, 0) ThenBlock: { Cv_ActSet(i, 5, 0) }
+        Cv_ActSet(i, 1, x)
+        Cv_ActSet(i, 2, y)
+        Cv_ActSet(i, 3, hold)
+        Cv_ActSet(i, 13, dir)
+        Cv_ActSet(i, 14, phase)
+        col = 0
+        IfCondition GreaterEqual(x, 0) ThenBlock: { col = Divide(x, t) }
+        last = Cv_ActGet(i, 15)
+        IfCondition NotEqual(col, last) ThenBlock: {
+            Cv_ActSet(i, 15, col)
+            PrintMessage("foe ")
+            PrintNumber(col)
+            PrintMessage(" ")
+            PrintNumber(motion)
+            PrintMessage("\n")
+        }
+        Cv_FoeTouch(i)
+    }
+}
+
+Function.Cv_FoeStep {
+    Body: {
+        i = 0
+        IfCondition EqualTo(Cv.act, 0) ThenBlock: { ReturnValue(0) }
+        i = 0
+        WhileLoop LessThan(i, Cv.nact) {
+            Cv_FoeOne(i)
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Cv_FoeDraw {
+    Body: {
+        i = 0
+        idx = 0
+        x = 0
+        y = 0
+        face = 0
+        t = 0
+        dx = 0
+        top = 0
+        surf = 0
+        fr = 0
+        f = 0
+        sx = 0
+        src = 0
+        n = 0
+        c = 0
+        IfCondition LessThan(Cv.px, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Cv.act, 0) ThenBlock: { ReturnValue(0) }
+        t = Cv_TileMm()
+        i = 0
+        WhileLoop LessThan(i, Cv.nact) {
+            n = Cv_ActGet(i, 4)
+            IfCondition LessEqual(n, 0) ThenBlock: {
+                i = Add(i, 1)
+                ContinueLoop
+            }
+            idx = Cv_ActGet(i, 0)
+            x = Cv_ActGet(i, 1)
+            y = Cv_ActGet(i, 2)
+            face = Cv_ActGet(i, 5)
+            dx = Cv_SX(x)
+            top = Add(y, t)
+            top = Cv_SY(top)
+            surf = Cv_IGet(Cv.surf, idx)
+            IfCondition LessEqual(surf, 0) ThenBlock: { Cv_Box(dx, top, 1) }
+            ElseBlock: {
+                IfCondition EqualTo(face, 1) ThenBlock: {
+                    fr = Cv_IGet(Cv.fr, idx)
+                    IfCondition LessThan(fr, 1) ThenBlock: { fr = 1 }
+                    f = 0
+                    IfCondition GreaterThan(fr, 1) ThenBlock: {
+                        f = Divide(Cv.tick, 10)
+                        f = Modulo(f, fr)
+                    }
+                    sx = Multiply(f, Cv.px)
+                    src = Cv_Mirror(surf, sx, Cv.px, Cv.px)
+                    sx = 0
+                    IfCondition LessEqual(src, 0) ThenBlock: {
+                        src = surf
+                        sx = Multiply(f, Cv.px)
+                    }
+                    Blit.dx = dx
+                    Blit.dy = top
+                    Blit.tint = 0
+                    Blit.cycle = 0
+                    Blit.turn = 0
+                    Blit.glow = 0
+                    Blit.ghost = 0
+                    Blit_Cell(src, sx, 0, Cv.px, Cv.px)
+                }
+                ElseBlock: { Cv_Sprite(idx, dx, top) }
+            }
+            c = FB_RGB(255, 236, 160)
+            n = Cv_PutN(Cv.msg, 0, Cv_ActGet(i, 4))
+            SetByte(Cv.msg, n, 0)
+            sx = Subtract(top, 16)
+            IfCondition LessThan(sx, 0) ThenBlock: { sx = 0 }
+            FB_DrawStringScaled(dx, sx, Cv.msg, c, Subtract(0, 1), 1)
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Cv_Takeoff {
+    Input: turbo: Integer
+    Body: {
+        walk = 0
+        windf = 0
+        hang = 0
+        base = 0
+        top = 0
+        leap = 0
+        walk = Cv.walk
+        IfCondition LessThan(walk, 1) ThenBlock: { walk = 1 }
+        leap = Cv.leap
+        IfCondition LessThan(leap, 1) ThenBlock: { leap = 2 }
+        IfCondition EqualTo(turbo, 1) ThenBlock: {
+            Cv.carry = Multiply(Cv.spd, 1000)
+        }
+        ElseBlock: {
+            windf = Cv.wind
+            IfCondition LessThan(windf, 1) ThenBlock: { windf = 3 }
+            windf = Multiply(windf, 62)
+            IfCondition LessThan(windf, 1) ThenBlock: { windf = 1 }
+            hang = Cv.runh
+            IfCondition LessThan(hang, 0) ThenBlock: { hang = Subtract(0, hang) }
+            IfCondition GreaterThan(hang, windf) ThenBlock: { hang = windf }
+            base = Multiply(walk, 1000)
+            top = Multiply(walk, leap)
+            top = Multiply(top, 1000)
+            top = Subtract(top, base)
+            top = Multiply(top, hang)
+            top = Divide(top, windf)
+            Cv.carry = Add(base, top)
+        }
+        Cv.adir = 0
+        IfCondition LessThan(Cv.vx, 0) ThenBlock: { Cv.adir = Subtract(0, 1) }
+        IfCondition GreaterThan(Cv.vx, 0) ThenBlock: { Cv.adir = 1 }
+    }
+}
+
+Function.Cv_Step {
+    Body: {
+        up = 0
+        fire = 0
+        term = 0
+        rate = 0
+        t = 0
+        col = 0
+        row = 0
+        oc = 0
+        orow = 0
+        og = 0
+        hang = 0
+        g = 0
+        walk = 0
+        windf = 0
+        turbo = 0
+        base = 0
+        top = 0
+        stun = 0
+        oc = Cv.hcol
+        orow = Cv.hrow
+        og = Cv.ground
+        stun = Cv.pain
+        IfCondition GreaterThan(stun, 0) ThenBlock: { Cv.pain = Subtract(stun, 1) }
+        IfCondition EqualTo(og, 1) ThenBlock: { Cv.adir = 0 }
+        Cv.duck = 0
+        Cv.hh = 2
+        IfCondition EqualTo(Cv.ground, 1) ThenBlock: {
+            g = Cv_Near(7)
+            IfCondition EqualTo(g, 0) ThenBlock: {
+                IfCondition EqualTo(Key.d, 1) ThenBlock: {
+                    IfCondition NotEqual(Key.u, 1) ThenBlock: {
+                        Cv.hh = 1
+                        Cv.duck = 1
+                    }
+                }
+            }
+            IfCondition EqualTo(Cv.duck, 0) ThenBlock: {
+                IfCondition EqualTo(Cv_BoxHit(Cv.hx, Cv.hy), 1) ThenBlock: {
+                    Cv.hh = 1
+                    Cv.duck = 1
+                }
+            }
+        }
+        IfCondition NotEqual(Cv.duck, Cv.wasd) ThenBlock: {
+            PrintMessage("duck ")
+            PrintNumber(Cv.duck)
+            PrintMessage("\n")
+            IfCondition EqualTo(Cv.duck, 1) ThenBlock: { Cv_Noise(23) }
+        }
+        Cv.wasd = Cv.duck
+        IfCondition GreaterThan(Cv.beam, 0) ThenBlock: { Cv.beam = Subtract(Cv.beam, 1) }
+        IfCondition GreaterThan(Cv.gun, 0) ThenBlock: { Cv.gun = Subtract(Cv.gun, 1) }
+        g = 0
+        IfCondition EqualTo(Cv.duck, 0) ThenBlock: {
+        IfCondition EqualTo(Key.r, 1) ThenBlock: {
+            IfCondition NotEqual(Key.l, 1) ThenBlock: { g = 1 }
+        }
+        IfCondition EqualTo(Key.l, 1) ThenBlock: {
+            IfCondition NotEqual(Key.r, 1) ThenBlock: { g = Subtract(0, 1) }
+        }
+        }
+        IfCondition EqualTo(g, 0) ThenBlock: { Cv.runh = 0 }
+        ElseBlock: {
+            IfCondition GreaterThan(g, 0) ThenBlock: {
+                IfCondition LessThan(Cv.runh, 0) ThenBlock: { Cv.runh = 0 }
+                Cv.runh = Add(Cv.runh, 1)
+            }
+            ElseBlock: {
+                IfCondition GreaterThan(Cv.runh, 0) ThenBlock: { Cv.runh = 0 }
+                Cv.runh = Subtract(Cv.runh, 1)
+            }
+        }
+        turbo = 0
+        IfCondition GreaterThan(Cv.boost, 0) ThenBlock: {
+            Cv.boost = Subtract(Cv.boost, 1)
+            turbo = 1
+        }
+        IfCondition EqualTo(Key.s, 1) ThenBlock: { turbo = 1 }
+        walk = Cv.walk
+        IfCondition LessThan(walk, 1) ThenBlock: { walk = 1 }
+        windf = Cv.wind
+        IfCondition LessThan(windf, 1) ThenBlock: { windf = 3 }
+        windf = Multiply(windf, 62)
+        IfCondition LessThan(windf, 1) ThenBlock: { windf = 1 }
+        rate = walk
+        IfCondition EqualTo(turbo, 1) ThenBlock: {
+            t = Multiply(Cv.spd, 1000)
+            rate = Cv.spd
+        }
+        ElseBlock: {
+            base = Multiply(walk, 1000)
+            top = Multiply(walk, 2)
+            top = Multiply(top, 1000)
+            term = Multiply(Cv.spd, 1000)
+            IfCondition GreaterThan(top, term) ThenBlock: { top = term }
+            IfCondition LessThan(top, base) ThenBlock: { top = base }
+            hang = Cv.runh
+            IfCondition LessThan(hang, 0) ThenBlock: { hang = Subtract(0, hang) }
+            IfCondition GreaterThan(hang, windf) ThenBlock: { hang = windf }
+            term = Subtract(top, base)
+            term = Multiply(term, hang)
+            term = Divide(term, windf)
+            t = Add(base, term)
+        }
+        IfCondition EqualTo(stun, 0) ThenBlock: {
+            Cv.vx = 0
+            IfCondition EqualTo(Cv.duck, 1) ThenBlock: {
+                IfCondition EqualTo(Key.l, 1) ThenBlock: {
+                    IfCondition NotEqual(Key.r, 1) ThenBlock: { Cv.face = 1 }
+                }
+                IfCondition EqualTo(Key.r, 1) ThenBlock: {
+                    IfCondition NotEqual(Key.l, 1) ThenBlock: { Cv.face = 0 }
+                }
+            }
+            ElseBlock: {
+                IfCondition EqualTo(Key.l, 1) ThenBlock: {
+                    IfCondition NotEqual(Key.r, 1) ThenBlock: { Cv.vx = Subtract(0, t) }
+                }
+                IfCondition EqualTo(Key.r, 1) ThenBlock: {
+                    IfCondition NotEqual(Key.l, 1) ThenBlock: { Cv.vx = t }
+                }
+                IfCondition LessThan(Cv.vx, 0) ThenBlock: { Cv.face = 1 }
+                IfCondition GreaterThan(Cv.vx, 0) ThenBlock: { Cv.face = 0 }
+            }
+        }
+        up = 0
+        IfCondition EqualTo(Key.u, 1) ThenBlock: {
+            IfCondition EqualTo(Cv.uk, 0) ThenBlock: { up = 1 }
+        }
+        fire = 0
+        IfCondition EqualTo(Key.f, 1) ThenBlock: {
+            IfCondition EqualTo(Cv.jumped, 0) ThenBlock: { fire = 1 }
+        }
+        Cv.uk = Key.u
+        Cv.jumped = Key.f
+        hang = 0
+        IfCondition GreaterThan(Cv.loff, 0) ThenBlock: {
+            Cv.loff = Subtract(Cv.loff, 1)
+        }
+        g = Cv_Near(7)
+        IfCondition NotEqual(g, 0) ThenBlock: {
+            IfCondition EqualTo(Cv.loff, 0) ThenBlock: {
+                IfCondition EqualTo(Key.f, 0) ThenBlock: { hang = 1 }
+            }
+        }
+        IfCondition EqualTo(hang, 1) ThenBlock: {
+            Cv.vy = 0
+            Cv.ground = 1
+            IfCondition EqualTo(Key.u, 1) ThenBlock: {
+                Cv.vy = Multiply(rate, 1000)
+            }
+            IfCondition EqualTo(Key.d, 1) ThenBlock: {
+                IfCondition NotEqual(Key.u, 1) ThenBlock: {
+                    Cv.vy = Multiply(rate, 1000)
+                    Cv.vy = Subtract(0, Cv.vy)
+                }
+            }
+        }
+        ElseBlock: {
+            IfCondition EqualTo(og, 1) ThenBlock: {
+                g = Cv_Near(11)
+                IfCondition EqualTo(g, 1) ThenBlock: {
+                    Cv.vx = Multiply(Cv.spd, 1000)
+                    Cv.vx = Subtract(0, Cv.vx)
+                    Cv.face = 1
+                }
+                IfCondition EqualTo(g, 2) ThenBlock: {
+                    Cv.vx = Multiply(Cv.spd, 1000)
+                    Cv.face = 0
+                }
+                IfCondition EqualTo(g, 3) ThenBlock: {
+                    Cv.vy = Multiply(Cv.spd, 1000)
+                    Cv.ground = 0
+                }
+            }
+            IfCondition EqualTo(Cv.ground, 1) ThenBlock: {
+                Cv.vy = 0
+                IfCondition EqualTo(up, 1) ThenBlock: {
+                    Cv.vy = Multiply(Cv.jmp, 1000)
+                    Cv.ground = 0
+                    Cv_Takeoff(turbo)
+                }
+                IfCondition EqualTo(fire, 1) ThenBlock: {
+                    Cv.vy = Multiply(Cv.jmp, 1000)
+                    Cv.ground = 0
+                    Cv_Takeoff(turbo)
+                }
+                IfCondition EqualTo(Cv.ground, 0) ThenBlock: { Cv_Noise(14) }
+            }
+            IfCondition EqualTo(Cv.ground, 0) ThenBlock: {
+                IfCondition EqualTo(up, 1) ThenBlock: {
+                    g = Cv_Near(7)
+                    IfCondition NotEqual(g, 0) ThenBlock: { Cv.loff = 20 }
+                }
+                IfCondition EqualTo(fire, 1) ThenBlock: {
+                    g = Cv_Near(7)
+                    IfCondition NotEqual(g, 0) ThenBlock: { Cv.loff = 20 }
+                }
+                g = Cv_Near(1)
+                IfCondition LessEqual(g, 0) ThenBlock: { g = Cv.grav }
+                term = Multiply(g, 4)
+                term = Multiply(term, 16)
+                Cv.vy = Subtract(Cv.vy, term)
+                term = Multiply(Cv.fall, 1000)
+                term = Subtract(0, term)
+                IfCondition LessThan(Cv.vy, term) ThenBlock: { Cv.vy = term }
+            }
+        }
+        IfCondition EqualTo(stun, 0) ThenBlock: {
+        IfCondition EqualTo(hang, 0) ThenBlock: {
+            IfCondition EqualTo(Cv.ground, 0) ThenBlock: {
+                IfCondition EqualTo(turbo, 0) ThenBlock: {
+                    IfCondition NotEqual(Cv.adir, 0) ThenBlock: {
+                        g = 0
+                        IfCondition EqualTo(Cv.adir, 1) ThenBlock: {
+                            IfCondition EqualTo(Key.r, 1) ThenBlock: {
+                                IfCondition NotEqual(Key.l, 1) ThenBlock: { g = 1 }
+                            }
+                        }
+                        IfCondition EqualTo(Cv.adir, Subtract(0, 1)) ThenBlock: {
+                            IfCondition EqualTo(Key.l, 1) ThenBlock: {
+                                IfCondition NotEqual(Key.r, 1) ThenBlock: { g = 1 }
+                            }
+                        }
+                        IfCondition EqualTo(g, 1) ThenBlock: {
+                            Cv.vx = Cv.carry
+                            IfCondition LessThan(Cv.adir, 0) ThenBlock: {
+                                Cv.vx = Subtract(0, Cv.vx)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        }
+        IfCondition EqualTo(Cv.xk, 1) ThenBlock: {
+            IfCondition EqualTo(Cv.gun, 0) ThenBlock: {
+                Cv_Fire()
+                Cv.gun = 8
+            }
+        }
+        Cv_MoveX()
+        Cv_MoveY()
+        Cv_Probe()
+        IfCondition EqualTo(og, 0) ThenBlock: {
+            IfCondition EqualTo(Cv.ground, 1) ThenBlock: { Cv_Noise(15) }
+        }
+        Cv_Effects()
+        Cv_Touch()
+        Cv_FoeStep()
+        t = Cv_TileMm()
+        col = 0
+        IfCondition GreaterEqual(Cv.hx, 0) ThenBlock: { col = Divide(Cv.hx, t) }
+        row = 0
+        IfCondition GreaterEqual(Cv.hy, 0) ThenBlock: { row = Divide(Cv.hy, t) }
+        Cv.hcol = col
+        Cv.hrow = row
+        up = 0
+        IfCondition NotEqual(col, oc) ThenBlock: { up = 1 }
+        IfCondition NotEqual(row, orow) ThenBlock: { up = 1 }
+        IfCondition NotEqual(Cv.ground, og) ThenBlock: { up = 1 }
+        IfCondition EqualTo(up, 1) ThenBlock: {
+            PrintMessage("hero ")
+            PrintNumber(col)
+            PrintMessage(" ")
+            PrintNumber(row)
+            PrintMessage(" ")
+            PrintNumber(Cv.ground)
+            PrintMessage("\n")
+        }
+        Cv_Follow()
+    }
+}
+
+Function.Cv_Mirror {
+    Input: surf: Integer
+    Input: sx: Integer
+    Input: fw: Integer
+    Input: fh: Integer
+    Output: Integer
+    Body: {
+        need = 0
+        sw = 0
+        sh = 0
+        data = 0
+        dest = 0
+        sp = 0
+        dp = 0
+        y = 0
+        x = 0
+        k = 0
+        so = 0
+        doff = 0
+        at = 0
+        b = 0
+        IfCondition LessEqual(surf, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(fw, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(fh, 1) ThenBlock: { ReturnValue(0) }
+        need = 0
+        IfCondition LessEqual(Cv.flip, 0) ThenBlock: { need = 1 }
+        IfCondition GreaterThan(Cv.flip, 0) ThenBlock: {
+            sw = Surface_GetWidth(Cv.flip)
+            sh = Surface_GetHeight(Cv.flip)
+            IfCondition NotEqual(sw, fw) ThenBlock: { need = 1 }
+            IfCondition NotEqual(sh, fh) ThenBlock: { need = 1 }
+        }
+        IfCondition EqualTo(need, 1) ThenBlock: {
+            IfCondition GreaterThan(Cv.flip, 0) ThenBlock: {
+                Surface_Destroy(Cv.flip)
+                Cv.flip = 0
+            }
+            Cv.flip = Surface_Create(SurfaceFormat.PIXEL_32, fw, fh)
+        }
+        IfCondition LessEqual(Cv.flip, 0) ThenBlock: { ReturnValue(0) }
+        data = Surface_GetData(surf)
+        dest = Surface_GetData(Cv.flip)
+        sp = Surface_GetPitch(surf)
+        dp = Surface_GetPitch(Cv.flip)
+        IfCondition EqualTo(data, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(dest, 0) ThenBlock: { ReturnValue(0) }
+        y = 0
+        WhileLoop LessThan(y, fh) {
+            x = 0
+            WhileLoop LessThan(x, fw) {
+                so = Multiply(y, sp)
+                at = Add(sx, x)
+                at = Multiply(at, 4)
+                so = Add(so, at)
+                doff = Multiply(y, dp)
+                at = Subtract(fw, 1)
+                at = Subtract(at, x)
+                at = Multiply(at, 4)
+                doff = Add(doff, at)
+                k = 0
+                WhileLoop LessThan(k, 4) {
+                    at = Add(so, k)
+                    b = GetByte(data, at)
+                    at = Add(doff, k)
+                    SetByte(dest, at, b)
+                    k = Add(k, 1)
+                }
+                x = Add(x, 1)
+            }
+            y = Add(y, 1)
+        }
+        ReturnValue(Cv.flip)
+    }
+}
+
+Function.Cv_Hero {
+    Body: {
+        idx = 0
+        surf = 0
+        fr = 0
+        f = 0
+        sx = 0
+        dx = 0
+        feet = 0
+        top = 0
+        hh = 0
+        src = 0
+        i = 0
+        stand = 0
+        IfCondition LessThan(Cv.px, 1) ThenBlock: { ReturnValue(0) }
+        idx = Cv.hidle
+        IfCondition EqualTo(Cv.ground, 0) ThenBlock: {
+            IfCondition GreaterEqual(Cv.hjump, 0) ThenBlock: { idx = Cv.hjump }
+        }
+        ElseBlock: {
+            IfCondition NotEqual(Cv.vx, 0) ThenBlock: {
+                IfCondition GreaterEqual(Cv.hrun, 0) ThenBlock: { idx = Cv.hrun }
+            }
+        }
+        IfCondition LessThan(idx, 0) ThenBlock: { ReturnValue(0) }
+        surf = Cv_IGet(Cv.surf, idx)
+        IfCondition LessEqual(surf, 0) ThenBlock: { ReturnValue(0) }
+        fr = Cv_IGet(Cv.fr, idx)
+        IfCondition LessThan(fr, 1) ThenBlock: { fr = 1 }
+        f = 0
+        IfCondition GreaterThan(fr, 1) ThenBlock: {
+            f = Divide(Cv.tick, 10)
+            f = Modulo(f, fr)
+        }
+        sx = Multiply(f, Cv.px)
+        dx = Cv_SX(Cv.hx)
+        feet = Cv_SY(Cv.hy)
+        stand = Multiply(Cv.px, 2)
+        hh = stand
+        IfCondition EqualTo(Cv.duck, 1) ThenBlock: { hh = Cv.px }
+        top = Subtract(feet, hh)
+        src = surf
+        IfCondition EqualTo(Cv.face, 1) ThenBlock: {
+            src = Cv_Mirror(surf, sx, Cv.px, stand)
+            sx = 0
+            IfCondition LessEqual(src, 0) ThenBlock: {
+                src = surf
+                sx = Multiply(f, Cv.px)
+            }
+        }
+        Blit.dx = dx
+        Blit.tint = 0
+        Blit.cycle = 0
+        Blit.turn = 0
+        Blit.glow = 0
+        Blit.ghost = 0
+        IfCondition EqualTo(Cv.duck, 1) ThenBlock: {
+            i = 0
+            WhileLoop LessThan(i, Cv.px) {
+                Blit.dy = Add(top, i)
+                stand = Multiply(i, 2)
+                Blit_Cell(src, sx, stand, Cv.px, 1)
+                i = Add(i, 1)
+            }
+        }
+        ElseBlock: {
+            Blit.dy = top
+            Blit_Cell(src, sx, 0, Cv.px, hh)
+        }
+    }
+}

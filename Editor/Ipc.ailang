@@ -1,0 +1,363 @@
+// Editor/Ipc.ailang — present loop for the level editor.
+// Own shared directory /dev/shm/level_edit so the cabinet is left alone.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.Display.Render.Framebuffer
+Import.App.State
+Import.App.World
+
+FixedPool.EdKey {
+    "n": Initialize=0, CanChange=True
+}
+
+FixedPool.Ed {
+    "run": Initialize=1, CanChange=True
+    "tick": Initialize=0, CanChange=True
+    "brush": Initialize=1, CanChange=True
+    "camx": Initialize=0, CanChange=True
+    "camy": Initialize=0, CanChange=True
+    "curx": Initialize=0, CanChange=True
+    "cury": Initialize=0, CanChange=True
+    "tmm": Initialize=200, CanChange=True
+    "mapw": Initialize=40, CanChange=True
+    "maph": Initialize=16, CanChange=True
+    "vieww": Initialize=16, CanChange=True
+    "viewh": Initialize=10, CanChange=True
+    "grav": Initialize=30, CanChange=True
+    "fall": Initialize=20, CanChange=True
+    "spd": Initialize=8, CanChange=True
+    "jmp": Initialize=14, CanChange=True
+    "walk": Initialize=2, CanChange=True
+    "wind": Initialize=3, CanChange=True
+    "leap": Initialize=2, CanChange=True
+    "nlev": Initialize=1, CanChange=True
+    "lev": Initialize=0, CanChange=True
+    "na": Initialize=0, CanChange=True
+    "px": Initialize=0, CanChange=True
+    "ready": Initialize=0, CanChange=True
+    "note": Initialize=0, CanChange=True
+    "lk": Initialize=0, CanChange=True
+    "rk": Initialize=0, CanChange=True
+    "uk": Initialize=0, CanChange=True
+    "dk": Initialize=0, CanChange=True
+    "sk": Initialize=0, CanChange=True
+    "pk": Initialize=0, CanChange=True
+    "nk": Initialize=0, CanChange=True
+    "fk": Initialize=0, CanChange=True
+    "file": Initialize=0, CanChange=True
+    "flen": Initialize=0, CanChange=True
+    "grid": Initialize=0, CanChange=True
+    "name": Initialize=0, CanChange=True
+    "path": Initialize=0, CanChange=True
+    "aw": Initialize=0, CanChange=True
+    "ah": Initialize=0, CanChange=True
+    "fr": Initialize=0, CanChange=True
+    "surf": Initialize=0, CanChange=True
+    "tok": Initialize=0, CanChange=True
+    "nw": Initialize=0, CanChange=True
+    "out": Initialize=0, CanChange=True
+    "on": Initialize=0, CanChange=True
+    "meta": Initialize=0, CanChange=True
+    "msg": Initialize=0, CanChange=True
+    "num": Initialize=0, CanChange=True
+    "ox": Initialize=0, CanChange=True
+    "oy": Initialize=0, CanChange=True
+    "pal": Initialize=0, CanChange=True
+    "gen": Initialize=0, CanChange=True
+    "pub": Initialize=1, CanChange=True
+    "grp": Initialize=0, CanChange=True
+    "show": Initialize=1, CanChange=True
+    "menu": Initialize=0, CanChange=True
+    "menux": Initialize=0, CanChange=True
+    "menuy": Initialize=0, CanChange=True
+    "form": Initialize=0, CanChange=True
+    "field": Initialize=0, CanChange=True
+    "fn": Initialize=0, CanChange=True
+    "drag": Initialize=0, CanChange=True
+    "lb": Initialize=0, CanChange=True
+    "seq": Initialize=0, CanChange=True
+    "kseq": Initialize=0, CanChange=True
+    "mx": Initialize=0, CanChange=True
+    "my": Initialize=0, CanChange=True
+    "mb": Initialize=0, CanChange=True
+    "pbuf": Initialize=0, CanChange=True
+    "fbuf": Initialize=0, CanChange=True
+    "win": Initialize=0, CanChange=True
+    "placed": Initialize=0, CanChange=True
+    "focus": Initialize=3, CanChange=True
+    "dragging": Initialize=0, CanChange=True
+    "dragw": Initialize=0, CanChange=True
+    "dragdx": Initialize=0, CanChange=True
+    "dragdy": Initialize=0, CanChange=True
+    "hitw": Initialize=0, CanChange=True
+    "dock": Initialize=300, CanChange=True
+    "lpath": Initialize=0, CanChange=True
+    "bpath": Initialize=0, CanChange=True
+    "bimg": Initialize=0, CanChange=True
+    "bn": Initialize=0, CanChange=True
+    "bsurf": Initialize=0, CanChange=True
+    "blev": Initialize=0, CanChange=True
+    "bpx": Initialize=0, CanChange=True
+    "bvw": Initialize=0, CanChange=True
+    "bvh": Initialize=0, CanChange=True
+    "imgio": Initialize=0, CanChange=True
+    "ri": Initialize=0, CanChange=True
+    "brow": Initialize=0, CanChange=True
+    "scrolling": Initialize=0, CanChange=True
+    "scroll0": Initialize=0, CanChange=True
+    "scrolly": Initialize=0, CanChange=True
+    "attr": Initialize=0, CanChange=True
+    "spi": Initialize=0, CanChange=True
+    "spx": Initialize=0, CanChange=True
+    "spy": Initialize=0, CanChange=True
+    "hcol": Initialize=0, CanChange=True
+    "hrow": Initialize=0, CanChange=True
+    "abrush": Initialize=0, CanChange=True
+    "page": Initialize=0, CanChange=True
+    "bsel": Initialize=0, CanChange=True
+    "bfield": Initialize=0, CanChange=True
+    "bscroll": Initialize=0, CanChange=True
+    "beh": Initialize=0, CanChange=True
+    "canim": Initialize=0, CanChange=True
+    "cscroll": Initialize=0, CanChange=True
+    "afield": Initialize=0, CanChange=True
+    "fmode": Initialize=0, CanChange=True
+    "nf": Initialize=0, CanChange=True
+    "doc": Initialize=0, CanChange=True
+    "names": Initialize=0, CanChange=True
+    "dirb": Initialize=0, CanChange=True
+    "pick": Initialize=0, CanChange=True
+    "nbuf": Initialize=0, CanChange=True
+    "game": Initialize=0, CanChange=True
+    "sfxn": Initialize=0, CanChange=True
+    "sfxsel": Initialize=0, CanChange=True
+    "sfxcur": Initialize=0, CanChange=True
+    "sgen": Initialize=0, CanChange=True
+    "sscroll": Initialize=0, CanChange=True
+    "sdn": Initialize=0, CanChange=True
+    "sfx": Initialize=0, CanChange=True
+    "spick": Initialize=0, CanChange=True
+    "sfxp": Initialize=0, CanChange=True
+    "sdir": Initialize=0, CanChange=True
+    "mn": Initialize=0, CanChange=True
+    "mus": Initialize=0, CanChange=True
+    "mcat": Initialize=0, CanChange=True
+}
+
+Function.Ed_Ensure {
+    Output: Integer
+    Body: {
+        SystemCall(83, "/dev/shm", 493)
+        SystemCall(83, "/dev/shm/level_edit", 493)
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_Open {
+    Input: kind: Integer
+    Input: flags: Integer
+    Input: mode: Integer
+    Output: Integer
+    Body: {
+        fd = Subtract(0, 1)
+        IfCondition EqualTo(kind, 1) ThenBlock: { fd = SystemCall(2, "/dev/shm/level_edit/meta.bin", flags, mode) }
+        IfCondition EqualTo(kind, 2) ThenBlock: { fd = SystemCall(2, "/dev/shm/level_edit/frame.tmp", flags, mode) }
+        IfCondition EqualTo(kind, 3) ThenBlock: { fd = SystemCall(2, "/dev/shm/level_edit/gen.tmp", flags, mode) }
+        IfCondition EqualTo(kind, 4) ThenBlock: { fd = SystemCall(2, "/dev/shm/level_edit/size.txt", flags, mode) }
+        IfCondition EqualTo(kind, 5) ThenBlock: { fd = SystemCall(2, "/dev/shm/level_edit/keys.txt", flags, mode) }
+        IfCondition EqualTo(kind, 6) ThenBlock: { fd = SystemCall(2, "/dev/shm/level_edit/cmd.txt", flags, mode) }
+        ReturnValue(fd)
+    }
+}
+
+Function.Ed_Rename {
+    Input: kind: Integer
+    Body: {
+        IfCondition EqualTo(kind, 0) ThenBlock: {
+            SystemCall(82, "/dev/shm/level_edit/frame.tmp", "/dev/shm/level_edit/frame0.raw")
+        }
+        IfCondition EqualTo(kind, 1) ThenBlock: {
+            SystemCall(82, "/dev/shm/level_edit/frame.tmp", "/dev/shm/level_edit/frame1.raw")
+        }
+        IfCondition EqualTo(kind, 2) ThenBlock: {
+            SystemCall(82, "/dev/shm/level_edit/gen.tmp", "/dev/shm/level_edit/gen.txt")
+        }
+    }
+}
+
+Function.Ed_Sleep {
+    Input: ms: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.ts, 0) ThenBlock: { Ipc.ts = Allocate(16) }
+        IfCondition LessThan(ms, 1) ThenBlock: { ms = 1 }
+        StoreValue(Ipc.ts, Divide(ms, 1000))
+        StoreValue(Add(Ipc.ts, 8), Multiply(Modulo(ms, 1000), 1000000))
+        SystemCall(35, Ipc.ts, 0)
+    }
+}
+
+Function.Ed_WriteAll {
+    Input: fd: Integer
+    Input: ptr: Address
+    Input: n: Integer
+    Output: Integer
+    Body: {
+        left = n
+        at = ptr
+        WhileLoop GreaterThan(left, 0) {
+            got = SystemCall(1, fd, at, left)
+            IfCondition LessEqual(got, 0) ThenBlock: { ReturnValue(0) }
+            at = Add(at, got)
+            left = Subtract(left, got)
+        }
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_Skip {
+    Input: s: Address
+    Input: off: Integer
+    Output: Integer
+    Body: {
+        Ipc.i = off
+        WhileLoop LessThan(Ipc.i, 96) {
+            Ipc.c = GetByte(s, Ipc.i)
+            IfCondition EqualTo(Ipc.c, 0) ThenBlock: { ReturnValue(Ipc.i) }
+            IfCondition EqualTo(Ipc.c, 32) ThenBlock: { ReturnValue(Add(Ipc.i, 1)) }
+            IfCondition EqualTo(Ipc.c, 10) ThenBlock: { ReturnValue(Ipc.i) }
+            Ipc.i = Add(Ipc.i, 1)
+        }
+        ReturnValue(Ipc.i)
+    }
+}
+
+Function.Ed_Present {
+    Output: Integer
+    Body: {
+        back = 0
+        wrote = 0
+        Ed_Ensure()
+        IfCondition EqualTo(Ipc.hdr, 0) ThenBlock: { Ipc.hdr = Allocate(16) }
+        IfCondition EqualTo(Ipc.hdr, 0) ThenBlock: { ReturnValue(0) }
+        Arc_LE32(Ipc.hdr, 0, FB.width)
+        Arc_LE32(Ipc.hdr, 4, FB.height)
+        Arc_LE32(Ipc.hdr, 8, FB.pitch)
+        Ipc.fd = Ed_Open(1, 577, 420)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(1, Ipc.fd, Ipc.hdr, 12)
+        SystemCall(3, Ipc.fd)
+        back = Subtract(1, Ed.pub)
+        IfCondition NotEqual(back, 0) ThenBlock: {
+            IfCondition NotEqual(back, 1) ThenBlock: { back = 0 }
+        }
+        Ipc.n = Multiply(FB.pitch, FB.height)
+        Ipc.fd = Ed_Open(2, 577, 420)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        wrote = Ed_WriteAll(Ipc.fd, FB_GetDrawBuffer(), Ipc.n)
+        SystemCall(3, Ipc.fd)
+        IfCondition EqualTo(wrote, 0) ThenBlock: { ReturnValue(0) }
+        Ed_Rename(back)
+        Ed.pub = back
+        Ed.gen = Add(Ed.gen, 1)
+        IfCondition LessThan(Ed.gen, 1) ThenBlock: { Ed.gen = 1 }
+        IfCondition EqualTo(Ipc.genb, 0) ThenBlock: { Ipc.genb = Allocate(32) }
+        IfCondition EqualTo(Ipc.genb, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.n = 0
+        Ipc.i = Ed.gen
+        WhileLoop GreaterThan(Ipc.i, 0) {
+            SetByte(Add(Ipc.genb, 16), Ipc.n, Add(48, Modulo(Ipc.i, 10)))
+            Ipc.n = Add(Ipc.n, 1)
+            Ipc.i = Divide(Ipc.i, 10)
+        }
+        Ipc.w = 0
+        WhileLoop LessThan(Ipc.w, Ipc.n) {
+            SetByte(Ipc.genb, Ipc.w, GetByte(Add(Ipc.genb, 16), Subtract(Subtract(Ipc.n, 1), Ipc.w)))
+            Ipc.w = Add(Ipc.w, 1)
+        }
+        SetByte(Ipc.genb, Ipc.n, 32)
+        SetByte(Ipc.genb, Add(Ipc.n, 1), Add(48, Ed.pub))
+        SetByte(Ipc.genb, Add(Ipc.n, 2), 10)
+        Ipc.fd = Ed_Open(3, 577, 420)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(1, Ipc.fd, Ipc.genb, Add(Ipc.n, 3))
+        SystemCall(3, Ipc.fd)
+        Ed_Rename(2)
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_PollSize {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.size, 0) ThenBlock: { Ipc.size = Allocate(64) }
+        Ipc.fd = Ed_Open(4, 0, 0)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.n = SystemCall(0, Ipc.fd, Ipc.size, 48)
+        SystemCall(3, Ipc.fd)
+        IfCondition LessEqual(Ipc.n, 0) ThenBlock: { ReturnValue(0) }
+        SetByte(Ipc.size, Ipc.n, 0)
+        Scratch.a = Arc_Atoi(Ipc.size)
+        Ipc.i = Ed_Skip(Ipc.size, 0)
+        Scratch.b = Arc_Atoi(Add(Ipc.size, Ipc.i))
+        IfCondition LessThan(Scratch.a, 32) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Scratch.b, 32) ThenBlock: { ReturnValue(0) }
+        ReturnValue(World_SetSize(Scratch.a, Scratch.b))
+    }
+}
+
+Function.Ed_PollKeys {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.keys, 0) ThenBlock: { Ipc.keys = Allocate(64) }
+        Ipc.fd = Ed_Open(5, 0, 0)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.n = SystemCall(0, Ipc.fd, Ipc.keys, 48)
+        SystemCall(3, Ipc.fd)
+        IfCondition LessEqual(Ipc.n, 0) ThenBlock: { ReturnValue(0) }
+        SetByte(Ipc.keys, Ipc.n, 0)
+        Key.l = Arc_Atoi(Ipc.keys)
+        Ipc.i = Ed_Skip(Ipc.keys, 0)
+        Key.r = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ed_Skip(Ipc.keys, Ipc.i)
+        Key.u = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ed_Skip(Ipc.keys, Ipc.i)
+        Key.d = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ed_Skip(Ipc.keys, Ipc.i)
+        Key.f = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ed_Skip(Ipc.keys, Ipc.i)
+        Key.s = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ed_Skip(Ipc.keys, Ipc.i)
+        Key.p = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        Ipc.i = Ed_Skip(Ipc.keys, Ipc.i)
+        EdKey.n = Arc_Atoi(Add(Ipc.keys, Ipc.i))
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_PollCmd {
+    Output: Integer
+    Body: {
+        IfCondition EqualTo(Ipc.cmd, 0) ThenBlock: { Ipc.cmd = Allocate(64) }
+        Ipc.fd = Ed_Open(6, 0, 0)
+        IfCondition LessThan(Ipc.fd, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.n = SystemCall(0, Ipc.fd, Ipc.cmd, 48)
+        SystemCall(3, Ipc.fd)
+        IfCondition LessEqual(Ipc.n, 0) ThenBlock: { ReturnValue(0) }
+        Ipc.c = GetByte(Ipc.cmd, 0)
+        Ipc.fd = Ed_Open(6, 577, 420)
+        IfCondition GreaterEqual(Ipc.fd, 0) ThenBlock: { SystemCall(3, Ipc.fd) }
+        IfCondition EqualTo(Ipc.c, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ipc.c, 10) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ipc.c, 113) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(Ipc.c, 81) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(Ipc.c, 114) ThenBlock: {
+            Scratch.a = Arc_Atoi(Add(Ipc.cmd, 1))
+            Ipc.i = Ed_Skip(Ipc.cmd, 1)
+            Scratch.b = Arc_Atoi(Add(Ipc.cmd, Ipc.i))
+            World_SetSize(Scratch.a, Scratch.b)
+            ReturnValue(4)
+        }
+        ReturnValue(0)
+    }
+}

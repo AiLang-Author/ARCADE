@@ -1,0 +1,4057 @@
+// Editor/Edit.ailang — place external SVG/TVG tiles on a level map.
+// The file stores paths. A picture is rasterized from that file into the
+// tile rectangle and kept for the session. A layer line is a PNG backdrop.
+// Nothing here draws stand-in art.
+// Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Arena
+LibraryImport.SVG
+LibraryImport.Display.Render.Framebuffer
+LibraryImport.Display.Render.VIF
+LibraryImport.Display.Render.DSurface
+LibraryImport.Browser.ImageDecode
+Import.App.State
+Import.App.World
+Import.App.Blit
+Import.Editor.Ipc
+
+Function.Ed_Name {
+    Input: i: Integer
+    Output: Address
+    Body: {
+        off = Multiply(i, 32)
+        ReturnValue(Add(Ed.name, off))
+    }
+}
+
+Function.Ed_Path {
+    Input: i: Integer
+    Output: Address
+    Body: {
+        off = Multiply(i, 96)
+        ReturnValue(Add(Ed.path, off))
+    }
+}
+
+Function.Ed_Word {
+    Input: i: Integer
+    Output: Address
+    Body: {
+        off = 0
+        IfCondition LessThan(i, 0) ThenBlock: { i = 0 }
+        IfCondition GreaterThan(i, 7) ThenBlock: { i = 7 }
+        off = Multiply(i, 96)
+        ReturnValue(Add(Ed.tok, off))
+    }
+}
+
+Function.Ed_IGet {
+    Input: base: Address
+    Input: i: Integer
+    Output: Integer
+    Body: {
+        off = Multiply(i, 8)
+        ReturnValue(Dereference(Add(base, off)))
+    }
+}
+
+Function.Ed_ISet {
+    Input: base: Address
+    Input: i: Integer
+    Input: v: Integer
+    Body: {
+        off = Multiply(i, 8)
+        StoreValue(Add(base, off), v)
+    }
+}
+
+Function.Ed_MGetAt {
+    Input: lev: Integer
+    Input: field: Integer
+    Output: Integer
+    Body: {
+        off = Multiply(lev, 128)
+        off = Add(off, Multiply(field, 8))
+        ReturnValue(Dereference(Add(Ed.meta, off)))
+    }
+}
+
+Function.Ed_MGet {
+    Input: field: Integer
+    Output: Integer
+    Body: {
+        v = Ed_MGetAt(Ed.lev, field)
+        ReturnValue(v)
+    }
+}
+
+Function.Ed_MSet {
+    Input: field: Integer
+    Input: v: Integer
+    Body: {
+        off = Multiply(Ed.lev, 128)
+        off = Add(off, Multiply(field, 8))
+        StoreValue(Add(Ed.meta, off), v)
+    }
+}
+
+Function.Ed_Store {
+    Body: {
+        Ed_MSet(0, Ed.tmm)
+        Ed_MSet(1, Ed.mapw)
+        Ed_MSet(2, Ed.maph)
+        Ed_MSet(3, Ed.vieww)
+        Ed_MSet(4, Ed.viewh)
+        Ed_MSet(5, Ed.grav)
+        Ed_MSet(6, Ed.fall)
+        Ed_MSet(7, Ed.spd)
+        Ed_MSet(8, Ed.jmp)
+        Ed_MSet(10, Ed.walk)
+        Ed_MSet(11, Ed.wind)
+        Ed_MSet(12, Ed.leap)
+    }
+}
+
+Function.Ed_NormRun {
+    Body: {
+        n = 0
+        IfCondition LessThan(Ed.walk, 1) ThenBlock: {
+            n = Divide(Ed.spd, 4)
+            IfCondition LessThan(n, 1) ThenBlock: {
+                IfCondition GreaterThan(Ed.spd, 0) ThenBlock: { n = 1 }
+            }
+            Ed.walk = n
+        }
+        IfCondition GreaterThan(Ed.walk, 64) ThenBlock: { Ed.walk = 64 }
+        IfCondition LessThan(Ed.wind, 1) ThenBlock: { Ed.wind = 3 }
+        IfCondition GreaterThan(Ed.wind, 30) ThenBlock: { Ed.wind = 30 }
+        IfCondition LessThan(Ed.leap, 1) ThenBlock: { Ed.leap = 2 }
+        IfCondition GreaterThan(Ed.leap, 8) ThenBlock: { Ed.leap = 8 }
+    }
+}
+
+Function.Ed_Cam {
+    Body: {
+        lim = 0
+        max = 0
+        IfCondition LessThan(Ed.curx, Ed.camx) ThenBlock: { Ed.camx = Ed.curx }
+        lim = Add(Ed.camx, Ed.vieww)
+        lim = Subtract(lim, 1)
+        IfCondition GreaterThan(Ed.curx, lim) ThenBlock: {
+            Ed.camx = Subtract(Ed.curx, Ed.vieww)
+            Ed.camx = Add(Ed.camx, 1)
+        }
+        IfCondition LessThan(Ed.camx, 0) ThenBlock: { Ed.camx = 0 }
+        max = Subtract(Ed.mapw, Ed.vieww)
+        IfCondition LessThan(max, 0) ThenBlock: { max = 0 }
+        IfCondition GreaterThan(Ed.camx, max) ThenBlock: { Ed.camx = max }
+        IfCondition LessThan(Ed.cury, Ed.camy) ThenBlock: { Ed.camy = Ed.cury }
+        lim = Add(Ed.camy, Ed.viewh)
+        lim = Subtract(lim, 1)
+        IfCondition GreaterThan(Ed.cury, lim) ThenBlock: {
+            Ed.camy = Subtract(Ed.cury, Ed.viewh)
+            Ed.camy = Add(Ed.camy, 1)
+        }
+        IfCondition LessThan(Ed.camy, 0) ThenBlock: { Ed.camy = 0 }
+        max = Subtract(Ed.maph, Ed.viewh)
+        IfCondition LessThan(max, 0) ThenBlock: { max = 0 }
+        IfCondition GreaterThan(Ed.camy, max) ThenBlock: { Ed.camy = max }
+    }
+}
+
+Function.Ed_ClampMap {
+    Body: {
+        IfCondition LessThan(Ed.tmm, 1) ThenBlock: { Ed.tmm = 200 }
+        IfCondition LessThan(Ed.mapw, 1) ThenBlock: { Ed.mapw = 1 }
+        IfCondition GreaterThan(Ed.mapw, 128) ThenBlock: { Ed.mapw = 128 }
+        IfCondition LessThan(Ed.maph, 1) ThenBlock: { Ed.maph = 1 }
+        IfCondition GreaterThan(Ed.maph, 32) ThenBlock: { Ed.maph = 32 }
+        IfCondition LessThan(Ed.vieww, 4) ThenBlock: { Ed.vieww = 4 }
+        IfCondition GreaterThan(Ed.vieww, 32) ThenBlock: { Ed.vieww = 32 }
+        IfCondition GreaterThan(Ed.vieww, Ed.mapw) ThenBlock: { Ed.vieww = Ed.mapw }
+        IfCondition LessThan(Ed.viewh, 4) ThenBlock: { Ed.viewh = 4 }
+        IfCondition GreaterThan(Ed.viewh, 24) ThenBlock: { Ed.viewh = 24 }
+        IfCondition GreaterThan(Ed.viewh, Ed.maph) ThenBlock: { Ed.viewh = Ed.maph }
+        IfCondition LessThan(Ed.curx, 0) ThenBlock: { Ed.curx = 0 }
+        IfCondition LessThan(Ed.cury, 0) ThenBlock: { Ed.cury = 0 }
+        IfCondition GreaterEqual(Ed.curx, Ed.mapw) ThenBlock: { Ed.curx = Subtract(Ed.mapw, 1) }
+        IfCondition GreaterEqual(Ed.cury, Ed.maph) ThenBlock: { Ed.cury = Subtract(Ed.maph, 1) }
+        Ed_Cam()
+    }
+}
+
+Function.Ed_Use {
+    Body: {
+        Ed.tmm = Ed_MGet(0)
+        Ed.mapw = Ed_MGet(1)
+        Ed.maph = Ed_MGet(2)
+        Ed.vieww = Ed_MGet(3)
+        Ed.viewh = Ed_MGet(4)
+        Ed.grav = Ed_MGet(5)
+        Ed.fall = Ed_MGet(6)
+        Ed.spd = Ed_MGet(7)
+        Ed.jmp = Ed_MGet(8)
+        Ed.walk = Ed_MGet(10)
+        Ed.wind = Ed_MGet(11)
+        Ed.leap = Ed_MGet(12)
+        Ed_NormRun()
+        Ed_ClampMap()
+        Ed_Store()
+    }
+}
+
+Function.Ed_Defaults {
+    Body: {
+        i = 0
+        Ed.tmm = 200
+        Ed.mapw = 40
+        Ed.maph = 16
+        Ed.vieww = 16
+        Ed.viewh = 10
+        Ed.grav = 30
+        Ed.fall = 20
+        Ed.spd = 8
+        Ed.jmp = 14
+        Ed.walk = 2
+        Ed.wind = 3
+        Ed.leap = 2
+        Ed.nlev = 1
+        Ed.lev = 0
+        WhileLoop LessThan(i, 8) {
+            Ed.lev = i
+            Ed_Store()
+            i = Add(i, 1)
+        }
+        Ed.lev = 0
+    }
+}
+
+Function.Ed_Copy {
+    Input: dst: Address
+    Input: src: Address
+    Input: cap: Integer
+    Body: {
+        i = 0
+        last = 0
+        c = 0
+        last = Subtract(cap, 1)
+        IfCondition LessThan(last, 1) ThenBlock: { last = 1 }
+        WhileLoop LessThan(i, last) {
+            c = GetByte(src, i)
+            SetByte(dst, i, c)
+            IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(0) }
+            i = Add(i, 1)
+        }
+        SetByte(dst, last, 0)
+    }
+}
+
+Function.Ed_Eq {
+    Input: a: Address
+    Input: b: Address
+    Output: Integer
+    Body: {
+        i = 0
+        ca = 0
+        cb = 0
+        WhileLoop LessThan(i, 96) {
+            ca = GetByte(a, i)
+            cb = GetByte(b, i)
+            IfCondition NotEqual(ca, cb) ThenBlock: { ReturnValue(0) }
+            IfCondition EqualTo(ca, 0) ThenBlock: { ReturnValue(1) }
+            i = Add(i, 1)
+        }
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_Len {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        i = 0
+        c = 0
+        WhileLoop LessThan(i, 120) {
+            c = GetByte(s, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(i) }
+            i = Add(i, 1)
+        }
+        ReturnValue(i)
+    }
+}
+
+Function.Ed_Find {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        i = 0
+        hit = 0
+        nm = 0
+        WhileLoop LessThan(i, Ed.na) {
+            nm = Ed_Name(i)
+            hit = Ed_Eq(nm, s)
+            IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(Add(i, 1)) }
+            i = Add(i, 1)
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_Has {
+    Input: s: Address
+    Input: n: Address
+    Output: Integer
+    Body: {
+        i = 0
+        j = 0
+        c = 0
+        d = 0
+        e = 0
+        WhileLoop LessThan(i, 90) {
+            c = GetByte(s, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(0) }
+            j = 0
+            WhileLoop LessThan(j, 24) {
+                d = GetByte(n, j)
+                IfCondition EqualTo(d, 0) ThenBlock: { ReturnValue(1) }
+                e = GetByte(s, Add(i, j))
+                IfCondition NotEqual(e, d) ThenBlock: { BreakLoop }
+                j = Add(j, 1)
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_GrpOf {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        hit = 0
+        hit = Ed_Eq(s, "block")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(1) }
+        hit = Ed_Eq(s, "enemy")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(2) }
+        hit = Ed_Eq(s, "object")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(3) }
+        hit = Ed_Eq(s, "entity")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(4) }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_Add {
+    Input: s: Address
+    Input: path: Address
+    Input: aw: Integer
+    Input: ah: Integer
+    Input: fr: Integer
+    Input: grp: Integer
+    Output: Integer
+    Body: {
+        id = 0
+        idx = 0
+        nm = 0
+        p = 0
+        id = Ed_Find(s)
+        IfCondition EqualTo(id, 0) ThenBlock: {
+            IfCondition GreaterEqual(Ed.na, 128) ThenBlock: { ReturnValue(0) }
+            idx = Ed.na
+            Ed.na = Add(Ed.na, 1)
+            id = Ed.na
+            nm = Ed_Name(idx)
+            Ed_Copy(nm, s, 32)
+        }
+        ElseBlock: {
+            idx = Subtract(id, 1)
+        }
+        p = Ed_Path(idx)
+        Ed_Copy(p, path, 96)
+        IfCondition LessThan(aw, 1) ThenBlock: { aw = 1 }
+        IfCondition LessThan(ah, 1) ThenBlock: { ah = 1 }
+        IfCondition LessThan(fr, 1) ThenBlock: { fr = 1 }
+        IfCondition GreaterThan(aw, 16) ThenBlock: { aw = 16 }
+        IfCondition GreaterThan(ah, 16) ThenBlock: { ah = 16 }
+        IfCondition GreaterThan(fr, 16) ThenBlock: { fr = 16 }
+        Ed_ISet(Ed.aw, idx, aw)
+        Ed_ISet(Ed.ah, idx, ah)
+        Ed_ISet(Ed.fr, idx, fr)
+        IfCondition LessThan(grp, 1) ThenBlock: { grp = 1 }
+        IfCondition GreaterThan(grp, 4) ThenBlock: { grp = 1 }
+        Ed_ISet(Ed.grp, idx, grp)
+        ReturnValue(id)
+    }
+}
+
+Function.Ed_Cell {
+    Input: lev: Integer
+    Input: col: Integer
+    Input: row: Integer
+    Output: Integer
+    Body: {
+        off = 0
+        v = 0
+        off = Multiply(lev, 4096)
+        off = Add(off, Multiply(row, 128))
+        off = Add(off, col)
+        v = GetByte(Ed.grid, off)
+        ReturnValue(v)
+    }
+}
+
+Function.Ed_PutCell {
+    Input: lev: Integer
+    Input: col: Integer
+    Input: row: Integer
+    Input: id: Integer
+    Body: {
+        off = 0
+        off = Multiply(lev, 4096)
+        off = Add(off, Multiply(row, 128))
+        off = Add(off, col)
+        SetByte(Ed.grid, off, id)
+    }
+}
+
+Function.Ed_AGet {
+    Input: idx: Integer
+    Input: f: Integer
+    Output: Integer
+    Body: {
+        off = 0
+        off = Multiply(idx, 17)
+        off = Add(off, f)
+        ReturnValue(Ed_IGet(Ed.attr, off))
+    }
+}
+
+Function.Ed_ASet {
+    Input: idx: Integer
+    Input: f: Integer
+    Input: v: Integer
+    Body: {
+        off = 0
+        IfCondition LessThan(v, 0) ThenBlock: { v = 0 }
+        IfCondition EqualTo(f, 0) ThenBlock: {
+            IfCondition GreaterThan(v, 1) ThenBlock: { v = 1 }
+        }
+        IfCondition EqualTo(f, 7) ThenBlock: {
+            IfCondition GreaterThan(v, 1) ThenBlock: { v = 1 }
+        }
+        IfCondition EqualTo(f, 8) ThenBlock: {
+            IfCondition GreaterThan(v, 1) ThenBlock: { v = 1 }
+        }
+        IfCondition EqualTo(f, 9) ThenBlock: {
+            IfCondition GreaterThan(v, 1) ThenBlock: { v = 1 }
+        }
+        IfCondition EqualTo(f, 15) ThenBlock: {
+            IfCondition GreaterThan(v, 1) ThenBlock: { v = 1 }
+        }
+        off = Multiply(idx, 17)
+        off = Add(off, f)
+        Ed_ISet(Ed.attr, off, v)
+    }
+}
+
+Function.Ed_NextObj {
+    Input: cur: Integer
+    Output: Integer
+    Body: {
+        i = 0
+        id = 0
+        g = 0
+        i = 0
+        WhileLoop LessThan(i, Ed.na) {
+            g = Ed_IGet(Ed.grp, i)
+            IfCondition EqualTo(g, 3) ThenBlock: {
+                id = Add(i, 1)
+                IfCondition GreaterThan(id, cur) ThenBlock: { ReturnValue(id) }
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_EmitSet {
+    Input: idx: Integer
+    Input: id: Integer
+    Body: {
+        g = 0
+        IfCondition LessThan(id, 1) ThenBlock: {
+            Ed_ASet(idx, 10, 0)
+            ReturnValue(0)
+        }
+        IfCondition GreaterThan(id, Ed.na) ThenBlock: {
+            Ed_ASet(idx, 10, 0)
+            ReturnValue(0)
+        }
+        g = Ed_IGet(Ed.grp, Subtract(id, 1))
+        IfCondition NotEqual(g, 3) ThenBlock: {
+            Ed_ASet(idx, 10, 0)
+            ReturnValue(0)
+        }
+        Ed_ASet(idx, 10, id)
+    }
+}
+
+Function.Ed_EmitTake {
+    Input: idx: Integer
+    Input: w: Address
+    Body: {
+        hit = 0
+        id = 0
+        hit = Ed_Eq(w, "none")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Ed_ASet(idx, 10, 0)
+            ReturnValue(0)
+        }
+        id = Ed_Find(w)
+        Ed_EmitSet(idx, id)
+    }
+}
+
+Function.Ed_DirSet {
+    Input: idx: Integer
+    Input: v: Integer
+    Body: {
+        IfCondition LessThan(v, 0) ThenBlock: { v = 0 }
+        IfCondition GreaterThan(v, 4) ThenBlock: { v = 4 }
+        Ed_ASet(idx, 11, v)
+    }
+}
+
+Function.Ed_DirTake {
+    Input: idx: Integer
+    Input: w: Address
+    Body: {
+        hit = 0
+        hit = Ed_Eq(w, "none")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Ed_DirSet(idx, 0)
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w, "left")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Ed_DirSet(idx, 1)
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w, "right")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Ed_DirSet(idx, 2)
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w, "up")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Ed_DirSet(idx, 3)
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w, "down")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Ed_DirSet(idx, 4)
+            ReturnValue(0)
+        }
+        Ed_DirSet(idx, Arc_Atoi(w))
+    }
+}
+
+Function.Ed_RkindSet {
+    Input: idx: Integer
+    Input: v: Integer
+    Body: {
+        IfCondition LessThan(v, 0) ThenBlock: { v = 0 }
+        IfCondition GreaterThan(v, 2) ThenBlock: { v = 2 }
+        Ed_ASet(idx, 12, v)
+    }
+}
+
+Function.Ed_RkindTake {
+    Input: idx: Integer
+    Input: w: Address
+    Body: {
+        hit = 0
+        hit = Ed_Eq(w, "none")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Ed_RkindSet(idx, 0)
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w, "1up")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Ed_RkindSet(idx, 1)
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w, "1-up")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Ed_RkindSet(idx, 1)
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w, "points")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Ed_RkindSet(idx, 2)
+            ReturnValue(0)
+        }
+        Ed_RkindSet(idx, Arc_Atoi(w))
+    }
+}
+
+Function.Ed_CharTake {
+    Output: Integer
+    Body: {
+        hit = 0
+        id = 0
+        g = 0
+        w = 0
+        w = Ed_Word(0)
+        hit = Ed_Eq(w, "character")
+        IfCondition NotEqual(hit, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Ed.nw, 3) ThenBlock: { ReturnValue(1) }
+        w = Ed_Word(2)
+        hit = Ed_Eq(w, "none")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Ed.canim = 0
+            ReturnValue(1)
+        }
+        id = Ed_Find(w)
+        IfCondition LessThan(id, 1) ThenBlock: { ReturnValue(1) }
+        g = Ed_IGet(Ed.grp, Subtract(id, 1))
+        IfCondition EqualTo(g, 4) ThenBlock: { Ed.canim = id }
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_OutChar {
+    Body: {
+        id = 0
+        g = 0
+        p = 0
+        Ed_OutS("character anim ")
+        id = Ed.canim
+        g = 0
+        IfCondition GreaterThan(id, 0) ThenBlock: {
+            IfCondition LessEqual(id, Ed.na) ThenBlock: {
+                g = Ed_IGet(Ed.grp, Subtract(id, 1))
+            }
+        }
+        IfCondition EqualTo(g, 4) ThenBlock: {
+            p = Ed_Name(Subtract(id, 1))
+            Ed_OutS(p)
+        }
+        ElseBlock: { Ed_OutS("none") }
+        Ed_OutC(10)
+    }
+}
+
+Function.Ed_CharMove {
+    Input: dir: Integer
+    Body: {
+        n = 0
+        pos = 0
+        i = 0
+        id = 0
+        vis = 0
+        lim = 0
+        n = Ed_BehCount(4)
+        IfCondition LessThan(n, 1) ThenBlock: {
+            Ed.canim = 0
+            ReturnValue(0)
+        }
+        pos = Subtract(0, 1)
+        i = 0
+        WhileLoop LessThan(i, n) {
+            id = Ed_BehNth(4, i)
+            IfCondition EqualTo(id, Ed.canim) ThenBlock: { pos = i }
+            i = Add(i, 1)
+        }
+        IfCondition LessThan(pos, 0) ThenBlock: { pos = 0 }
+        ElseBlock: {
+            pos = Add(pos, dir)
+            IfCondition LessThan(pos, 0) ThenBlock: { pos = Subtract(n, 1) }
+            IfCondition GreaterEqual(pos, n) ThenBlock: { pos = 0 }
+        }
+        Ed.canim = Ed_BehNth(4, pos)
+        vis = Ed_BehVis()
+        IfCondition LessThan(pos, Ed.cscroll) ThenBlock: { Ed.cscroll = pos }
+        lim = Add(Ed.cscroll, vis)
+        IfCondition GreaterEqual(pos, lim) ThenBlock: {
+            Ed.cscroll = Subtract(Add(pos, 1), vis)
+        }
+        IfCondition LessThan(Ed.cscroll, 0) ThenBlock: { Ed.cscroll = 0 }
+        lim = Subtract(n, vis)
+        IfCondition LessThan(lim, 0) ThenBlock: { lim = 0 }
+        IfCondition GreaterThan(Ed.cscroll, lim) ThenBlock: { Ed.cscroll = lim }
+    }
+}
+
+Function.Ed_BGet {
+    Input: idx: Integer
+    Input: f: Integer
+    Output: Integer
+    Body: {
+        off = 0
+        off = Multiply(idx, 6)
+        off = Add(off, f)
+        ReturnValue(Ed_IGet(Ed.beh, off))
+    }
+}
+
+Function.Ed_BSet {
+    Input: idx: Integer
+    Input: f: Integer
+    Input: v: Integer
+    Body: {
+        off = 0
+        IfCondition LessThan(v, 0) ThenBlock: { v = 0 }
+        IfCondition EqualTo(f, 0) ThenBlock: {
+            IfCondition GreaterThan(v, 5) ThenBlock: { v = 5 }
+        }
+        IfCondition EqualTo(f, 3) ThenBlock: {
+            IfCondition GreaterThan(v, 1) ThenBlock: { v = 1 }
+        }
+        IfCondition EqualTo(f, 4) ThenBlock: {
+            IfCondition GreaterThan(v, 1) ThenBlock: { v = 1 }
+        }
+        off = Multiply(idx, 6)
+        off = Add(off, f)
+        Ed_ISet(Ed.beh, off, v)
+    }
+}
+
+Function.Ed_BehCount {
+    Input: g: Integer
+    Output: Integer
+    Body: {
+        i = 0
+        n = 0
+        c = 0
+        i = 0
+        WhileLoop LessThan(i, Ed.na) {
+            c = Ed_IGet(Ed.grp, i)
+            IfCondition EqualTo(c, g) ThenBlock: { n = Add(n, 1) }
+            i = Add(i, 1)
+        }
+        ReturnValue(n)
+    }
+}
+
+Function.Ed_BehNth {
+    Input: g: Integer
+    Input: n: Integer
+    Output: Integer
+    Body: {
+        i = 0
+        c = 0
+        k = 0
+        i = 0
+        WhileLoop LessThan(i, Ed.na) {
+            c = Ed_IGet(Ed.grp, i)
+            IfCondition EqualTo(c, g) ThenBlock: {
+                IfCondition EqualTo(k, n) ThenBlock: { ReturnValue(Add(i, 1)) }
+                k = Add(k, 1)
+            }
+            i = Add(i, 1)
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_BehVis {
+    Output: Integer
+    Body: {
+        room = 0
+        vis = 0
+        room = Subtract(FB.height, 84)
+        IfCondition LessThan(room, 22) ThenBlock: { room = 22 }
+        vis = Divide(room, 22)
+        IfCondition LessThan(vis, 1) ThenBlock: { vis = 1 }
+        ReturnValue(vis)
+    }
+}
+
+Function.Ed_BehClamp {
+    Body: {
+        ce = 0
+        vis = 0
+        maxs = 0
+        ce = Ed_BehCount(2)
+        vis = Ed_BehVis()
+        maxs = Subtract(ce, vis)
+        IfCondition LessThan(maxs, 0) ThenBlock: { maxs = 0 }
+        IfCondition LessThan(Ed.bscroll, 0) ThenBlock: { Ed.bscroll = 0 }
+        IfCondition GreaterThan(Ed.bscroll, maxs) ThenBlock: { Ed.bscroll = maxs }
+    }
+}
+
+Function.Ed_BehMove {
+    Input: dir: Integer
+    Body: {
+        ce = 0
+        co = 0
+        total = 0
+        pos = 0
+        i = 0
+        id = 0
+        vis = 0
+        lim = 0
+        ce = Ed_BehCount(2)
+        co = Ed_BehCount(3)
+        total = Add(ce, co)
+        IfCondition LessThan(total, 1) ThenBlock: {
+            Ed.bsel = 0
+            ReturnValue(0)
+        }
+        pos = Subtract(0, 1)
+        i = 0
+        WhileLoop LessThan(i, ce) {
+            id = Ed_BehNth(2, i)
+            IfCondition EqualTo(id, Ed.bsel) ThenBlock: { pos = i }
+            i = Add(i, 1)
+        }
+        i = 0
+        WhileLoop LessThan(i, co) {
+            id = Ed_BehNth(3, i)
+            IfCondition EqualTo(id, Ed.bsel) ThenBlock: { pos = Add(ce, i) }
+            i = Add(i, 1)
+        }
+        IfCondition LessThan(pos, 0) ThenBlock: { pos = 0 }
+        ElseBlock: {
+            pos = Add(pos, dir)
+            IfCondition LessThan(pos, 0) ThenBlock: { pos = Subtract(total, 1) }
+            IfCondition GreaterEqual(pos, total) ThenBlock: { pos = 0 }
+        }
+        IfCondition LessThan(pos, ce) ThenBlock: { Ed.bsel = Ed_BehNth(2, pos) }
+        ElseBlock: { Ed.bsel = Ed_BehNth(3, Subtract(pos, ce)) }
+        Ed.fn = 0
+        SetByte(Ed.fbuf, 0, 0)
+        IfCondition LessThan(pos, ce) ThenBlock: {
+            vis = Ed_BehVis()
+            IfCondition LessThan(pos, Ed.bscroll) ThenBlock: { Ed.bscroll = pos }
+            lim = Add(Ed.bscroll, vis)
+            IfCondition GreaterEqual(pos, lim) ThenBlock: {
+                Ed.bscroll = Subtract(Add(pos, 1), vis)
+            }
+        }
+        Ed_BehClamp()
+    }
+}
+
+Function.Ed_SpawnCount {
+    Input: id: Integer
+    Output: Integer
+    Body: {
+        col = 0
+        row = 0
+        n = 0
+        c = 0
+        n = 0
+        row = 0
+        WhileLoop LessThan(row, Ed.maph) {
+            col = 0
+            WhileLoop LessThan(col, Ed.mapw) {
+                c = Ed_Cell(Ed.lev, col, row)
+                IfCondition EqualTo(c, id) ThenBlock: { n = Add(n, 1) }
+                col = Add(col, 1)
+            }
+            row = Add(row, 1)
+        }
+        ReturnValue(n)
+    }
+}
+
+Function.Ed_SpawnAt {
+    Input: id: Integer
+    Input: nth: Integer
+    Output: Integer
+    Body: {
+        col = 0
+        row = 0
+        seen = 0
+        c = 0
+        seen = 0
+        row = 0
+        WhileLoop LessThan(row, Ed.maph) {
+            col = 0
+            WhileLoop LessThan(col, Ed.mapw) {
+                c = Ed_Cell(Ed.lev, col, row)
+                IfCondition EqualTo(c, id) ThenBlock: {
+                    IfCondition EqualTo(seen, nth) ThenBlock: {
+                        Ed.spx = col
+                        Ed.spy = row
+                        ReturnValue(1)
+                    }
+                    seen = Add(seen, 1)
+                }
+                col = Add(col, 1)
+            }
+            row = Add(row, 1)
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_SpawnMove {
+    Input: id: Integer
+    Input: nth: Integer
+    Input: col: Integer
+    Input: row: Integer
+    Body: {
+        ox = 0
+        oy = 0
+        hit = 0
+        IfCondition LessThan(col, 0) ThenBlock: { col = 0 }
+        IfCondition LessThan(row, 0) ThenBlock: { row = 0 }
+        IfCondition GreaterEqual(col, Ed.mapw) ThenBlock: { col = Subtract(Ed.mapw, 1) }
+        IfCondition GreaterEqual(row, Ed.maph) ThenBlock: { row = Subtract(Ed.maph, 1) }
+        hit = Ed_SpawnAt(id, nth)
+        IfCondition EqualTo(hit, 0) ThenBlock: {
+            Ed_PutCell(Ed.lev, col, row, id)
+            Ed.spx = col
+            Ed.spy = row
+            Ed.spi = 0
+            ReturnValue(0)
+        }
+        ox = Ed.spx
+        oy = Ed.spy
+        IfCondition EqualTo(ox, col) ThenBlock: {
+            IfCondition EqualTo(oy, row) ThenBlock: { ReturnValue(0) }
+        }
+        Ed_PutCell(Ed.lev, ox, oy, 0)
+        Ed_PutCell(Ed.lev, col, row, id)
+        Ed.spx = col
+        Ed.spy = row
+    }
+}
+
+Function.Ed_Stamp {
+    Input: id: Integer
+    Input: col: Integer
+    Input: row: Integer
+    Input: w: Integer
+    Input: h: Integer
+    Body: {
+        x = 0
+        y = 0
+        cx = 0
+        cy = 0
+        IfCondition LessThan(w, 1) ThenBlock: { w = 1 }
+        IfCondition LessThan(h, 1) ThenBlock: { h = 1 }
+        y = 0
+        WhileLoop LessThan(y, h) {
+            x = 0
+            WhileLoop LessThan(x, w) {
+                cx = Add(col, x)
+                cy = Add(row, y)
+                IfCondition GreaterEqual(cx, 0) ThenBlock: {
+                    IfCondition LessThan(cx, Ed.mapw) ThenBlock: {
+                        IfCondition GreaterEqual(cy, 0) ThenBlock: {
+                            IfCondition LessThan(cy, Ed.maph) ThenBlock: {
+                                Ed_PutCell(Ed.lev, cx, cy, id)
+                            }
+                        }
+                    }
+                }
+                x = Add(x, 1)
+            }
+            y = Add(y, 1)
+        }
+    }
+}
+
+Function.Ed_Unit {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        i = 0
+        c = 0
+        c2 = 0
+        digit = 0
+        WhileLoop LessThan(i, 32) {
+            c = GetByte(s, i)
+            digit = 0
+            IfCondition GreaterEqual(c, 48) ThenBlock: {
+                IfCondition LessEqual(c, 57) ThenBlock: { digit = 1 }
+            }
+            IfCondition EqualTo(digit, 0) ThenBlock: { BreakLoop }
+            i = Add(i, 1)
+        }
+        IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(c, 32) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(c, 99) ThenBlock: { ReturnValue(2) }
+        IfCondition EqualTo(c, 67) ThenBlock: { ReturnValue(2) }
+        IfCondition EqualTo(c, 102) ThenBlock: { ReturnValue(4) }
+        IfCondition EqualTo(c, 70) ThenBlock: { ReturnValue(4) }
+        IfCondition EqualTo(c, 105) ThenBlock: { ReturnValue(5) }
+        IfCondition EqualTo(c, 73) ThenBlock: { ReturnValue(5) }
+        IfCondition EqualTo(c, 109) ThenBlock: {
+            c2 = GetByte(s, Add(i, 1))
+            IfCondition EqualTo(c2, 109) ThenBlock: { ReturnValue(1) }
+            IfCondition EqualTo(c2, 77) ThenBlock: { ReturnValue(1) }
+            ReturnValue(3)
+        }
+        IfCondition EqualTo(c, 77) ThenBlock: {
+            c2 = GetByte(s, Add(i, 1))
+            IfCondition EqualTo(c2, 109) ThenBlock: { ReturnValue(1) }
+            IfCondition EqualTo(c2, 77) ThenBlock: { ReturnValue(1) }
+            ReturnValue(3)
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_Mm {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        n = 0
+        u = 0
+        n = Arc_Atoi(s)
+        u = Ed_Unit(s)
+        IfCondition EqualTo(u, 2) ThenBlock: { n = Multiply(n, 10) }
+        IfCondition EqualTo(u, 3) ThenBlock: { n = Multiply(n, 1000) }
+        IfCondition EqualTo(u, 4) ThenBlock: { n = Multiply(n, 305) }
+        IfCondition EqualTo(u, 5) ThenBlock: { n = Multiply(n, 25) }
+        IfCondition LessThan(n, 1) ThenBlock: { n = 1 }
+        ReturnValue(n)
+    }
+}
+
+Function.Ed_Tiles {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        n = 0
+        u = 0
+        mm = 0
+        den = 0
+        u = Ed_Unit(s)
+        n = Arc_Atoi(s)
+        IfCondition EqualTo(u, 0) ThenBlock: {
+            IfCondition LessThan(n, 1) ThenBlock: { n = 1 }
+            ReturnValue(n)
+        }
+        mm = Ed_Mm(s)
+        den = Ed.tmm
+        IfCondition LessThan(den, 1) ThenBlock: { den = 200 }
+        n = Divide(mm, den)
+        IfCondition LessThan(n, 1) ThenBlock: { n = 1 }
+        ReturnValue(n)
+    }
+}
+
+Function.Ed_Line {
+    Input: at: Integer
+    Output: Integer
+    Body: {
+        i = at
+        c = 0
+        c2 = 0
+        k = 0
+        t = 0
+        st = 0
+        slot = 0
+        nl = 0
+        sp = 0
+        Ed.nw = 0
+        WhileLoop LessThan(t, 8) {
+            slot = Add(Ed.tok, Multiply(t, 96))
+            SetByte(slot, 0, 0)
+            t = Add(t, 1)
+        }
+        slot = Ed.tok
+        WhileLoop LessThan(i, Ed.flen) {
+            c = GetByte(Ed.file, i)
+            nl = 0
+            IfCondition EqualTo(c, 10) ThenBlock: { nl = 1 }
+            IfCondition EqualTo(c, 13) ThenBlock: { nl = 1 }
+            IfCondition EqualTo(nl, 1) ThenBlock: {
+                IfCondition EqualTo(st, 1) ThenBlock: { Ed.nw = Add(Ed.nw, 1) }
+                i = Add(i, 1)
+                IfCondition LessThan(i, Ed.flen) ThenBlock: {
+                    IfCondition EqualTo(c, 13) ThenBlock: {
+                        c2 = GetByte(Ed.file, i)
+                        IfCondition EqualTo(c2, 10) ThenBlock: { i = Add(i, 1) }
+                    }
+                }
+                ReturnValue(i)
+            }
+            sp = 0
+            IfCondition EqualTo(c, 32) ThenBlock: { sp = 1 }
+            IfCondition EqualTo(c, 9) ThenBlock: { sp = 1 }
+            IfCondition EqualTo(sp, 1) ThenBlock: {
+                IfCondition EqualTo(st, 1) ThenBlock: {
+                    Ed.nw = Add(Ed.nw, 1)
+                    st = 0
+                    k = 0
+                }
+            }
+            ElseBlock: {
+                IfCondition And(EqualTo(st, 0), EqualTo(c, 35)) ThenBlock: {
+                    IfCondition EqualTo(Ed.nw, 0) ThenBlock: {
+                        WhileLoop LessThan(i, Ed.flen) {
+                            c2 = GetByte(Ed.file, i)
+                            IfCondition EqualTo(c2, 10) ThenBlock: { ReturnValue(Add(i, 1)) }
+                            IfCondition EqualTo(c2, 13) ThenBlock: { ReturnValue(Add(i, 1)) }
+                            i = Add(i, 1)
+                        }
+                        ReturnValue(i)
+                    }
+                }
+                IfCondition EqualTo(st, 0) ThenBlock: {
+                    IfCondition LessThan(Ed.nw, 8) ThenBlock: {
+                        slot = Add(Ed.tok, Multiply(Ed.nw, 96))
+                        k = 0
+                        st = 1
+                        SetByte(slot, 0, 0)
+                    }
+                }
+                IfCondition EqualTo(st, 1) ThenBlock: {
+                    IfCondition LessThan(k, 95) ThenBlock: {
+                        SetByte(slot, k, c)
+                        k = Add(k, 1)
+                        SetByte(slot, k, 0)
+                    }
+                }
+            }
+            i = Add(i, 1)
+        }
+        IfCondition EqualTo(st, 1) ThenBlock: { Ed.nw = Add(Ed.nw, 1) }
+        ReturnValue(i)
+    }
+}
+
+Function.Ed_Dig {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        c = 0
+        c = GetByte(s, 0)
+        IfCondition GreaterEqual(c, 48) ThenBlock: {
+            IfCondition LessEqual(c, 57) ThenBlock: { ReturnValue(1) }
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_Join {
+    Input: a: Integer
+    Input: b: Integer
+    Output: Address
+    Body: {
+        i = 0
+        k = 0
+        c = 0
+        w = 0
+        off = 0
+        MemorySet(Ed.msg, 0, 96)
+        i = a
+        WhileLoop LessEqual(i, b) {
+            IfCondition NotEqual(i, a) ThenBlock: {
+                IfCondition LessThan(off, 94) ThenBlock: {
+                    SetByte(Ed.msg, off, 32)
+                    off = Add(off, 1)
+                }
+            }
+            w = Ed_Word(i)
+            k = 0
+            WhileLoop LessThan(k, 96) {
+                c = GetByte(w, k)
+                IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+                IfCondition LessThan(off, 94) ThenBlock: {
+                    SetByte(Ed.msg, off, c)
+                    off = Add(off, 1)
+                }
+                k = Add(k, 1)
+            }
+            i = Add(i, 1)
+        }
+        SetByte(Ed.msg, off, 0)
+        ReturnValue(Ed.msg)
+    }
+}
+
+Function.Ed_LPtr {
+    Input: lev: Integer
+    Input: i: Integer
+    Output: Address
+    Body: {
+        off = 0
+        off = Multiply(lev, 4)
+        off = Add(off, i)
+        off = Multiply(off, 96)
+        ReturnValue(Add(Ed.lpath, off))
+    }
+}
+
+Function.Ed_AttrTake {
+    Output: Integer
+    Body: {
+        i = 0
+        id = 0
+        idx = 0
+        key = 0
+        val = 0
+        hit = 0
+        w = 0
+        w = Ed_Word(0)
+        hit = Ed_Eq(w, "attr")
+        IfCondition NotEqual(hit, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Ed.nw, 4) ThenBlock: { ReturnValue(1) }
+        w = Ed_Word(1)
+        id = Ed_Find(w)
+        IfCondition EqualTo(id, 0) ThenBlock: { ReturnValue(1) }
+        idx = Subtract(id, 1)
+        i = 2
+        WhileLoop LessThan(i, Ed.nw) {
+            key = Ed_Word(i)
+            i = Add(i, 1)
+            IfCondition GreaterEqual(i, Ed.nw) ThenBlock: { BreakLoop }
+            w = Ed_Word(i)
+            val = Arc_Atoi(w)
+            i = Add(i, 1)
+            hit = Ed_Eq(key, "emit")
+            IfCondition EqualTo(hit, 1) ThenBlock: {
+                Ed_EmitTake(idx, w)
+                ContinueLoop
+            }
+            hit = Ed_Eq(key, "dir")
+            IfCondition EqualTo(hit, 1) ThenBlock: {
+                Ed_DirTake(idx, w)
+                ContinueLoop
+            }
+            hit = Ed_Eq(key, "rkind")
+            IfCondition EqualTo(hit, 1) ThenBlock: {
+                Ed_RkindTake(idx, w)
+                ContinueLoop
+            }
+            hit = Ed_Eq(key, "break")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 0, val) }
+            hit = Ed_Eq(key, "grav")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 1, val) }
+            hit = Ed_Eq(key, "spring")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 2, val) }
+            hit = Ed_Eq(key, "reward")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 3, val) }
+            hit = Ed_Eq(key, "hurt")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 4, val) }
+            hit = Ed_Eq(key, "heal")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 5, val) }
+            hit = Ed_Eq(key, "slip")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 6, val) }
+            hit = Ed_Eq(key, "climb")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 7, val) }
+            hit = Ed_Eq(key, "goal")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 8, val) }
+            hit = Ed_Eq(key, "crumble")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 9, val) }
+            hit = Ed_Eq(key, "hp")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_BSet(idx, 2, val) }
+            hit = Ed_Eq(key, "def")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 13, val) }
+            hit = Ed_Eq(key, "off")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 14, val) }
+            hit = Ed_Eq(key, "check")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 15, val) }
+            hit = Ed_Eq(key, "boost")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 16, val) }
+        }
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_BehTake {
+    Output: Integer
+    Body: {
+        i = 0
+        id = 0
+        idx = 0
+        key = 0
+        val = 0
+        hit = 0
+        w = 0
+        g = 0
+        w = Ed_Word(0)
+        hit = Ed_Eq(w, "behave")
+        IfCondition NotEqual(hit, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Ed.nw, 4) ThenBlock: { ReturnValue(1) }
+        w = Ed_Word(1)
+        id = Ed_Find(w)
+        IfCondition EqualTo(id, 0) ThenBlock: { ReturnValue(1) }
+        idx = Subtract(id, 1)
+        g = Ed_IGet(Ed.grp, idx)
+        IfCondition NotEqual(g, 2) ThenBlock: {
+            IfCondition NotEqual(g, 3) ThenBlock: { ReturnValue(1) }
+        }
+        i = 2
+        WhileLoop LessThan(i, Ed.nw) {
+            key = Ed_Word(i)
+            i = Add(i, 1)
+            IfCondition GreaterEqual(i, Ed.nw) ThenBlock: { BreakLoop }
+            w = Ed_Word(i)
+            val = Arc_Atoi(w)
+            i = Add(i, 1)
+            hit = Ed_Eq(key, "motion")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_BSet(idx, 0, val) }
+            hit = Ed_Eq(key, "speed")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_BSet(idx, 1, val) }
+            hit = Ed_Eq(key, "health")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_BSet(idx, 2, val) }
+            hit = Ed_Eq(key, "stomp")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_BSet(idx, 3, val) }
+            hit = Ed_Eq(key, "ledge")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_BSet(idx, 4, val) }
+            hit = Ed_Eq(key, "zone")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_BSet(idx, 5, val) }
+        }
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_Apply {
+    Body: {
+        w0 = 0
+        w1 = 0
+        w2 = 0
+        w3 = 0
+        w4 = 0
+        w5 = 0
+        w6 = 0
+        grp = 0
+        path = 0
+        hit = 0
+        id = 0
+        col = 0
+        row = 0
+        aw = 0
+        ah = 0
+        fr = 0
+        t = 0
+        n = 0
+        isput = 0
+        ent = 0
+        w0 = Ed_Word(0)
+        w1 = Ed_Word(1)
+        w2 = Ed_Word(2)
+        w3 = Ed_Word(3)
+        w4 = Ed_Word(4)
+        w5 = Ed_Word(5)
+        w6 = Ed_Word(6)
+        hit = Ed_AttrTake()
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(0) }
+        hit = Ed_BehTake()
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(0) }
+        hit = Ed_CharTake()
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(0) }
+        hit = Ed_SoundTake()
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(0) }
+        hit = Ed_Eq(w0, "tile")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                Ed.tmm = Ed_Mm(w1)
+                Ed_MSet(0, Ed.tmm)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "width")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                Ed.mapw = Ed_Tiles(w1)
+                IfCondition GreaterThan(Ed.mapw, 128) ThenBlock: { Ed.mapw = 128 }
+                Ed_MSet(1, Ed.mapw)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "height")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                Ed.maph = Ed_Tiles(w1)
+                IfCondition GreaterThan(Ed.maph, 32) ThenBlock: { Ed.maph = 32 }
+                Ed_MSet(2, Ed.maph)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "view")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 3) ThenBlock: {
+                Ed.vieww = Arc_Atoi(w1)
+                Ed.viewh = Arc_Atoi(w2)
+                Ed_ClampMap()
+                Ed_Store()
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "gravity")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                Ed.grav = Arc_Atoi(w1)
+                Ed_MSet(5, Ed.grav)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "fall")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                Ed.fall = Arc_Atoi(w1)
+                Ed_MSet(6, Ed.fall)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "run")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                Ed.spd = Arc_Atoi(w1)
+                Ed_MSet(7, Ed.spd)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "jump")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                Ed.jmp = Arc_Atoi(w1)
+                Ed_MSet(8, Ed.jmp)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "walk")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                Ed.walk = Arc_Atoi(w1)
+                Ed_MSet(10, Ed.walk)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "wind")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                Ed.wind = Arc_Atoi(w1)
+                Ed_MSet(11, Ed.wind)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "leap")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                Ed.leap = Arc_Atoi(w1)
+                Ed_MSet(12, Ed.leap)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "levels")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                n = Arc_Atoi(w1)
+                IfCondition LessThan(n, 1) ThenBlock: { n = 1 }
+                IfCondition GreaterThan(n, 8) ThenBlock: { n = 8 }
+                Ed.nlev = n
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "level")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                n = Arc_Atoi(w1)
+                IfCondition LessThan(n, 1) ThenBlock: { n = 1 }
+                IfCondition GreaterThan(n, 8) ThenBlock: { n = 8 }
+                Ed.lev = Subtract(n, 1)
+                IfCondition GreaterThan(n, Ed.nlev) ThenBlock: { Ed.nlev = n }
+                Ed_Store()
+                Ed_MSet(9, 0)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "music")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition LessThan(Ed.nw, 2) ThenBlock: { ReturnValue(0) }
+            path = Ed_MusAt(Ed.lev)
+            id = 0
+            t = 0
+            WhileLoop LessThan(t, 90) {
+                n = GetByte(w1, t)
+                IfCondition EqualTo(n, 0) ThenBlock: { BreakLoop }
+                IfCondition EqualTo(n, 47) ThenBlock: { id = 1 }
+                t = Add(t, 1)
+            }
+            IfCondition EqualTo(id, 1) ThenBlock: { Ed_Copy(path, w1, 96) }
+            ElseBlock: {
+                Ed_Copy(path, "assets/circuit/audio/music/", 96)
+                Ed_Cat(path, w1, 90)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "layer")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition LessThan(Ed.nw, 2) ThenBlock: { ReturnValue(0) }
+            n = Ed_MGet(9)
+            IfCondition LessThan(n, 4) ThenBlock: {
+                path = Ed_Join(1, Subtract(Ed.nw, 1))
+                w3 = Ed_LPtr(Ed.lev, n)
+                Ed_Copy(w3, path, 96)
+                Ed_MSet(9, Add(n, 1))
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "asset")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition LessThan(Ed.nw, 3) ThenBlock: { ReturnValue(0) }
+            aw = 1
+            ah = 1
+            fr = 1
+            grp = Ed_GrpOf(w2)
+            IfCondition NotEqual(grp, 0) ThenBlock: {
+                IfCondition LessThan(Ed.nw, 4) ThenBlock: { ReturnValue(0) }
+                t = 0
+                n = Subtract(Ed.nw, 1)
+                w4 = Ed_Word(n)
+                IfCondition EqualTo(Ed_Dig(w4), 1) ThenBlock: { t = 1 }
+                IfCondition GreaterEqual(n, 4) ThenBlock: {
+                    IfCondition EqualTo(t, 1) ThenBlock: {
+                        w5 = Ed_Word(Subtract(n, 1))
+                        IfCondition EqualTo(Ed_Dig(w5), 1) ThenBlock: { t = 2 }
+                    }
+                }
+                IfCondition GreaterEqual(n, 5) ThenBlock: {
+                    IfCondition EqualTo(t, 2) ThenBlock: {
+                        w6 = Ed_Word(Subtract(n, 2))
+                        IfCondition EqualTo(Ed_Dig(w6), 1) ThenBlock: { t = 3 }
+                    }
+                }
+                IfCondition EqualTo(t, 1) ThenBlock: { aw = Arc_Atoi(w4) }
+                IfCondition EqualTo(t, 2) ThenBlock: {
+                    w5 = Ed_Word(Subtract(n, 1))
+                    aw = Arc_Atoi(w5)
+                    ah = Arc_Atoi(w4)
+                }
+                IfCondition EqualTo(t, 3) ThenBlock: {
+                    w6 = Ed_Word(Subtract(n, 2))
+                    w5 = Ed_Word(Subtract(n, 1))
+                    aw = Arc_Atoi(w6)
+                    ah = Arc_Atoi(w5)
+                    fr = Arc_Atoi(w4)
+                }
+                path = Ed_Join(3, Subtract(n, t))
+            }
+            ElseBlock: {
+                path = w2
+                grp = 1
+                IfCondition GreaterEqual(Ed.nw, 4) ThenBlock: { aw = Arc_Atoi(w3) }
+                IfCondition GreaterEqual(Ed.nw, 5) ThenBlock: { ah = Arc_Atoi(w4) }
+                IfCondition GreaterEqual(Ed.nw, 6) ThenBlock: { fr = Arc_Atoi(w5) }
+            }
+            Ed_Add(w1, path, aw, ah, fr, grp)
+            ReturnValue(0)
+        }
+        isput = 0
+        hit = Ed_Eq(w0, "put")
+        IfCondition EqualTo(hit, 1) ThenBlock: { isput = 1 }
+        hit = Ed_Eq(w0, "span")
+        IfCondition EqualTo(hit, 1) ThenBlock: { isput = 1 }
+        hit = Ed_Eq(w0, "place")
+        IfCondition EqualTo(hit, 1) ThenBlock: { isput = 1 }
+        IfCondition EqualTo(isput, 1) ThenBlock: {
+            IfCondition LessThan(Ed.nw, 4) ThenBlock: { ReturnValue(0) }
+            id = Ed_Find(w1)
+            IfCondition EqualTo(id, 0) ThenBlock: { ReturnValue(0) }
+            col = Arc_Atoi(w2)
+            row = Arc_Atoi(w3)
+            aw = Ed_IGet(Ed.aw, Subtract(id, 1))
+            ah = Ed_IGet(Ed.ah, Subtract(id, 1))
+            IfCondition GreaterEqual(Ed.nw, 5) ThenBlock: {
+                t = Arc_Atoi(w4)
+                IfCondition GreaterThan(t, 0) ThenBlock: { aw = t }
+            }
+            IfCondition GreaterEqual(Ed.nw, 6) ThenBlock: {
+                t = Arc_Atoi(w5)
+                IfCondition GreaterThan(t, 0) ThenBlock: { ah = t }
+            }
+            ent = Ed_IsEnt(id)
+            IfCondition EqualTo(ent, 1) ThenBlock: { ReturnValue(0) }
+            Ed_Stamp(id, col, row, aw, ah)
+            ReturnValue(0)
+        }
+        id = Ed_Find(w0)
+        IfCondition EqualTo(id, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Ed.nw, 3) ThenBlock: { ReturnValue(0) }
+        col = Arc_Atoi(w1)
+        row = Arc_Atoi(w2)
+        aw = Ed_IGet(Ed.aw, Subtract(id, 1))
+        ah = Ed_IGet(Ed.ah, Subtract(id, 1))
+        IfCondition GreaterEqual(Ed.nw, 4) ThenBlock: {
+            t = Arc_Atoi(w3)
+            IfCondition GreaterThan(t, 0) ThenBlock: { aw = t }
+        }
+        IfCondition GreaterEqual(Ed.nw, 5) ThenBlock: {
+            t = Arc_Atoi(w4)
+            IfCondition GreaterThan(t, 0) ThenBlock: { ah = t }
+        }
+        ent = Ed_IsEnt(id)
+        IfCondition EqualTo(ent, 1) ThenBlock: { ReturnValue(0) }
+        Ed_Stamp(id, col, row, aw, ah)
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_Parse {
+    Body: {
+        at = 0
+        Ed_SfxClear()
+        MemorySet(Ed.mus, 0, 768)
+        WhileLoop LessThan(at, Ed.flen) {
+            at = Ed_Line(at)
+            IfCondition GreaterThan(Ed.nw, 0) ThenBlock: { Ed_Apply() }
+        }
+        IfCondition LessThan(Ed.nlev, 1) ThenBlock: { Ed.nlev = 1 }
+        IfCondition GreaterThan(Ed.nlev, 8) ThenBlock: { Ed.nlev = 8 }
+        Ed.lev = 0
+        Ed_Use()
+        IfCondition GreaterThan(Ed.na, 0) ThenBlock: { Ed.brush = 1 }
+        ElseBlock: { Ed.brush = 0 }
+        PrintMessage("levels ")
+        PrintNumber(Ed.nlev)
+        PrintMessage(" assets ")
+        PrintNumber(Ed.na)
+        PrintMessage("\n")
+    }
+}
+
+Function.Ed_UtoA {
+    Input: n: Integer
+    Output: Address
+    Body: {
+        t = 0
+        k = 0
+        i = 0
+        IfCondition LessThan(n, 0) ThenBlock: { n = 0 }
+        IfCondition EqualTo(n, 0) ThenBlock: {
+            SetByte(Ed.num, 0, 48)
+            SetByte(Ed.num, 1, 0)
+            ReturnValue(Ed.num)
+        }
+        t = Add(Ed.num, 16)
+        k = 0
+        WhileLoop GreaterThan(n, 0) {
+            SetByte(t, k, Add(48, Modulo(n, 10)))
+            k = Add(k, 1)
+            n = Divide(n, 10)
+        }
+        i = 0
+        WhileLoop LessThan(i, k) {
+            SetByte(Ed.num, i, GetByte(t, Subtract(Subtract(k, 1), i)))
+            i = Add(i, 1)
+        }
+        SetByte(Ed.num, k, 0)
+        ReturnValue(Ed.num)
+    }
+}
+
+Function.Ed_OutC {
+    Input: c: Integer
+    Body: {
+        IfCondition GreaterEqual(Ed.on, 65000) ThenBlock: { ReturnValue(0) }
+        SetByte(Ed.out, Ed.on, c)
+        Ed.on = Add(Ed.on, 1)
+    }
+}
+
+Function.Ed_OutS {
+    Input: s: Address
+    Body: {
+        i = 0
+        c = 0
+        WhileLoop LessThan(i, 160) {
+            c = GetByte(s, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(0) }
+            IfCondition GreaterEqual(Ed.on, 65000) ThenBlock: { ReturnValue(0) }
+            SetByte(Ed.out, Ed.on, c)
+            Ed.on = Add(Ed.on, 1)
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Ed_OutAttr {
+    Input: idx: Integer
+    Body: {
+        v = 0
+        p = 0
+        nm = 0
+        g = 0
+        Ed_OutS("attr ")
+        nm = Ed_Name(idx)
+        Ed_OutS(nm)
+        Ed_OutS(" break ")
+        v = Ed_AGet(idx, 0)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutS(" grav ")
+        v = Ed_AGet(idx, 1)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutS(" spring ")
+        v = Ed_AGet(idx, 2)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutC(10)
+        Ed_OutS("attr ")
+        Ed_OutS(nm)
+        Ed_OutS(" reward ")
+        v = Ed_AGet(idx, 3)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutS(" hurt ")
+        v = Ed_AGet(idx, 4)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutS(" heal ")
+        v = Ed_AGet(idx, 5)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutC(10)
+        Ed_OutS("attr ")
+        Ed_OutS(nm)
+        Ed_OutS(" slip ")
+        v = Ed_AGet(idx, 6)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutS(" climb ")
+        v = Ed_AGet(idx, 7)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutS(" goal ")
+        v = Ed_AGet(idx, 8)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutC(10)
+        Ed_OutS("attr ")
+        Ed_OutS(nm)
+        Ed_OutS(" crumble ")
+        v = Ed_AGet(idx, 9)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutS(" rkind ")
+        v = Ed_AGet(idx, 12)
+        IfCondition EqualTo(v, 1) ThenBlock: { Ed_OutS("1up") }
+        IfCondition EqualTo(v, 2) ThenBlock: { Ed_OutS("points") }
+        IfCondition EqualTo(v, 0) ThenBlock: { Ed_OutS("none") }
+        IfCondition GreaterThan(v, 2) ThenBlock: { Ed_OutS("none") }
+        Ed_OutC(10)
+        Ed_OutS("attr ")
+        Ed_OutS(nm)
+        Ed_OutS(" emit ")
+        v = Ed_AGet(idx, 10)
+        g = 0
+        IfCondition GreaterThan(v, 0) ThenBlock: {
+            IfCondition LessEqual(v, Ed.na) ThenBlock: {
+                g = Ed_IGet(Ed.grp, Subtract(v, 1))
+            }
+        }
+        IfCondition EqualTo(g, 3) ThenBlock: {
+            p = Ed_Name(Subtract(v, 1))
+            Ed_OutS(p)
+        }
+        ElseBlock: { Ed_OutS("none") }
+        Ed_OutC(10)
+        g = Ed_IGet(Ed.grp, idx)
+        IfCondition EqualTo(g, 1) ThenBlock: { v = 1 }
+        ElseBlock: { v = 0 }
+        IfCondition EqualTo(g, 3) ThenBlock: { v = 1 }
+        IfCondition EqualTo(v, 1) ThenBlock: {
+            Ed_OutS("attr ")
+            Ed_OutS(nm)
+            Ed_OutS(" dir ")
+            v = Ed_AGet(idx, 11)
+            IfCondition EqualTo(v, 1) ThenBlock: { Ed_OutS("left") }
+            IfCondition EqualTo(v, 2) ThenBlock: { Ed_OutS("right") }
+            IfCondition EqualTo(v, 3) ThenBlock: { Ed_OutS("up") }
+            IfCondition EqualTo(v, 4) ThenBlock: { Ed_OutS("down") }
+            IfCondition EqualTo(v, 0) ThenBlock: { Ed_OutS("none") }
+            IfCondition GreaterThan(v, 4) ThenBlock: { Ed_OutS("none") }
+            Ed_OutC(10)
+        }
+        IfCondition EqualTo(g, 2) ThenBlock: {
+            Ed_OutS("attr ")
+            Ed_OutS(nm)
+            Ed_OutS(" hp ")
+            v = Ed_BGet(idx, 2)
+            p = Ed_UtoA(v)
+            Ed_OutS(p)
+            Ed_OutS(" def ")
+            v = Ed_AGet(idx, 13)
+            p = Ed_UtoA(v)
+            Ed_OutS(p)
+            Ed_OutS(" off ")
+            v = Ed_AGet(idx, 14)
+            p = Ed_UtoA(v)
+            Ed_OutS(p)
+            Ed_OutC(10)
+        }
+        Ed_OutS("attr ")
+        Ed_OutS(nm)
+        Ed_OutS(" check ")
+        v = Ed_AGet(idx, 15)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutC(10)
+        Ed_OutS("attr ")
+        Ed_OutS(nm)
+        Ed_OutS(" boost ")
+        v = Ed_AGet(idx, 16)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutC(10)
+    }
+}
+
+Function.Ed_OutBeh {
+    Input: idx: Integer
+    Body: {
+        v = 0
+        p = 0
+        nm = 0
+        Ed_OutS("behave ")
+        nm = Ed_Name(idx)
+        Ed_OutS(nm)
+        Ed_OutS(" motion ")
+        v = Ed_BGet(idx, 0)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutS(" speed ")
+        v = Ed_BGet(idx, 1)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutS(" zone ")
+        v = Ed_BGet(idx, 5)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutC(10)
+        Ed_OutS("behave ")
+        Ed_OutS(nm)
+        Ed_OutS(" health ")
+        v = Ed_BGet(idx, 2)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutS(" stomp ")
+        v = Ed_BGet(idx, 3)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutS(" ledge ")
+        v = Ed_BGet(idx, 4)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutC(10)
+    }
+}
+
+Function.Ed_OutKV {
+    Input: lab: Address
+    Input: v: Integer
+    Body: {
+        p = 0
+        Ed_OutS(lab)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutC(10)
+    }
+}
+
+Function.Ed_PutS {
+    Input: dst: Address
+    Input: off: Integer
+    Input: src: Address
+    Output: Integer
+    Body: {
+        i = 0
+        c = 0
+        WhileLoop LessThan(i, 120) {
+            c = GetByte(src, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(off) }
+            IfCondition GreaterEqual(off, 180) ThenBlock: { ReturnValue(off) }
+            SetByte(dst, off, c)
+            off = Add(off, 1)
+            i = Add(i, 1)
+        }
+        ReturnValue(off)
+    }
+}
+
+Function.Ed_PutN {
+    Input: dst: Address
+    Input: off: Integer
+    Input: n: Integer
+    Output: Integer
+    Body: {
+        p = 0
+        p = Ed_UtoA(n)
+        off = Ed_PutS(dst, off, p)
+        ReturnValue(off)
+    }
+}
+
+Function.Ed_OutLevel {
+    Input: lev: Integer
+    Body: {
+        v = 0
+        p = 0
+        row = 0
+        col = 0
+        w = 0
+        id = 0
+        id2 = 0
+        nm = 0
+        mapw = 0
+        maph = 0
+        lim = 0
+        ent = 0
+        Ed_OutS("level ")
+        v = Add(lev, 1)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutC(10)
+        v = Ed_MGetAt(lev, 0)
+        Ed_OutKV("tile ", v)
+        v = Ed_MGetAt(lev, 1)
+        Ed_OutKV("width ", v)
+        v = Ed_MGetAt(lev, 2)
+        Ed_OutKV("height ", v)
+        mapw = Ed_MGetAt(lev, 1)
+        maph = Ed_MGetAt(lev, 2)
+        v = Ed_MGetAt(lev, 3)
+        p = Ed_UtoA(v)
+        Ed_OutS("view ")
+        Ed_OutS(p)
+        Ed_OutC(32)
+        v = Ed_MGetAt(lev, 4)
+        p = Ed_UtoA(v)
+        Ed_OutS(p)
+        Ed_OutC(10)
+        v = Ed_MGetAt(lev, 5)
+        Ed_OutKV("gravity ", v)
+        v = Ed_MGetAt(lev, 6)
+        Ed_OutKV("fall ", v)
+        v = Ed_MGetAt(lev, 7)
+        Ed_OutKV("run ", v)
+        v = Ed_MGetAt(lev, 8)
+        Ed_OutKV("jump ", v)
+        v = Ed_MGetAt(lev, 10)
+        Ed_OutKV("walk ", v)
+        v = Ed_MGetAt(lev, 11)
+        Ed_OutKV("wind ", v)
+        v = Ed_MGetAt(lev, 12)
+        Ed_OutKV("leap ", v)
+        p = Ed_MusAt(lev)
+        id = GetByte(p, 0)
+        IfCondition NotEqual(id, 0) ThenBlock: {
+            Ed_OutS("music ")
+            Ed_OutS(p)
+            Ed_OutC(10)
+        }
+        v = Ed_MGetAt(lev, 9)
+        lim = 0
+        WhileLoop LessThan(lim, v) {
+            Ed_OutS("layer ")
+            p = Ed_LPtr(lev, lim)
+            Ed_OutS(p)
+            Ed_OutC(10)
+            lim = Add(lim, 1)
+        }
+        row = 0
+        WhileLoop LessThan(row, maph) {
+            col = 0
+            WhileLoop LessThan(col, mapw) {
+                id = Ed_Cell(lev, col, row)
+                ent = Ed_IsEnt(id)
+                IfCondition EqualTo(id, 0) ThenBlock: { col = Add(col, 1) }
+                ElseBlock: {
+                    IfCondition EqualTo(ent, 1) ThenBlock: { col = Add(col, 1) }
+                    ElseBlock: {
+                    w = 1
+                    lim = Add(col, w)
+                    WhileLoop LessThan(lim, mapw) {
+                        id2 = Ed_Cell(lev, lim, row)
+                        IfCondition NotEqual(id2, id) ThenBlock: { BreakLoop }
+                        w = Add(w, 1)
+                        lim = Add(col, w)
+                    }
+                    nm = Ed_Name(Subtract(id, 1))
+                    Ed_OutS("span ")
+                    Ed_OutS(nm)
+                    Ed_OutC(32)
+                    p = Ed_UtoA(col)
+                    Ed_OutS(p)
+                    Ed_OutC(32)
+                    p = Ed_UtoA(row)
+                    Ed_OutS(p)
+                    Ed_OutC(32)
+                    p = Ed_UtoA(w)
+                    Ed_OutS(p)
+                    Ed_OutS(" 1\n")
+                    col = Add(col, w)
+                    }
+                }
+            }
+            row = Add(row, 1)
+        }
+    }
+}
+
+Function.Ed_Save {
+    Output: Integer
+    Body: {
+        i = 0
+        v = 0
+        p = 0
+        nm = 0
+        pth = 0
+        fd = 0
+        ok = 0
+        Ed_Store()
+        Ed.on = 0
+        Ed_OutS("levels ")
+        p = Ed_UtoA(Ed.nlev)
+        Ed_OutS(p)
+        Ed_OutC(10)
+        i = 0
+        WhileLoop LessThan(i, Ed.na) {
+            Ed_OutS("asset ")
+            nm = Ed_Name(i)
+            Ed_OutS(nm)
+            Ed_OutC(32)
+            v = Ed_IGet(Ed.grp, i)
+            IfCondition EqualTo(v, 2) ThenBlock: { Ed_OutS("enemy") }
+            ElseBlock: {
+                IfCondition EqualTo(v, 4) ThenBlock: { Ed_OutS("entity") }
+                ElseBlock: {
+                    IfCondition EqualTo(v, 3) ThenBlock: { Ed_OutS("object") }
+                    ElseBlock: { Ed_OutS("block") }
+                }
+            }
+            Ed_OutC(32)
+            pth = Ed_Path(i)
+            Ed_OutS(pth)
+            Ed_OutC(32)
+            v = Ed_IGet(Ed.aw, i)
+            p = Ed_UtoA(v)
+            Ed_OutS(p)
+            Ed_OutC(32)
+            v = Ed_IGet(Ed.ah, i)
+            p = Ed_UtoA(v)
+            Ed_OutS(p)
+            Ed_OutC(32)
+            v = Ed_IGet(Ed.fr, i)
+            p = Ed_UtoA(v)
+            Ed_OutS(p)
+            Ed_OutC(10)
+            Ed_OutAttr(i)
+            v = Ed_IGet(Ed.grp, i)
+            IfCondition EqualTo(v, 2) ThenBlock: { Ed_OutBeh(i) }
+            IfCondition EqualTo(v, 3) ThenBlock: { Ed_OutBeh(i) }
+            i = Add(i, 1)
+        }
+        Ed_OutSound()
+        Ed_OutChar()
+        i = 0
+        WhileLoop LessThan(i, Ed.nlev) {
+            Ed_OutLevel(i)
+            i = Add(i, 1)
+        }
+        SetByte(Ed.out, Ed.on, 0)
+        Ed_MkGame()
+        fd = SystemCall(2, Ed.doc, 577, 420)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        ok = Ed_WriteAll(fd, Ed.out, Ed.on)
+        SystemCall(3, fd)
+        IfCondition EqualTo(ok, 0) ThenBlock: { ReturnValue(0) }
+        PrintMessage("saved\n")
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_LvlName {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        n = 0
+        c = 0
+        n = Ed_Len(s)
+        IfCondition LessThan(n, 5) ThenBlock: { ReturnValue(0) }
+        c = GetByte(s, Subtract(n, 4))
+        IfCondition NotEqual(c, 46) ThenBlock: { ReturnValue(0) }
+        c = GetByte(s, Subtract(n, 3))
+        IfCondition NotEqual(c, 108) ThenBlock: { ReturnValue(0) }
+        c = GetByte(s, Subtract(n, 2))
+        IfCondition NotEqual(c, 118) ThenBlock: { ReturnValue(0) }
+        c = GetByte(s, Subtract(n, 1))
+        IfCondition NotEqual(c, 108) ThenBlock: { ReturnValue(0) }
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_FillGame {
+    Input: dest: Address
+    Input: mode: Integer
+    Output: Integer
+    Body: {
+        i = 0
+        c = 0
+        n = 0
+        Ed_Copy(dest, "games/", 96)
+        n = Ed_Len(dest)
+        i = 0
+        WhileLoop LessThan(i, 24) {
+            c = GetByte(Ed.game, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            SetByte(dest, n, c)
+            n = Add(n, 1)
+            i = Add(i, 1)
+        }
+        IfCondition GreaterThan(mode, 0) ThenBlock: {
+            SetByte(dest, n, 47)
+            n = Add(n, 1)
+            SetByte(dest, n, 108)
+            n = Add(n, 1)
+            SetByte(dest, n, 101)
+            n = Add(n, 1)
+            SetByte(dest, n, 118)
+            n = Add(n, 1)
+            SetByte(dest, n, 101)
+            n = Add(n, 1)
+            SetByte(dest, n, 108)
+            n = Add(n, 1)
+            SetByte(dest, n, 115)
+            n = Add(n, 1)
+        }
+        IfCondition GreaterThan(mode, 1) ThenBlock: {
+            SetByte(dest, n, 47)
+            n = Add(n, 1)
+        }
+        SetByte(dest, n, 0)
+        ReturnValue(n)
+    }
+}
+
+Function.Ed_MkGame {
+    Body: {
+        SystemCall(83, "games", 493)
+        Ed_FillGame(Ed.pick, 0)
+        SystemCall(83, Ed.pick, 493)
+        Ed_FillGame(Ed.pick, 1)
+        SystemCall(83, Ed.pick, 493)
+    }
+}
+
+Function.Ed_KeepBase {
+    Body: {
+        i = 0
+        n = 0
+        c = 0
+        at = 0
+        n = Ed_Len(Ed.doc)
+        at = 0
+        i = 0
+        WhileLoop LessThan(i, n) {
+            c = GetByte(Ed.doc, i)
+            IfCondition EqualTo(c, 47) ThenBlock: { at = Add(i, 1) }
+            i = Add(i, 1)
+        }
+        i = 0
+        WhileLoop LessThan(i, 31) {
+            c = GetByte(Ed.doc, Add(at, i))
+            SetByte(Ed.msg, i, c)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            i = Add(i, 1)
+        }
+        SetByte(Ed.msg, i, 0)
+        IfCondition EqualTo(i, 0) ThenBlock: { Ed_Copy(Ed.msg, "edit.lvl", 32) }
+    }
+}
+
+Function.Ed_GameName {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        i = 0
+        c = 0
+        ok = 0
+        c = GetByte(s, 0)
+        IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(c, 46) ThenBlock: { ReturnValue(0) }
+        i = 0
+        WhileLoop LessThan(i, 24) {
+            c = GetByte(s, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(1) }
+            ok = 0
+            IfCondition GreaterEqual(c, 97) ThenBlock: {
+                IfCondition LessEqual(c, 122) ThenBlock: { ok = 1 }
+            }
+            IfCondition GreaterEqual(c, 48) ThenBlock: {
+                IfCondition LessEqual(c, 57) ThenBlock: { ok = 1 }
+            }
+            IfCondition EqualTo(c, 45) ThenBlock: { ok = 1 }
+            IfCondition EqualTo(ok, 0) ThenBlock: { ReturnValue(0) }
+            i = Add(i, 1)
+        }
+        c = GetByte(s, 24)
+        IfCondition NotEqual(c, 0) ThenBlock: { ReturnValue(0) }
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_SetGame {
+    Input: name: Address
+    Output: Integer
+    Body: {
+        i = 0
+        c = 0
+        n = 0
+        ok = 0
+        n = 0
+        WhileLoop LessThan(n, 25) {
+            c = GetByte(name, n)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            ok = 0
+            IfCondition GreaterEqual(c, 97) ThenBlock: {
+                IfCondition LessEqual(c, 122) ThenBlock: { ok = 1 }
+            }
+            IfCondition GreaterEqual(c, 48) ThenBlock: {
+                IfCondition LessEqual(c, 57) ThenBlock: { ok = 1 }
+            }
+            IfCondition EqualTo(c, 45) ThenBlock: { ok = 1 }
+            IfCondition EqualTo(ok, 0) ThenBlock: { ReturnValue(0) }
+            n = Add(n, 1)
+        }
+        IfCondition LessThan(n, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(n, 24) ThenBlock: { ReturnValue(0) }
+        i = 0
+        WhileLoop LessThan(i, n) {
+            c = GetByte(name, i)
+            SetByte(Ed.game, i, c)
+            i = Add(i, 1)
+        }
+        SetByte(Ed.game, n, 0)
+        Ed_KeepBase()
+        Ed_MkGame()
+        n = Ed_FillGame(Ed.doc, 2)
+        i = 0
+        WhileLoop LessThan(i, 31) {
+            c = GetByte(Ed.msg, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            SetByte(Ed.doc, n, c)
+            n = Add(n, 1)
+            i = Add(i, 1)
+        }
+        SetByte(Ed.doc, n, 0)
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_ListLvl {
+    Body: {
+        fd = 0
+        n = 0
+        off = 0
+        rec = 0
+        lo = 0
+        hi = 0
+        slot = 0
+        hit = 0
+        p = 0
+        Ed.nf = 0
+        MemorySet(Ed.names, 0, 768)
+        Ed_FillGame(Ed.pick, 1)
+        fd = SystemCall(2, Ed.pick, 65536, 0)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        n = SystemCall(217, fd, Ed.dirb, 4096)
+        WhileLoop GreaterThan(n, 0) {
+            off = 0
+            WhileLoop LessThan(off, n) {
+                lo = GetByte(Ed.dirb, Add(off, 16))
+                hi = GetByte(Ed.dirb, Add(off, 17))
+                rec = Add(lo, Multiply(hi, 256))
+                IfCondition LessThan(rec, 20) ThenBlock: { BreakLoop }
+                IfCondition LessThan(Ed.nf, 24) ThenBlock: {
+                    slot = Multiply(Ed.nf, 32)
+                    slot = Add(Ed.names, slot)
+                    p = Add(Ed.dirb, off)
+                    p = Add(p, 19)
+                    Ed_Copy(slot, p, 32)
+                    hit = Ed_LvlName(slot)
+                    IfCondition EqualTo(hit, 1) ThenBlock: { Ed.nf = Add(Ed.nf, 1) }
+                }
+                off = Add(off, rec)
+            }
+            n = SystemCall(217, fd, Ed.dirb, 4096)
+        }
+        SystemCall(3, fd)
+    }
+}
+
+Function.Ed_ListGame {
+    Body: {
+        fd = 0
+        n = 0
+        off = 0
+        rec = 0
+        lo = 0
+        hi = 0
+        slot = 0
+        hit = 0
+        p = 0
+        dt = 0
+        Ed.nf = 0
+        MemorySet(Ed.names, 0, 768)
+        fd = SystemCall(2, "games", 65536, 0)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        n = SystemCall(217, fd, Ed.dirb, 4096)
+        WhileLoop GreaterThan(n, 0) {
+            off = 0
+            WhileLoop LessThan(off, n) {
+                lo = GetByte(Ed.dirb, Add(off, 16))
+                hi = GetByte(Ed.dirb, Add(off, 17))
+                rec = Add(lo, Multiply(hi, 256))
+                IfCondition LessThan(rec, 20) ThenBlock: { BreakLoop }
+                dt = GetByte(Ed.dirb, Add(off, 18))
+                IfCondition EqualTo(dt, 4) ThenBlock: {
+                    IfCondition LessThan(Ed.nf, 24) ThenBlock: {
+                        slot = Multiply(Ed.nf, 32)
+                        slot = Add(Ed.names, slot)
+                        p = Add(Ed.dirb, off)
+                        p = Add(p, 19)
+                        Ed_Copy(slot, p, 32)
+                        hit = Ed_GameName(slot)
+                        IfCondition EqualTo(hit, 1) ThenBlock: { Ed.nf = Add(Ed.nf, 1) }
+                    }
+                }
+                off = Add(off, rec)
+            }
+            n = SystemCall(217, fd, Ed.dirb, 4096)
+        }
+        SystemCall(3, fd)
+    }
+}
+
+Function.Ed_JoinLvl {
+    Input: name: Address
+    Body: {
+        i = 0
+        c = 0
+        n = 0
+        n = Ed_FillGame(Ed.doc, 2)
+        i = 0
+        WhileLoop LessThan(i, 24) {
+            c = GetByte(name, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            SetByte(Ed.doc, n, c)
+            n = Add(n, 1)
+            i = Add(i, 1)
+        }
+        SetByte(Ed.doc, n, 46)
+        n = Add(n, 1)
+        SetByte(Ed.doc, n, 108)
+        n = Add(n, 1)
+        SetByte(Ed.doc, n, 118)
+        n = Add(n, 1)
+        SetByte(Ed.doc, n, 108)
+        n = Add(n, 1)
+        SetByte(Ed.doc, n, 0)
+    }
+}
+
+Function.Ed_JoinFile {
+    Input: name: Address
+    Body: {
+        i = 0
+        c = 0
+        n = 0
+        n = Ed_FillGame(Ed.pick, 2)
+        i = 0
+        WhileLoop LessThan(i, 31) {
+            c = GetByte(name, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            SetByte(Ed.pick, n, c)
+            n = Add(n, 1)
+            i = Add(i, 1)
+        }
+        SetByte(Ed.pick, n, 0)
+    }
+}
+
+Function.Ed_Wipe {
+    Body: {
+        Ed.na = 0
+        Ed.bn = 0
+        Ed.canim = 0
+        Ed.brush = 0
+        MemorySet(Ed.name, 0, 4096)
+        MemorySet(Ed.path, 0, 12288)
+        MemorySet(Ed.aw, 0, 1024)
+        MemorySet(Ed.ah, 0, 1024)
+        MemorySet(Ed.fr, 0, 1024)
+        MemorySet(Ed.grp, 0, 1024)
+        MemorySet(Ed.surf, 0, 1024)
+        MemorySet(Ed.grid, 0, 32768)
+        MemorySet(Ed.attr, 0, 17408)
+        MemorySet(Ed.mus, 0, 768)
+        MemorySet(Ed.beh, 0, 6144)
+        MemorySet(Ed.bpath, 0, 1152)
+        MemorySet(Ed.bimg, 0, 96)
+        MemorySet(Ed.lpath, 0, 3072)
+        Ed_Defaults()
+    }
+}
+
+Function.Ed_ClearMap {
+    Body: {
+        Ed.bn = 0
+        Ed.canim = 0
+        Ed.curx = 0
+        Ed.cury = 0
+        MemorySet(Ed.grid, 0, 32768)
+        MemorySet(Ed.bpath, 0, 1152)
+        MemorySet(Ed.bimg, 0, 96)
+        Ed_Defaults()
+        Ed_Use()
+    }
+}
+
+Function.Ed_ReadDoc {
+    Input: path: Address
+    Output: Integer
+    Body: {
+        fd = 0
+        n = 0
+        fd = SystemCall(2, path, 0, 0)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        n = SystemCall(0, fd, Ed.file, 65535)
+        SystemCall(3, fd)
+        IfCondition LessThan(n, 1) ThenBlock: { ReturnValue(0) }
+        Ed.flen = n
+        SetByte(Ed.file, n, 0)
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_OpenPick {
+    Output: Integer
+    Body: {
+        hit = 0
+        hit = Ed_ReadDoc(Ed.pick)
+        IfCondition EqualTo(hit, 0) ThenBlock: { ReturnValue(0) }
+        Ed_Wipe()
+        Ed_Parse()
+        Ed_Copy(Ed.doc, Ed.pick, 96)
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_ActFile {
+    Input: i: Integer
+    Output: Integer
+    Body: {
+        slot = 0
+        hit = 0
+        IfCondition LessThan(i, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(i, Ed.nf) ThenBlock: { ReturnValue(0) }
+        slot = Multiply(i, 32)
+        slot = Add(Ed.names, slot)
+        Ed_JoinFile(slot)
+        hit = Ed_LvlName(Ed.pick)
+        IfCondition NotEqual(hit, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.fmode, 4) ThenBlock: {
+            SystemCall(87, Ed.pick)
+            Ed.note = 90
+            Ed_ListLvl()
+            ReturnValue(1)
+        }
+        hit = Ed_OpenPick()
+        IfCondition EqualTo(hit, 1) ThenBlock: { Ed.note = 90 }
+        ReturnValue(hit)
+    }
+}
+
+Function.Ed_FileApply {
+    Body: {
+        ok = 0
+        IfCondition EqualTo(Ed.fmode, 5) ThenBlock: {
+            ok = Ed_SetGame(Ed.nbuf)
+            Ed.form = 0
+            Ed.fn = 0
+            SetByte(Ed.nbuf, 0, 0)
+            IfCondition EqualTo(ok, 1) ThenBlock: {
+                Ed.fmode = 0
+                Ed_ListLvl()
+            }
+            ElseBlock: { Ed_ListGame() }
+            ReturnValue(0)
+        }
+        IfCondition LessThan(Ed.fmode, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(Ed.fmode, 2) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Ed.fn, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.fmode, 2) ThenBlock: { Ed_ClearMap() }
+        Ed_JoinLvl(Ed.nbuf)
+        ok = Ed_Save()
+        IfCondition EqualTo(ok, 1) ThenBlock: { Ed.note = 90 }
+        Ed.form = 0
+        Ed.fn = 0
+        SetByte(Ed.nbuf, 0, 0)
+        Ed.fmode = 0
+        Ed_ListLvl()
+    }
+}
+
+Function.Ed_Sample {
+    Body: {
+        id1 = 0
+        id2 = 0
+        id3 = 0
+        Ed_Defaults()
+        id1 = Ed_Add("Ship", "assets/ships/player.svg", 1, 1, 1, 1)
+        id2 = Ed_Add("Bee", "assets/enemies/bee.svg", 1, 1, 1, 2)
+        id3 = Ed_Add("Kestrel", "assets/gyre/hero-kestrel-strip.svg", 1, 1, 8, 4)
+        Ed.nlev = 2
+        Ed.lev = 0
+        Ed.mapw = 40
+        Ed.maph = 16
+        Ed.vieww = 16
+        Ed.viewh = 10
+        Ed_Store()
+        Ed_Stamp(id1, 0, 0, 40, 1)
+        Ed_Stamp(id2, 6, 2, 1, 1)
+        Ed_Stamp(id2, 14, 2, 3, 1)
+        Ed.lev = 1
+        Ed.mapw = 20
+        Ed.maph = 8
+        Ed.vieww = 16
+        Ed.viewh = 8
+        Ed_Store()
+        Ed_Stamp(id2, 3, 1, 1, 1)
+        Ed_Stamp(id2, 9, 1, 1, 1)
+        Ed.lev = 0
+        Ed_Use()
+        Ed.brush = 1
+        Ed_Save()
+        PrintMessage("sample\n")
+    }
+}
+
+Function.Ed_Load {
+    Body: {
+        hit = 0
+        hit = Ed_ReadDoc(Ed.doc)
+        IfCondition EqualTo(hit, 0) ThenBlock: {
+            hit = Ed_ReadDoc("levels/edit.lvl")
+            IfCondition EqualTo(hit, 1) ThenBlock: {
+                Ed_Parse()
+                PrintMessage("loaded\n")
+                ReturnValue(0)
+            }
+            Ed_Sample()
+            ReturnValue(0)
+        }
+        Ed_Parse()
+        PrintMessage("loaded\n")
+    }
+}
+
+Function.Ed_Cat {
+    Input: dst: Address
+    Input: src: Address
+    Input: cap: Integer
+    Body: {
+        i = 0
+        k = 0
+        c = 0
+        last = 0
+        last = Subtract(cap, 1)
+        IfCondition LessThan(last, 1) ThenBlock: { ReturnValue(0) }
+        WhileLoop LessThan(i, last) {
+            c = GetByte(dst, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            i = Add(i, 1)
+        }
+        k = 0
+        WhileLoop LessThan(i, last) {
+            c = GetByte(src, k)
+            SetByte(dst, i, c)
+            IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(0) }
+            i = Add(i, 1)
+            k = Add(k, 1)
+        }
+        SetByte(dst, last, 0)
+    }
+}
+
+Function.Ed_SfxAt {
+    Input: i: Integer
+    Output: Address
+    Body: {
+        off = 0
+        IfCondition LessThan(i, 0) ThenBlock: { i = 0 }
+        off = Multiply(i, 64)
+        ReturnValue(Add(Ed.sfx, off))
+    }
+}
+
+Function.Ed_SfxWav {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        n = 0
+        c = 0
+        n = Ed_Len(s)
+        IfCondition LessThan(n, 5) ThenBlock: { ReturnValue(0) }
+        c = GetByte(s, Subtract(n, 4))
+        IfCondition NotEqual(c, 46) ThenBlock: { ReturnValue(0) }
+        c = GetByte(s, Subtract(n, 3))
+        IfCondition NotEqual(c, 119) ThenBlock: { ReturnValue(0) }
+        c = GetByte(s, Subtract(n, 2))
+        IfCondition NotEqual(c, 97) ThenBlock: { ReturnValue(0) }
+        c = GetByte(s, Subtract(n, 1))
+        IfCondition NotEqual(c, 118) ThenBlock: { ReturnValue(0) }
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_SfxDot {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        c = 0
+        hit = 0
+        c = GetByte(s, 0)
+        IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(c, 46) ThenBlock: { ReturnValue(1) }
+        hit = Ed_Eq(s, "Ogg")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_SfxPush {
+    Input: dir: Address
+    Input: file: Address
+    Input: nest: Integer
+    Body: {
+        slot = 0
+        i = 0
+        k = 0
+        c = 0
+        hit = 0
+        IfCondition GreaterEqual(Ed.sfxn, 128) ThenBlock: { ReturnValue(0) }
+        hit = Ed_SfxWav(file)
+        IfCondition EqualTo(hit, 0) ThenBlock: { ReturnValue(0) }
+        slot = Ed_SfxAt(Ed.sfxn)
+        MemorySet(slot, 0, 64)
+        IfCondition EqualTo(nest, 1) ThenBlock: {
+            i = 0
+            WhileLoop LessThan(i, 30) {
+                c = GetByte(dir, i)
+                IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+                IfCondition LessThan(k, 62) ThenBlock: {
+                    SetByte(slot, k, c)
+                    k = Add(k, 1)
+                }
+                i = Add(i, 1)
+            }
+            IfCondition LessThan(k, 62) ThenBlock: {
+                SetByte(slot, k, 47)
+                k = Add(k, 1)
+            }
+        }
+        i = 0
+        WhileLoop LessThan(i, 60) {
+            c = GetByte(file, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            IfCondition LessThan(k, 63) ThenBlock: {
+                SetByte(slot, k, c)
+                k = Add(k, 1)
+            }
+            i = Add(i, 1)
+        }
+        SetByte(slot, k, 0)
+        IfCondition GreaterThan(k, 0) ThenBlock: { Ed.sfxn = Add(Ed.sfxn, 1) }
+    }
+}
+
+Function.Ed_SfxRead {
+    Input: fd: Integer
+    Input: dir: Address
+    Input: nest: Integer
+    Body: {
+        n = 0
+        off = 0
+        rec = 0
+        lo = 0
+        hi = 0
+        dt = 0
+        slot = 0
+        p = 0
+        skip = 0
+        n = SystemCall(217, fd, Ed.dirb, 4096)
+        WhileLoop GreaterThan(n, 0) {
+            off = 0
+            WhileLoop LessThan(off, n) {
+                lo = GetByte(Ed.dirb, Add(off, 16))
+                hi = GetByte(Ed.dirb, Add(off, 17))
+                rec = Add(lo, Multiply(hi, 256))
+                IfCondition LessThan(rec, 20) ThenBlock: { BreakLoop }
+                dt = GetByte(Ed.dirb, Add(off, 18))
+                p = Add(Ed.dirb, Add(off, 19))
+                skip = Ed_SfxDot(p)
+                IfCondition EqualTo(skip, 0) ThenBlock: {
+                    IfCondition EqualTo(dt, 8) ThenBlock: { Ed_SfxPush(dir, p, nest) }
+                    IfCondition EqualTo(dt, 0) ThenBlock: { Ed_SfxPush(dir, p, nest) }
+                    IfCondition EqualTo(nest, 0) ThenBlock: {
+                        IfCondition EqualTo(dt, 4) ThenBlock: {
+                            IfCondition LessThan(Ed.sdn, 16) ThenBlock: {
+                                slot = Add(Ed.sdir, Multiply(Ed.sdn, 32))
+                                Ed_Copy(slot, p, 32)
+                                Ed.sdn = Add(Ed.sdn, 1)
+                            }
+                        }
+                    }
+                }
+                off = Add(off, rec)
+            }
+            n = SystemCall(217, fd, Ed.dirb, 4096)
+        }
+    }
+}
+
+Function.Ed_SfxScan {
+    Body: {
+        fd = 0
+        i = 0
+        d = 0
+        Ed.sfxn = 0
+        Ed.sdn = 0
+        IfCondition EqualTo(Ed.sfx, 0) ThenBlock: { ReturnValue(0) }
+        MemorySet(Ed.sfx, 0, 8192)
+        MemorySet(Ed.sdir, 0, 512)
+        fd = SystemCall(2, "assets/circuit/audio/sfx", 65536, 0)
+        IfCondition LessThan(fd, 0) ThenBlock: {
+            PrintMessage("sfx miss\n")
+            ReturnValue(0)
+        }
+        Ed_SfxRead(fd, Ed.sfx, 0)
+        SystemCall(3, fd)
+        i = 0
+        WhileLoop LessThan(i, Ed.sdn) {
+            d = Add(Ed.sdir, Multiply(i, 32))
+            Ed_Copy(Ed.sfxp, "assets/circuit/audio/sfx/", 80)
+            Ed_Cat(Ed.sfxp, d, 240)
+            fd = SystemCall(2, Ed.sfxp, 65536, 0)
+            IfCondition GreaterEqual(fd, 0) ThenBlock: {
+                Ed_SfxRead(fd, d, 1)
+                SystemCall(3, fd)
+            }
+            i = Add(i, 1)
+        }
+        PrintMessage("sfx ")
+        PrintNumber(Ed.sfxn)
+        PrintMessage("\n")
+    }
+}
+
+Function.Ed_SfxClear {
+    Body: {
+        i = 0
+        IfCondition EqualTo(Ed.spick, 0) ThenBlock: { ReturnValue(0) }
+        i = 0
+        WhileLoop LessThan(i, 10) {
+            Ed_ISet(Ed.spick, i, Subtract(0, 1))
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Ed_SfxEv {
+    Input: w: Address
+    Output: Integer
+    Body: {
+        hit = 0
+        hit = Ed_Eq(w, "jump")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(0) }
+        hit = Ed_Eq(w, "land")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(1) }
+        hit = Ed_Eq(w, "hurt")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(2) }
+        hit = Ed_Eq(w, "stomp")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(3) }
+        hit = Ed_Eq(w, "ray")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(4) }
+        hit = Ed_Eq(w, "goal")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(5) }
+        hit = Ed_Eq(w, "checkpoint")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(6) }
+        hit = Ed_Eq(w, "powerup")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(7) }
+        hit = Ed_Eq(w, "derez")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(8) }
+        hit = Ed_Eq(w, "crouch")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(9) }
+        ReturnValue(Subtract(0, 1))
+    }
+}
+
+Function.Ed_SfxFind {
+    Input: rel: Address
+    Output: Integer
+    Body: {
+        i = 0
+        p = 0
+        hit = 0
+        i = 0
+        WhileLoop LessThan(i, Ed.sfxn) {
+            p = Ed_SfxAt(i)
+            hit = Ed_Eq(p, rel)
+            IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(i) }
+            i = Add(i, 1)
+        }
+        ReturnValue(Subtract(0, 1))
+    }
+}
+
+Function.Ed_SoundTake {
+    Output: Integer
+    Body: {
+        hit = 0
+        ev = 0
+        idx = 0
+        w = 0
+        w = Ed_Word(0)
+        hit = Ed_Eq(w, "sound")
+        IfCondition NotEqual(hit, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Ed.nw, 3) ThenBlock: { ReturnValue(1) }
+        w = Ed_Word(1)
+        ev = Ed_SfxEv(w)
+        IfCondition LessThan(ev, 0) ThenBlock: { ReturnValue(1) }
+        w = Ed_Word(2)
+        idx = Ed_SfxFind(w)
+        Ed_ISet(Ed.spick, ev, idx)
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_SfxEmit {
+    Input: i: Integer
+    Body: {
+        IfCondition EqualTo(i, 0) ThenBlock: { Ed_OutS("jump") }
+        IfCondition EqualTo(i, 1) ThenBlock: { Ed_OutS("land") }
+        IfCondition EqualTo(i, 2) ThenBlock: { Ed_OutS("hurt") }
+        IfCondition EqualTo(i, 3) ThenBlock: { Ed_OutS("stomp") }
+        IfCondition EqualTo(i, 4) ThenBlock: { Ed_OutS("ray") }
+        IfCondition EqualTo(i, 5) ThenBlock: { Ed_OutS("goal") }
+        IfCondition EqualTo(i, 6) ThenBlock: { Ed_OutS("checkpoint") }
+        IfCondition EqualTo(i, 7) ThenBlock: { Ed_OutS("powerup") }
+        IfCondition EqualTo(i, 8) ThenBlock: { Ed_OutS("derez") }
+        IfCondition EqualTo(i, 9) ThenBlock: { Ed_OutS("crouch") }
+    }
+}
+
+Function.Ed_OutSound {
+    Body: {
+        i = 0
+        idx = 0
+        p = 0
+        i = 0
+        WhileLoop LessThan(i, 10) {
+            idx = Ed_IGet(Ed.spick, i)
+            IfCondition GreaterEqual(idx, 0) ThenBlock: {
+                IfCondition LessThan(idx, Ed.sfxn) ThenBlock: {
+                    Ed_OutS("sound ")
+                    Ed_SfxEmit(i)
+                    Ed_OutC(32)
+                    p = Ed_SfxAt(idx)
+                    Ed_OutS(p)
+                    Ed_OutC(10)
+                }
+            }
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Ed_SfxTail {
+    Input: idx: Integer
+    Output: Address
+    Body: {
+        p = 0
+        last = 0
+        i = 0
+        c = 0
+        p = Ed_SfxAt(idx)
+        last = p
+        i = 0
+        WhileLoop LessThan(i, 63) {
+            c = GetByte(p, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            IfCondition EqualTo(c, 47) ThenBlock: { last = Add(p, Add(i, 1)) }
+            i = Add(i, 1)
+        }
+        ReturnValue(last)
+    }
+}
+
+Function.Ed_SfxHear {
+    Input: idx: Integer
+    Body: {
+        fd = 0
+        n = 0
+        p = 0
+        IfCondition LessThan(idx, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterEqual(idx, Ed.sfxn) ThenBlock: { ReturnValue(0) }
+        Ed.sgen = Add(Ed.sgen, 1)
+        IfCondition GreaterThan(Ed.sgen, 999999) ThenBlock: { Ed.sgen = 1 }
+        Ed_Copy(Ed.msg, "assets/circuit/audio/sfx/", 80)
+        Ed_Cat(Ed.msg, Ed_SfxAt(idx), 180)
+        p = Ed_UtoA(Ed.sgen)
+        Ed_Copy(Ed.sfxp, p, 16)
+        Ed_Cat(Ed.sfxp, " ", 200)
+        Ed_Cat(Ed.sfxp, Ed.msg, 240)
+        n = Ed_Len(Ed.sfxp)
+        IfCondition LessThan(n, 250) ThenBlock: {
+            SetByte(Ed.sfxp, n, 10)
+            SetByte(Ed.sfxp, Add(n, 1), 0)
+            n = Add(n, 1)
+        }
+        fd = SystemCall(2, "/dev/shm/level_edit/preview.txt", 577, 420)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(1, fd, Ed.sfxp, n)
+        SystemCall(3, fd)
+    }
+}
+
+Function.Ed_MusAt {
+    Input: lev: Integer
+    Output: Address
+    Body: {
+        off = 0
+        IfCondition LessThan(lev, 0) ThenBlock: { lev = 0 }
+        IfCondition GreaterThan(lev, 7) ThenBlock: { lev = 7 }
+        off = Multiply(lev, 96)
+        ReturnValue(Add(Ed.mus, off))
+    }
+}
+
+Function.Ed_MusBase {
+    Input: lev: Integer
+    Output: Address
+    Body: {
+        p = 0
+        i = 0
+        c = 0
+        at = 0
+        p = Ed_MusAt(lev)
+        c = GetByte(p, 0)
+        IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(0) }
+        at = p
+        i = 0
+        WhileLoop LessThan(i, 90) {
+            c = GetByte(p, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(at) }
+            IfCondition EqualTo(c, 47) ThenBlock: { at = Add(p, Add(i, 1)) }
+            i = Add(i, 1)
+        }
+        ReturnValue(at)
+    }
+}
+
+Function.Ed_MusExt {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        n = 0
+        a = 0
+        b = 0
+        c = 0
+        n = Ed_Len(s)
+        IfCondition LessThan(n, 5) ThenBlock: { ReturnValue(0) }
+        a = GetByte(s, Subtract(n, 4))
+        IfCondition NotEqual(a, 46) ThenBlock: { ReturnValue(0) }
+        a = GetByte(s, Subtract(n, 3))
+        b = GetByte(s, Subtract(n, 2))
+        c = GetByte(s, Subtract(n, 1))
+        IfCondition EqualTo(a, 119) ThenBlock: {
+            IfCondition EqualTo(b, 97) ThenBlock: {
+                IfCondition EqualTo(c, 118) ThenBlock: { ReturnValue(1) }
+            }
+        }
+        IfCondition EqualTo(a, 109) ThenBlock: {
+            IfCondition EqualTo(b, 112) ThenBlock: {
+                IfCondition EqualTo(c, 51) ThenBlock: { ReturnValue(1) }
+            }
+        }
+        IfCondition EqualTo(a, 111) ThenBlock: {
+            IfCondition EqualTo(b, 103) ThenBlock: {
+                IfCondition EqualTo(c, 103) ThenBlock: { ReturnValue(1) }
+            }
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_MusScan {
+    Body: {
+        fd = 0
+        n = 0
+        off = 0
+        rec = 0
+        lo = 0
+        hi = 0
+        dt = 0
+        p = 0
+        slot = 0
+        hit = 0
+        c = 0
+        Ed.mn = 0
+        IfCondition EqualTo(Ed.mcat, 0) ThenBlock: { ReturnValue(0) }
+        MemorySet(Ed.mcat, 0, 1024)
+        fd = SystemCall(2, "assets/circuit/audio/music", 65536, 0)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        n = SystemCall(217, fd, Ed.dirb, 4096)
+        WhileLoop GreaterThan(n, 0) {
+            off = 0
+            WhileLoop LessThan(off, n) {
+                lo = GetByte(Ed.dirb, Add(off, 16))
+                hi = GetByte(Ed.dirb, Add(off, 17))
+                rec = Add(lo, Multiply(hi, 256))
+                IfCondition LessThan(rec, 20) ThenBlock: { BreakLoop }
+                dt = GetByte(Ed.dirb, Add(off, 18))
+                p = Add(Ed.dirb, Add(off, 19))
+                c = GetByte(p, 0)
+                hit = 0
+                IfCondition NotEqual(c, 46) ThenBlock: {
+                    IfCondition EqualTo(dt, 8) ThenBlock: { hit = 1 }
+                    IfCondition EqualTo(dt, 0) ThenBlock: { hit = 1 }
+                    IfCondition EqualTo(hit, 1) ThenBlock: {
+                        hit = Ed_MusExt(p)
+                        IfCondition EqualTo(hit, 1) ThenBlock: {
+                            IfCondition LessThan(Ed.mn, 16) ThenBlock: {
+                                slot = Add(Ed.mcat, Multiply(Ed.mn, 64))
+                                Ed_Copy(slot, p, 64)
+                                Ed.mn = Add(Ed.mn, 1)
+                            }
+                        }
+                    }
+                }
+                off = Add(off, rec)
+            }
+            n = SystemCall(217, fd, Ed.dirb, 4096)
+        }
+        SystemCall(3, fd)
+        PrintMessage("music ")
+        PrintNumber(Ed.mn)
+        PrintMessage("\n")
+    }
+}
+
+Function.Ed_MusCycle {
+    Body: {
+        p = 0
+        base = 0
+        slot = 0
+        i = 0
+        hit = 0
+        at = 0
+        p = Ed_MusAt(Ed.lev)
+        base = Ed_MusBase(Ed.lev)
+        at = 0
+        IfCondition NotEqual(base, 0) ThenBlock: {
+            i = 0
+            WhileLoop LessThan(i, Ed.mn) {
+                slot = Add(Ed.mcat, Multiply(i, 64))
+                hit = Ed_Eq(slot, base)
+                IfCondition EqualTo(hit, 1) ThenBlock: { at = Add(i, 1) }
+                i = Add(i, 1)
+            }
+        }
+        IfCondition LessThan(Ed.mn, 1) ThenBlock: {
+            MemorySet(p, 0, 96)
+            ReturnValue(0)
+        }
+        IfCondition GreaterEqual(at, Ed.mn) ThenBlock: {
+            MemorySet(p, 0, 96)
+            ReturnValue(0)
+        }
+        slot = Add(Ed.mcat, Multiply(at, 64))
+        Ed_Copy(p, "assets/circuit/audio/music/", 96)
+        Ed_Cat(p, slot, 90)
+    }
+}
+
+Function.Ed_Boot {
+    Output: Integer
+    Body: {
+        Ed.file = Allocate(65536)
+        Ed.grid = Allocate(32768)
+        Ed.name = Allocate(4096)
+        Ed.path = Allocate(12288)
+        Ed.aw = Allocate(1024)
+        Ed.ah = Allocate(1024)
+        Ed.fr = Allocate(1024)
+        Ed.grp = Allocate(1024)
+        Ed.surf = Allocate(1024)
+        Ed.lpath = Allocate(3072)
+        Ed.bpath = Allocate(1152)
+        Ed.bimg = Allocate(96)
+        Ed.imgio = Allocate(65536)
+        Ed.pbuf = Allocate(544)
+        Ed.fbuf = Allocate(16)
+        Ed.win = Allocate(384)
+        Ed.tok = Allocate(768)
+        Ed.out = Allocate(65536)
+        Ed.meta = Allocate(1024)
+        Ed.msg = Allocate(192)
+        Ed.num = Allocate(32)
+        Ed.attr = Allocate(17408)
+        Ed.beh = Allocate(6144)
+        Ed.doc = Allocate(96)
+        Ed.names = Allocate(768)
+        Ed.dirb = Allocate(4096)
+        Ed.pick = Allocate(96)
+        Ed.nbuf = Allocate(32)
+        Ed.game = Allocate(32)
+        Ed.sfx = Allocate(8192)
+        Ed.spick = Allocate(80)
+        Ed.sfxp = Allocate(256)
+        Ed.sdir = Allocate(512)
+        Ed.mus = Allocate(768)
+        Ed.mcat = Allocate(1024)
+        IfCondition EqualTo(Ed.file, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.sfx, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.spick, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.sfxp, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.sdir, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.mus, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.mcat, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.grid, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.name, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.path, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.aw, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.surf, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.grp, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.pbuf, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.fbuf, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.win, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.tok, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.out, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.meta, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.lpath, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.imgio, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.attr, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.beh, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.doc, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.names, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.dirb, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.pick, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.nbuf, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.game, 0) ThenBlock: { ReturnValue(0) }
+        MemorySet(Ed.file, 0, 65536)
+        MemorySet(Ed.grid, 0, 32768)
+        MemorySet(Ed.name, 0, 4096)
+        MemorySet(Ed.path, 0, 12288)
+        MemorySet(Ed.aw, 0, 1024)
+        MemorySet(Ed.ah, 0, 1024)
+        MemorySet(Ed.fr, 0, 1024)
+        MemorySet(Ed.grp, 0, 1024)
+        MemorySet(Ed.surf, 0, 1024)
+        MemorySet(Ed.lpath, 0, 3072)
+        MemorySet(Ed.bpath, 0, 1152)
+        MemorySet(Ed.bimg, 0, 96)
+        MemorySet(Ed.fbuf, 0, 16)
+        MemorySet(Ed.win, 0, 384)
+        MemorySet(Ed.pbuf, 0, 544)
+        MemorySet(Ed.meta, 0, 1024)
+        MemorySet(Ed.out, 0, 65536)
+        MemorySet(Ed.attr, 0, 17408)
+        MemorySet(Ed.beh, 0, 6144)
+        MemorySet(Ed.doc, 0, 96)
+        MemorySet(Ed.names, 0, 768)
+        MemorySet(Ed.nbuf, 0, 32)
+        MemorySet(Ed.game, 0, 32)
+        MemorySet(Ed.sfx, 0, 8192)
+        MemorySet(Ed.spick, 0, 80)
+        MemorySet(Ed.sfxp, 0, 256)
+        MemorySet(Ed.sdir, 0, 512)
+        MemorySet(Ed.mus, 0, 768)
+        MemorySet(Ed.mcat, 0, 1024)
+        Ed_Copy(Ed.game, "circuit", 32)
+        Ed_Copy(Ed.doc, "games/circuit/levels/edit.lvl", 96)
+        Ed_MkGame()
+        Ed.page = 0
+        FB_FontInit()
+        Ed.blev = Subtract(0, 1)
+        Ed_SfxScan()
+        Ed_MusScan()
+        Ed_Defaults()
+        Ed_Load()
+        ReturnValue(1)
+    }
+}
+
+Function.Ed_Crisp {
+    Input: surf: Integer
+    Body: {
+        data = 0
+        sw = 0
+        sh = 0
+        sp = 0
+        y = 0
+        x = 0
+        row = 0
+        off = 0
+        ao = 0
+        a = 0
+        IfCondition EqualTo(surf, 0) ThenBlock: { ReturnValue(0) }
+        data = Surface_GetData(surf)
+        IfCondition EqualTo(data, 0) ThenBlock: { ReturnValue(0) }
+        sw = Surface_GetWidth(surf)
+        sh = Surface_GetHeight(surf)
+        sp = Surface_GetPitch(surf)
+        y = 0
+        WhileLoop LessThan(y, sh) {
+            row = Multiply(y, sp)
+            row = Add(data, row)
+            x = 0
+            WhileLoop LessThan(x, sw) {
+                off = Multiply(x, 4)
+                ao = Add(off, 3)
+                a = GetByte(row, ao)
+                IfCondition GreaterEqual(a, 128) ThenBlock: {
+                    IfCondition NotEqual(a, 255) ThenBlock: { SetByte(row, ao, 255) }
+                }
+                ElseBlock: {
+                    IfCondition GreaterThan(a, 0) ThenBlock: {
+                        SetByte(row, off, 0)
+                        SetByte(row, Add(off, 1), 0)
+                        SetByte(row, Add(off, 2), 0)
+                        SetByte(row, ao, 0)
+                    }
+                }
+                x = Add(x, 1)
+            }
+            y = Add(y, 1)
+        }
+    }
+}
+
+Function.Ed_IsTvg {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        n = 0
+        c = 0
+        c1 = 0
+        c2 = 0
+        c3 = 0
+        c4 = 0
+        low = 0
+        WhileLoop LessThan(n, 96) {
+            c = GetByte(s, n)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            n = Add(n, 1)
+        }
+        IfCondition LessThan(n, 4) ThenBlock: { ReturnValue(0) }
+        c1 = GetByte(s, Subtract(n, 4))
+        c2 = GetByte(s, Subtract(n, 3))
+        c3 = GetByte(s, Subtract(n, 2))
+        c4 = GetByte(s, Subtract(n, 1))
+        IfCondition NotEqual(c1, 46) ThenBlock: { ReturnValue(0) }
+        low = 0
+        IfCondition EqualTo(c2, 116) ThenBlock: { low = 1 }
+        IfCondition EqualTo(c2, 84) ThenBlock: { low = 1 }
+        IfCondition EqualTo(low, 0) ThenBlock: { ReturnValue(0) }
+        low = 0
+        IfCondition EqualTo(c3, 118) ThenBlock: { low = 1 }
+        IfCondition EqualTo(c3, 86) ThenBlock: { low = 1 }
+        IfCondition EqualTo(low, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(c4, 103) ThenBlock: { ReturnValue(1) }
+        IfCondition EqualTo(c4, 71) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_TilePx {
+    Output: Integer
+    Body: {
+        px = 32
+        vw = 0
+        vh = 0
+        avail = 0
+        ax = 0
+        ay = 0
+        vw = Ed.vieww
+        vh = Ed.viewh
+        IfCondition LessThan(vw, 1) ThenBlock: { vw = 1 }
+        IfCondition LessThan(vh, 1) ThenBlock: { vh = 1 }
+        avail = Subtract(FB.height, 96)
+        IfCondition LessThan(avail, vh) ThenBlock: { avail = vh }
+        ax = Subtract(FB.width, Ed.dock)
+        IfCondition LessThan(ax, 200) ThenBlock: { ax = FB.width }
+        ax = Divide(ax, vw)
+        ay = Divide(avail, vh)
+        IfCondition LessThan(ay, ax) ThenBlock: { ax = ay }
+        IfCondition GreaterThan(ax, 32) ThenBlock: { ax = 32 }
+        IfCondition LessThan(ax, 8) ThenBlock: { ax = 8 }
+        ReturnValue(ax)
+    }
+}
+
+Function.Ed_OnScreen {
+    Output: Integer
+    Body: {
+        col = 0
+        row = 0
+        id = 0
+        idx = 0
+        surf = 0
+        row = 0
+        WhileLoop LessThan(row, Ed.maph) {
+            col = 0
+            WhileLoop LessThan(col, Ed.mapw) {
+                id = Ed_Cell(Ed.lev, col, row)
+                IfCondition GreaterThan(id, 0) ThenBlock: {
+                    idx = Subtract(id, 1)
+                    surf = Ed_IGet(Ed.surf, idx)
+                    IfCondition EqualTo(surf, 0) ThenBlock: { ReturnValue(idx) }
+                }
+                col = Add(col, 1)
+            }
+            row = Add(row, 1)
+        }
+        ReturnValue(Subtract(0, 1))
+    }
+}
+
+Function.Ed_RasterAt {
+    Input: idx: Integer
+    Body: {
+        p = 0
+        fr = 0
+        tv = 0
+        wide = 0
+        surf = 0
+        p = Ed_Path(idx)
+        fr = Ed_IGet(Ed.fr, idx)
+        IfCondition LessThan(fr, 1) ThenBlock: { fr = 1 }
+        tv = Ed_IsTvg(p)
+        IfCondition EqualTo(tv, 1) ThenBlock: { fr = 1 }
+        IfCondition GreaterThan(fr, 16) ThenBlock: { fr = 16 }
+        Ed_ISet(Ed.fr, idx, fr)
+        wide = Multiply(fr, Ed.px)
+        surf = 0
+        IfCondition EqualTo(tv, 1) ThenBlock: { surf = TVG_RenderFile(p, Ed.px) }
+        ElseBlock: { surf = SVG_RasterFile(p, wide, Ed.px) }
+        IfCondition NotEqual(surf, 0) ThenBlock: { Ed_Crisp(surf) }
+        IfCondition EqualTo(surf, 0) ThenBlock: {
+            Ed_ISet(Ed.surf, idx, Subtract(0, 1))
+            PrintMessage("asset miss ")
+            PrintMessage(p)
+            PrintMessage("\n")
+        }
+        ElseBlock: { Ed_ISet(Ed.surf, idx, surf) }
+    }
+}
+
+Function.Ed_ClearSurf {
+    Body: {
+        i = 0
+        old = 0
+        i = 0
+        WhileLoop LessThan(i, Ed.na) {
+            old = Ed_IGet(Ed.surf, i)
+            IfCondition GreaterThan(old, 0) ThenBlock: { Surface_Destroy(old) }
+            Ed_ISet(Ed.surf, i, 0)
+            i = Add(i, 1)
+        }
+        Ed.ri = 0
+        Ed.ready = 0
+        Ed.brow = 0
+        Ed.blev = Subtract(0, 1)
+        IfCondition GreaterThan(Ed.bsurf, 0) ThenBlock: {
+            Surface_Destroy(Ed.bsurf)
+            Ed.bsurf = 0
+        }
+    }
+}
+
+Function.Ed_FitPx {
+    Body: {
+        px = 0
+        px = Ed_TilePx()
+        IfCondition NotEqual(px, Ed.px) ThenBlock: {
+            Ed_ClearSurf()
+            Ed.px = px
+        }
+    }
+}
+
+Function.Ed_Fit {
+    Body: {
+        idx = 0
+        Ed_FitPx()
+        IfCondition EqualTo(Ed.ready, 1) ThenBlock: { ReturnValue(0) }
+        idx = Ed_OnScreen()
+        IfCondition LessThan(idx, 0) ThenBlock: {
+            WhileLoop LessThan(Ed.ri, Ed.na) {
+                idx = Ed.ri
+                Ed.ri = Add(Ed.ri, 1)
+                IfCondition EqualTo(Ed_IGet(Ed.surf, idx), 0) ThenBlock: { BreakLoop }
+                idx = Subtract(0, 1)
+            }
+        }
+        IfCondition LessThan(idx, 0) ThenBlock: {
+            Ed.ready = 1
+            PrintMessage("pictures ")
+            PrintNumber(Ed.na)
+            PrintMessage("\n")
+            ReturnValue(0)
+        }
+        Ed_RasterAt(idx)
+    }
+}
+
+Function.Ed_Sprite {
+    Input: idx: Integer
+    Input: dx: Integer
+    Input: dy: Integer
+    Body: {
+        surf = 0
+        fr = 0
+        f = 0
+        sx = 0
+        surf = Ed_IGet(Ed.surf, idx)
+        IfCondition LessEqual(surf, 0) ThenBlock: { ReturnValue(0) }
+        fr = Ed_IGet(Ed.fr, idx)
+        IfCondition LessThan(fr, 1) ThenBlock: { fr = 1 }
+        f = 0
+        IfCondition GreaterThan(fr, 1) ThenBlock: {
+            f = Divide(Ed.tick, 10)
+            f = Modulo(f, fr)
+        }
+        sx = Multiply(f, Ed.px)
+        Blit.dx = dx
+        Blit.dy = dy
+        Blit.tint = 0
+        Blit.cycle = 0
+        Blit.turn = 0
+        Blit.glow = 0
+        Blit.ghost = 0
+        Blit_Cell(surf, sx, 0, Ed.px, Ed.px)
+    }
+}
+
+Function.Ed_Box {
+    Input: x: Integer
+    Input: y: Integer
+    Input: miss: Integer
+    Body: {
+        c = 0
+        c = FB_RGB(16, 20, 32)
+        FB_FillRectFast(x, y, Ed.px, Ed.px, c)
+        c = FB_RGB(42, 48, 64)
+        IfCondition EqualTo(miss, 1) ThenBlock: { c = FB_RGB(150, 72, 48) }
+        FB_Rect(x, y, Ed.px, Ed.px, c)
+    }
+}
+
+Function.Ed_Tile {
+    Input: col: Integer
+    Input: row: Integer
+    Input: x: Integer
+    Input: y: Integer
+    Body: {
+        id = 0
+        idx = 0
+        surf = 0
+        inside = 0
+        c = 0
+        n = 0
+        IfCondition GreaterEqual(col, 0) ThenBlock: {
+            IfCondition LessThan(col, Ed.mapw) ThenBlock: {
+                IfCondition GreaterEqual(row, 0) ThenBlock: {
+                    IfCondition LessThan(row, Ed.maph) ThenBlock: { inside = 1 }
+                }
+            }
+        }
+        IfCondition EqualTo(inside, 0) ThenBlock: {
+            Ed_Box(x, y, 0)
+            ReturnValue(0)
+        }
+        id = Ed_Cell(Ed.lev, col, row)
+        IfCondition EqualTo(id, 0) ThenBlock: {
+            n = Ed_MGet(9)
+            IfCondition GreaterThan(n, 0) ThenBlock: {
+                c = FB_RGB(48, 56, 72)
+                FB_Rect(x, y, Ed.px, Ed.px, c)
+            }
+            ElseBlock: { Ed_Box(x, y, 0) }
+            ReturnValue(0)
+        }
+        idx = Subtract(id, 1)
+        surf = Ed_IGet(Ed.surf, idx)
+        IfCondition LessEqual(surf, 0) ThenBlock: {
+            Ed_Box(x, y, 1)
+            ReturnValue(0)
+        }
+        Ed_Box(x, y, 0)
+        Ed_Sprite(idx, x, y)
+    }
+}
+
+Function.Ed_Layout {
+    Body: {
+        vw = 0
+        ox = 0
+        room = 0
+        vw = Multiply(Ed.vieww, Ed.px)
+        room = Subtract(FB.width, Ed.dock)
+        IfCondition LessThan(room, 200) ThenBlock: { room = FB.width }
+        ox = Divide(Subtract(room, vw), 2)
+        IfCondition LessThan(ox, 0) ThenBlock: { ox = 0 }
+        Ed.ox = ox
+        Ed.oy = 42
+        Ed.pal = Multiply(Ed.viewh, Ed.px)
+        Ed.pal = Add(Ed.pal, 50)
+    }
+}
+
+Function.Ed_Cursor {
+    Body: {
+        sx = 0
+        sy = 0
+        x = 0
+        y = 0
+        c = 0
+        lim = 0
+        IfCondition LessThan(Ed.curx, Ed.camx) ThenBlock: { ReturnValue(0) }
+        lim = Add(Ed.camx, Ed.vieww)
+        IfCondition GreaterEqual(Ed.curx, lim) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Ed.cury, Ed.camy) ThenBlock: { ReturnValue(0) }
+        lim = Add(Ed.camy, Ed.viewh)
+        IfCondition GreaterEqual(Ed.cury, lim) ThenBlock: { ReturnValue(0) }
+        sx = Subtract(Ed.curx, Ed.camx)
+        sy = Subtract(Ed.cury, Ed.camy)
+        sy = Subtract(Subtract(Ed.viewh, 1), sy)
+        x = Multiply(sx, Ed.px)
+        x = Add(Ed.ox, x)
+        y = Multiply(sy, Ed.px)
+        y = Add(Ed.oy, y)
+        c = FB_RGB(255, 210, 120)
+        FB_Rect(x, y, Ed.px, Ed.px, c)
+        IfCondition GreaterThan(Ed.px, 4) ThenBlock: {
+            FB_Rect(Add(x, 1), Add(y, 1), Subtract(Ed.px, 2), Subtract(Ed.px, 2), c)
+        }
+    }
+}
+
+Function.Ed_Palette {
+    Body: {
+        ReturnValue(0)
+        i = 0
+        x = 8
+        y = 0
+        surf = 0
+        c = 0
+        dim = 0
+        g = 0
+        lim = 0
+        c = FB_RGB(255, 210, 120)
+        dim = FB_RGB(150, 166, 188)
+        FB_DrawStringScaled(8, Ed.pal, "BLOCKS", c, Subtract(0, 1), 1)
+        FB_DrawStringScaled(96, Ed.pal, "ENEMIES", dim, Subtract(0, 1), 1)
+        FB_DrawStringScaled(200, Ed.pal, "ZONES", dim, Subtract(0, 1), 1)
+        IfCondition EqualTo(Ed.show, 2) ThenBlock: {
+            FB_DrawStringScaled(8, Ed.pal, "BLOCKS", dim, Subtract(0, 1), 1)
+            FB_DrawStringScaled(96, Ed.pal, "ENEMIES", c, Subtract(0, 1), 1)
+        }
+        IfCondition EqualTo(Ed.show, 3) ThenBlock: {
+            FB_DrawStringScaled(8, Ed.pal, "BLOCKS", dim, Subtract(0, 1), 1)
+            FB_DrawStringScaled(200, Ed.pal, "ZONES", c, Subtract(0, 1), 1)
+        }
+        y = Add(Ed.pal, 24)
+        Ed_Box(x, y, 0)
+        IfCondition EqualTo(Ed.brush, 0) ThenBlock: {
+            FB_Rect(x, y, Ed.px, Ed.px, c)
+        }
+        x = Add(x, Ed.px)
+        x = Add(x, 8)
+        i = 0
+        WhileLoop LessThan(i, Ed.na) {
+            g = Ed_IGet(Ed.grp, i)
+            IfCondition LessThan(g, 1) ThenBlock: { g = 1 }
+            IfCondition EqualTo(g, Ed.show) ThenBlock: {
+                lim = Add(x, Ed.px)
+                IfCondition GreaterThan(lim, FB.width) ThenBlock: { ReturnValue(0) }
+                surf = Ed_IGet(Ed.surf, i)
+                IfCondition EqualTo(surf, 0) ThenBlock: { Ed_Box(x, y, 1) }
+                ElseBlock: {
+                    Ed_Box(x, y, 0)
+                    Ed_Sprite(i, x, y)
+                }
+                IfCondition EqualTo(Ed.brush, Add(i, 1)) ThenBlock: {
+                    FB_Rect(x, y, Ed.px, Ed.px, c)
+                }
+                x = Add(x, Ed.px)
+                x = Add(x, 8)
+            }
+            i = Add(i, 1)
+        }
+    }
+}
+
+Function.Ed_Status {
+    Body: {
+        off = 0
+        nm = 0
+        c = 0
+        bg = 0
+        g = 0
+        off = Ed_PutS(Ed.msg, 0, "lv ")
+        off = Ed_PutN(Ed.msg, off, Add(Ed.lev, 1))
+        off = Ed_PutS(Ed.msg, off, "/")
+        off = Ed_PutN(Ed.msg, off, Ed.nlev)
+        off = Ed_PutS(Ed.msg, off, " ")
+        IfCondition EqualTo(Ed.brush, 0) ThenBlock: { off = Ed_PutS(Ed.msg, off, "erase") }
+        ElseBlock: {
+            nm = Ed_Name(Subtract(Ed.brush, 1))
+            off = Ed_PutS(Ed.msg, off, nm)
+        }
+        off = Ed_PutS(Ed.msg, off, " ")
+        g = Ed.show
+        IfCondition EqualTo(g, 2) ThenBlock: { off = Ed_PutS(Ed.msg, off, "enemy") }
+        ElseBlock: {
+            IfCondition EqualTo(g, 4) ThenBlock: { off = Ed_PutS(Ed.msg, off, "entity") }
+            ElseBlock: {
+                IfCondition EqualTo(g, 3) ThenBlock: { off = Ed_PutS(Ed.msg, off, "object") }
+                ElseBlock: { off = Ed_PutS(Ed.msg, off, "block") }
+            }
+        }
+        off = Ed_PutS(Ed.msg, off, " c")
+        off = Ed_PutN(Ed.msg, off, Ed.curx)
+        off = Ed_PutS(Ed.msg, off, " r")
+        off = Ed_PutN(Ed.msg, off, Ed.cury)
+        SetByte(Ed.msg, off, 0)
+        c = FB_RGB(232, 196, 120)
+        bg = Subtract(0, 1)
+        FB_FillRectFast(8, 4, 72, 24, FB_RGB(255, 255, 255))
+        FB_Rect(8, 4, 72, 24, FB_RGB(0, 0, 0))
+        FB_DrawStringScaled(26, 10, "File", FB_RGB(0, 0, 0), bg, 1)
+        FB_DrawStringScaled(88, 8, Ed.msg, c, bg, 2)
+        IfCondition GreaterThan(Ed.note, 0) ThenBlock: {
+            FB_DrawStringScaled(88, 26, "saved", c, bg, 1)
+        }
+    }
+}
+
+Function.Ed_BackGet {
+    Input: path: Address
+    Output: Integer
+    Body: {
+        i = 0
+        p = 0
+        hit = 0
+        h = 0
+        n = 0
+        fd = 0
+        i = 0
+        WhileLoop LessThan(i, Ed.bn) {
+            p = Add(Ed.bpath, Multiply(i, 96))
+            hit = Ed_Eq(p, path)
+            IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(Ed_IGet(Ed.bimg, i)) }
+            i = Add(i, 1)
+        }
+        IfCondition GreaterEqual(Ed.bn, 12) ThenBlock: { ReturnValue(Subtract(0, 1)) }
+        fd = SystemCall(2, path, 0, 0)
+        IfCondition LessThan(fd, 0) ThenBlock: {
+            PrintMessage("back miss ")
+            PrintMessage(path)
+            PrintMessage("\n")
+            p = Add(Ed.bpath, Multiply(Ed.bn, 96))
+            Ed_Copy(p, path, 96)
+            Ed_ISet(Ed.bimg, Ed.bn, Subtract(0, 1))
+            Ed.bn = Add(Ed.bn, 1)
+            ReturnValue(Subtract(0, 1))
+        }
+        n = SystemCall(0, fd, Ed.imgio, 65535)
+        SystemCall(3, fd, 0, 0)
+        h = Subtract(0, 1)
+        IfCondition GreaterThan(n, 8) ThenBlock: { h = IMG_DecodePNG(Ed.imgio, n) }
+        p = Add(Ed.bpath, Multiply(Ed.bn, 96))
+        Ed_Copy(p, path, 96)
+        Ed_ISet(Ed.bimg, Ed.bn, h)
+        Ed.bn = Add(Ed.bn, 1)
+        PrintMessage("back ")
+        PrintMessage(path)
+        IfCondition LessThan(h, 0) ThenBlock: { PrintMessage(" miss\n") }
+        ElseBlock: { PrintMessage(" ok\n") }
+        ReturnValue(h)
+    }
+}
+
+Function.Ed_Compose {
+    Body: {
+        dw = 0
+        dh = 0
+        same = 0
+        n = 0
+        li = 0
+        h = 0
+        sw = 0
+        sh = 0
+        pix = 0
+        data = 0
+        x = 0
+        y = 0
+        sx = 0
+        sy = 0
+        sp = 0
+        dp = 0
+        a = 0
+        inv = 0
+        sv = 0
+        dv = 0
+        m = 0
+        c = 0
+        path = 0
+        yend = 0
+        dw = Multiply(Ed.vieww, Ed.px)
+        dh = Multiply(Ed.viewh, Ed.px)
+        IfCondition LessThan(dw, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(dh, 1) ThenBlock: { ReturnValue(0) }
+        same = 0
+        IfCondition EqualTo(Ed.blev, Ed.lev) ThenBlock: {
+            IfCondition EqualTo(Ed.bpx, Ed.px) ThenBlock: {
+                IfCondition EqualTo(Ed.bvw, Ed.vieww) ThenBlock: {
+                    IfCondition EqualTo(Ed.bvh, Ed.viewh) ThenBlock: { same = 1 }
+                }
+            }
+        }
+        IfCondition EqualTo(same, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.brow, dh) ThenBlock: { ReturnValue(0) }
+        }
+        ElseBlock: {
+            IfCondition NotEqual(Ed.bsurf, 0) ThenBlock: {
+                Surface_Destroy(Ed.bsurf)
+                Ed.bsurf = 0
+            }
+            Ed.bsurf = Surface_Create(SurfaceFormat.PIXEL_32, dw, dh)
+            Ed.blev = Ed.lev
+            Ed.bpx = Ed.px
+            Ed.bvw = Ed.vieww
+            Ed.bvh = Ed.viewh
+            Ed.brow = 0
+            IfCondition EqualTo(Ed.bsurf, 0) ThenBlock: { ReturnValue(0) }
+        }
+        yend = Add(Ed.brow, 8)
+        IfCondition GreaterThan(yend, dh) ThenBlock: { yend = dh }
+        n = Ed_MGet(9)
+        li = 0
+        WhileLoop LessThan(li, n) {
+            path = Ed_LPtr(Ed.lev, li)
+            h = Ed_BackGet(path)
+            IfCondition GreaterEqual(h, 0) ThenBlock: {
+                sw = IMG_GetWidth(h)
+                sh = IMG_GetHeight(h)
+                pix = IMG_GetPixels(h)
+                data = Surface_GetData(Ed.bsurf)
+                IfCondition GreaterThan(sw, 0) ThenBlock: {
+                    IfCondition GreaterThan(sh, 0) ThenBlock: {
+                        IfCondition NotEqual(pix, 0) ThenBlock: {
+                            IfCondition NotEqual(data, 0) ThenBlock: {
+                                y = Ed.brow
+                                WhileLoop LessThan(y, yend) {
+                                    sy = Divide(Multiply(y, sh), dh)
+                                    IfCondition GreaterEqual(sy, sh) ThenBlock: { sy = Subtract(sh, 1) }
+                                    x = 0
+                                    WhileLoop LessThan(x, dw) {
+                                        sx = Divide(Multiply(x, sw), dw)
+                                        IfCondition GreaterEqual(sx, sw) ThenBlock: { sx = Subtract(sw, 1) }
+                                        sp = Multiply(sy, sw)
+                                        sp = Add(sp, sx)
+                                        sp = Multiply(sp, 4)
+                                        sp = Add(pix, sp)
+                                        dp = Multiply(y, dw)
+                                        dp = Add(dp, x)
+                                        dp = Multiply(dp, 4)
+                                        dp = Add(data, dp)
+                                        a = GetByte(sp, 3)
+                                        IfCondition GreaterThan(a, 0) ThenBlock: {
+                                            IfCondition GreaterEqual(a, 250) ThenBlock: {
+                                                SetByte(dp, 0, GetByte(sp, 0))
+                                                SetByte(dp, 1, GetByte(sp, 1))
+                                                SetByte(dp, 2, GetByte(sp, 2))
+                                                SetByte(dp, 3, 255)
+                                            }
+                                            ElseBlock: {
+                                                inv = Subtract(255, a)
+                                                c = 0
+                                                WhileLoop LessThan(c, 3) {
+                                                    sv = GetByte(sp, c)
+                                                    dv = GetByte(dp, c)
+                                                    m = Multiply(sv, a)
+                                                    m = Add(m, Multiply(dv, inv))
+                                                    m = Divide(m, 255)
+                                                    SetByte(dp, c, m)
+                                                    c = Add(c, 1)
+                                                }
+                                                SetByte(dp, 3, 255)
+                                            }
+                                        }
+                                        x = Add(x, 1)
+                                    }
+                                    y = Add(y, 1)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            li = Add(li, 1)
+        }
+        Ed.brow = yend
+    }
+}
+
+Function.Ed_Back {
+    Body: {
+        n = 0
+        dw = 0
+        dh = 0
+        idx = 0
+        n = Ed_MGet(9)
+        IfCondition LessThan(n, 1) ThenBlock: { ReturnValue(0) }
+        idx = Ed_OnScreen()
+        IfCondition GreaterEqual(idx, 0) ThenBlock: { ReturnValue(0) }
+        Ed_Compose()
+        IfCondition EqualTo(Ed.bsurf, 0) ThenBlock: { ReturnValue(0) }
+        dh = Ed.brow
+        IfCondition LessThan(dh, 1) ThenBlock: { ReturnValue(0) }
+        dw = Multiply(Ed.vieww, Ed.px)
+        Blit.dx = Ed.ox
+        Blit.dy = Ed.oy
+        Blit.tint = 0
+        Blit.cycle = 0
+        Blit.turn = 0
+        Blit.glow = 0
+        Blit.ghost = 0
+        Blit_Cell(Ed.bsurf, 0, 0, dw, dh)
+    }
+}
+
+Function.Ed_Draw {
+    Body: {
+        sx = 0
+        sy = 0
+        col = 0
+        row = 0
+        x = 0
+        y = 0
+        c = 0
+        IfCondition GreaterThan(Ed.note, 0) ThenBlock: { Ed.note = Subtract(Ed.note, 1) }
+        c = FB_RGB(8, 10, 16)
+        FB_FillRectFast(0, 0, FB.width, FB.height, c)
+        Ed_Layout()
+        Ed_Back()
+        sy = 0
+        WhileLoop LessThan(sy, Ed.viewh) {
+            sx = 0
+            WhileLoop LessThan(sx, Ed.vieww) {
+                col = Add(Ed.camx, sx)
+                row = Subtract(Ed.viewh, 1)
+                row = Subtract(row, sy)
+                row = Add(Ed.camy, row)
+                x = Multiply(sx, Ed.px)
+                x = Add(Ed.ox, x)
+                y = Multiply(sy, Ed.px)
+                y = Add(Ed.oy, y)
+                Ed_Tile(col, row, x, y)
+                sx = Add(sx, 1)
+            }
+            sy = Add(sy, 1)
+        }
+        Ed_Cursor()
+        Ed_Palette()
+        Ed_Status()
+    }
+}
+
+Function.Ed_Held {
+    Input: down: Integer
+    Input: was: Integer
+    Output: Integer
+    Body: {
+        m = 0
+        IfCondition NotEqual(down, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(was, 0) ThenBlock: { ReturnValue(1) }
+        m = Modulo(Ed.tick, 4)
+        IfCondition EqualTo(m, 0) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_IsEnt {
+    Input: id: Integer
+    Output: Integer
+    Body: {
+        g = 0
+        IfCondition LessThan(id, 1) ThenBlock: { ReturnValue(0) }
+        g = Ed_IGet(Ed.grp, Subtract(id, 1))
+        IfCondition EqualTo(g, 4) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_NextBrush {
+    Body: {
+        n = 0
+        ent = 0
+        n = 0
+        WhileLoop LessThan(n, 40) {
+            Ed.brush = Add(Ed.brush, 1)
+            IfCondition GreaterThan(Ed.brush, Ed.na) ThenBlock: { Ed.brush = 0 }
+            IfCondition EqualTo(Ed.brush, 0) ThenBlock: { ReturnValue(0) }
+            ent = Ed_IsEnt(Ed.brush)
+            IfCondition EqualTo(ent, 0) ThenBlock: { ReturnValue(0) }
+            n = Add(n, 1)
+        }
+        Ed.brush = 0
+    }
+}
+
+Function.Ed_Paint {
+    Body: {
+        idx = 0
+        aw = 0
+        ah = 0
+        ent = 0
+        IfCondition EqualTo(Ed.brush, 0) ThenBlock: {
+            Ed_Stamp(0, Ed.curx, Ed.cury, 1, 1)
+            ReturnValue(0)
+        }
+        ent = Ed_IsEnt(Ed.brush)
+        IfCondition EqualTo(ent, 1) ThenBlock: { ReturnValue(0) }
+        idx = Subtract(Ed.brush, 1)
+        aw = Ed_IGet(Ed.aw, idx)
+        ah = Ed_IGet(Ed.ah, idx)
+        Ed_Stamp(Ed.brush, Ed.curx, Ed.cury, aw, ah)
+    }
+}
+
+Function.Ed_Input {
+    Body: {
+        go = 0
+        ok = 0
+        busy = 0
+        IfCondition EqualTo(Key.p, 1) ThenBlock: {
+            IfCondition EqualTo(Ed.pk, 0) ThenBlock: {
+                IfCondition NotEqual(Ed.page, 3) ThenBlock: { Ed_FileOpen() }
+            }
+        }
+        Ed.pk = Key.p
+        IfCondition EqualTo(Ed.page, 3) ThenBlock: {
+            Ed.lk = Key.l
+            Ed.rk = Key.r
+            Ed.uk = Key.u
+            Ed.dk = Key.d
+            Ed.sk = Key.s
+            Ed.nk = EdKey.n
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Ed.page, 1) ThenBlock: {
+            IfCondition EqualTo(Key.u, 1) ThenBlock: {
+                IfCondition EqualTo(Ed.uk, 0) ThenBlock: { Ed_BehMove(Subtract(0, 1)) }
+            }
+            Ed.uk = Key.u
+            IfCondition EqualTo(Key.d, 1) ThenBlock: {
+                IfCondition EqualTo(Ed.dk, 0) ThenBlock: { Ed_BehMove(1) }
+            }
+            Ed.dk = Key.d
+            Ed.lk = Key.l
+            Ed.rk = Key.r
+            Ed.sk = Key.s
+            Ed.nk = EdKey.n
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Ed.page, 2) ThenBlock: {
+            IfCondition EqualTo(Key.u, 1) ThenBlock: {
+                IfCondition EqualTo(Ed.uk, 0) ThenBlock: { Ed_CharMove(Subtract(0, 1)) }
+            }
+            Ed.uk = Key.u
+            IfCondition EqualTo(Key.d, 1) ThenBlock: {
+                IfCondition EqualTo(Ed.dk, 0) ThenBlock: { Ed_CharMove(1) }
+            }
+            Ed.dk = Key.d
+            Ed.lk = Key.l
+            Ed.rk = Key.r
+            Ed.sk = Key.s
+            Ed.nk = EdKey.n
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Ed.page, 4) ThenBlock: {
+            IfCondition EqualTo(Key.u, 1) ThenBlock: {
+                IfCondition EqualTo(Ed.uk, 0) ThenBlock: { Ed_SfxMove(Subtract(0, 1)) }
+            }
+            Ed.uk = Key.u
+            IfCondition EqualTo(Key.d, 1) ThenBlock: {
+                IfCondition EqualTo(Ed.dk, 0) ThenBlock: { Ed_SfxMove(1) }
+            }
+            Ed.dk = Key.d
+            IfCondition EqualTo(Key.l, 1) ThenBlock: {
+                IfCondition EqualTo(Ed.lk, 0) ThenBlock: { Ed_SfxEvent(Subtract(0, 1)) }
+            }
+            Ed.lk = Key.l
+            IfCondition EqualTo(Key.r, 1) ThenBlock: {
+                IfCondition EqualTo(Ed.rk, 0) ThenBlock: { Ed_SfxEvent(1) }
+            }
+            Ed.rk = Key.r
+            IfCondition EqualTo(Key.s, 1) ThenBlock: {
+                IfCondition EqualTo(Ed.sk, 0) ThenBlock: { Ed_SfxAssign(Ed.sfxcur) }
+            }
+            Ed.sk = Key.s
+            IfCondition EqualTo(Key.f, 1) ThenBlock: {
+                IfCondition EqualTo(Ed.fk, 0) ThenBlock: { Ed_SfxHear(Ed.sfxcur) }
+            }
+            Ed.fk = Key.f
+            Ed.nk = EdKey.n
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Ed.menu, 1) ThenBlock: { busy = 1 }
+        IfCondition EqualTo(busy, 1) ThenBlock: {
+            Ed.lk = Key.l
+            Ed.rk = Key.r
+            Ed.uk = Key.u
+            Ed.dk = Key.d
+            Ed.sk = Key.s
+            Ed.nk = EdKey.n
+            ReturnValue(0)
+        }
+        go = Ed_Held(Key.l, Ed.lk)
+        IfCondition EqualTo(go, 1) ThenBlock: { Ed.curx = Subtract(Ed.curx, 1) }
+        Ed.lk = Key.l
+        go = Ed_Held(Key.r, Ed.rk)
+        IfCondition EqualTo(go, 1) ThenBlock: { Ed.curx = Add(Ed.curx, 1) }
+        Ed.rk = Key.r
+        go = Ed_Held(Key.u, Ed.uk)
+        IfCondition EqualTo(go, 1) ThenBlock: { Ed.cury = Add(Ed.cury, 1) }
+        Ed.uk = Key.u
+        go = Ed_Held(Key.d, Ed.dk)
+        IfCondition EqualTo(go, 1) ThenBlock: { Ed.cury = Subtract(Ed.cury, 1) }
+        Ed.dk = Key.d
+        Ed_ClampMap()
+        IfCondition EqualTo(Ed.form, 0) ThenBlock: {
+            IfCondition EqualTo(Key.f, 1) ThenBlock: { Ed_Paint() }
+            IfCondition EqualTo(Key.s, 1) ThenBlock: {
+                IfCondition EqualTo(Ed.sk, 0) ThenBlock: { Ed_NextBrush() }
+            }
+        }
+        Ed.sk = Key.s
+        IfCondition EqualTo(EdKey.n, 1) ThenBlock: {
+            IfCondition EqualTo(Ed.nk, 0) ThenBlock: {
+                Ed_Store()
+                Ed.lev = Add(Ed.lev, 1)
+                IfCondition GreaterEqual(Ed.lev, Ed.nlev) ThenBlock: { Ed.lev = 0 }
+                Ed_Use()
+            }
+        }
+        Ed.nk = EdKey.n
+    }
+}

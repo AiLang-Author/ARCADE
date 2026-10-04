@@ -1,0 +1,574 @@
+// circuit.x reads one level file, draws level 1, and runs the character.
+// Arrows move the body. Up and the fire key jump. The camera follows.
+// It is its own program. The cabinet does not import it.
+// Argument 1, when present, is the level path. Otherwise the game
+// file is tried, then the older levels/edit.lvl.
+//
+// Copyright (c) 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
+
+LibraryImport.Load
+LibraryImport.Arena
+LibraryImport.SVG
+LibraryImport.Display.Render.Framebuffer
+LibraryImport.Display.Render.VIF
+LibraryImport.Display.Render.DSurface
+LibraryImport.Browser.ImageDecode
+Import.App.State
+Import.App.World
+Import.App.Blit
+Import.Circuit.Ipc
+Import.Circuit.View
+Import.Circuit.Body
+
+FixedPool.Cx {
+    "buf": Initialize=0
+    "n": Initialize=0
+    "at": Initialize=0
+    "nw": Initialize=0
+    "tok": Initialize=0
+    "assets": Initialize=0
+    "levels": Initialize=0
+    "lev": Initialize=0
+    "width": Initialize=0
+    "height": Initialize=0
+    "spans": Initialize=0
+    "cells": Initialize=0
+    "which": Initialize=0
+}
+
+Function.Cx_Word {
+    Input: i: Integer
+    Output: Address
+    Body: {
+        off = 0
+        off = Multiply(i, 64)
+        off = Add(Cx.tok, off)
+        ReturnValue(off)
+    }
+}
+
+Function.Cx_Eq {
+    Input: w: Address
+    Input: lit: Address
+    Output: Integer
+    Body: {
+        hit = 0
+        hit = StringCompare(w, lit)
+        IfCondition EqualTo(hit, 0) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Cx_Num {
+    Input: w: Address
+    Output: Integer
+    Body: {
+        i = 0
+        c = 0
+        v = 0
+        any = 0
+        i = 0
+        v = 0
+        any = 0
+        WhileLoop LessThan(i, 16) {
+            c = GetByte(w, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            IfCondition LessThan(c, 48) ThenBlock: { ReturnValue(0) }
+            IfCondition GreaterThan(c, 57) ThenBlock: { ReturnValue(0) }
+            v = Multiply(v, 10)
+            v = Add(v, Subtract(c, 48))
+            any = 1
+            i = Add(i, 1)
+        }
+        IfCondition EqualTo(any, 0) ThenBlock: { ReturnValue(0) }
+        ReturnValue(v)
+    }
+}
+
+Function.Cx_Read {
+    Input: path: Address
+    Output: Integer
+    Body: {
+        st = 0
+        p = 0
+        sz = 0
+        fd = 0
+        n = 0
+        st = Allocate(144)
+        n = SystemCall(4, path, st)
+        IfCondition LessThan(n, 0) ThenBlock: {
+            Deallocate(st, 144)
+            ReturnValue(0)
+        }
+        p = Add(st, 48)
+        sz = Dereference(p)
+        Deallocate(st, 144)
+        IfCondition LessEqual(sz, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(sz, 1048576) ThenBlock: { ReturnValue(0) }
+        Cx.buf = Allocate(Add(sz, 1))
+        fd = SystemCall(2, path, 0, 0)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        n = SystemCall(0, fd, Cx.buf, sz)
+        SystemCall(3, fd, 0, 0)
+        IfCondition LessEqual(n, 0) ThenBlock: { ReturnValue(0) }
+        SetByte(Cx.buf, n, 0)
+        Cx.n = n
+        Cx.at = 0
+        ReturnValue(1)
+    }
+}
+
+Function.Cx_Line {
+    Output: Integer
+    Body: {
+        i = 0
+        c = 0
+        w = 0
+        k = 0
+        dst = 0
+        Cx.nw = 0
+        IfCondition GreaterEqual(Cx.at, Cx.n) ThenBlock: { ReturnValue(0) }
+        i = 0
+        WhileLoop LessThan(i, 8) {
+            dst = Cx_Word(i)
+            SetByte(dst, 0, 0)
+            i = Add(i, 1)
+        }
+        w = 0
+        k = 0
+        WhileLoop LessThan(Cx.at, Cx.n) {
+            c = GetByte(Cx.buf, Cx.at)
+            Cx.at = Add(Cx.at, 1)
+            IfCondition EqualTo(c, 10) ThenBlock: { BreakLoop }
+            IfCondition EqualTo(c, 13) ThenBlock: { ContinueLoop }
+            IfCondition EqualTo(c, 32) ThenBlock: {
+                IfCondition GreaterThan(k, 0) ThenBlock: {
+                    dst = Cx_Word(w)
+                    SetByte(dst, k, 0)
+                    w = Add(w, 1)
+                    k = 0
+                    IfCondition GreaterEqual(w, 8) ThenBlock: {
+                        WhileLoop LessThan(Cx.at, Cx.n) {
+                            c = GetByte(Cx.buf, Cx.at)
+                            Cx.at = Add(Cx.at, 1)
+                            IfCondition EqualTo(c, 10) ThenBlock: { BreakLoop }
+                        }
+                        BreakLoop
+                    }
+                }
+            }
+            ElseBlock: {
+                IfCondition LessThan(w, 8) ThenBlock: {
+                    IfCondition LessThan(k, 63) ThenBlock: {
+                        dst = Cx_Word(w)
+                        SetByte(dst, k, c)
+                        k = Add(k, 1)
+                    }
+                }
+            }
+        }
+        IfCondition GreaterThan(k, 0) ThenBlock: {
+            IfCondition LessThan(w, 8) ThenBlock: {
+                dst = Cx_Word(w)
+                SetByte(dst, k, 0)
+                w = Add(w, 1)
+            }
+        }
+        Cx.nw = w
+        ReturnValue(1)
+    }
+}
+
+Function.Cx_Take {
+    Body: {
+        w0 = 0
+        w1 = 0
+        w2 = 0
+        w3 = 0
+        ww = 0
+        hh = 0
+        hit = 0
+        grp = 0
+        fr = 0
+        col = 0
+        row = 0
+        place = 0
+        IfCondition LessThan(Cx.nw, 1) ThenBlock: { ReturnValue(0) }
+        w0 = Cx_Word(0)
+        hit = Cx_Eq(w0, "asset")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Cx.assets = Add(Cx.assets, 1)
+            IfCondition GreaterEqual(Cx.nw, 3) ThenBlock: {
+                w1 = Cx_Word(1)
+                w2 = Cx_Word(2)
+                grp = Cv_Group(w2)
+                IfCondition NotEqual(grp, 0) ThenBlock: {
+                    IfCondition GreaterEqual(Cx.nw, 4) ThenBlock: {
+                        w3 = Cx_Word(3)
+                        fr = 1
+                        IfCondition GreaterEqual(Cx.nw, 7) ThenBlock: {
+                            ww = Cx_Word(6)
+                            fr = Cx_Num(ww)
+                        }
+                        Cv_Add(w1, grp, w3, fr)
+                    }
+                }
+                IfCondition EqualTo(grp, 0) ThenBlock: {
+                    fr = 1
+                    IfCondition GreaterEqual(Cx.nw, 6) ThenBlock: {
+                        ww = Cx_Word(5)
+                        fr = Cx_Num(ww)
+                    }
+                    Cv_Add(w1, 1, w2, fr)
+                }
+            }
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "attr")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Cx.nw, 4) ThenBlock: {
+                w1 = Cx_Word(1)
+                grp = Cv_Find(w1)
+                IfCondition GreaterEqual(grp, 0) ThenBlock: {
+                    fr = 2
+                    WhileLoop LessThan(fr, Cx.nw) {
+                        col = Add(fr, 1)
+                        IfCondition LessThan(col, Cx.nw) ThenBlock: {
+                            w2 = Cx_Word(fr)
+                            w3 = Cx_Word(col)
+                            Cv_AttrKey(grp, w2, w3)
+                        }
+                        fr = Add(fr, 2)
+                    }
+                }
+            }
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "behave")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Cx.nw, 4) ThenBlock: {
+                w1 = Cx_Word(1)
+                grp = Cv_Find(w1)
+                IfCondition GreaterEqual(grp, 0) ThenBlock: {
+                    fr = 2
+                    WhileLoop LessThan(fr, Cx.nw) {
+                        col = Add(fr, 1)
+                        IfCondition LessThan(col, Cx.nw) ThenBlock: {
+                            w2 = Cx_Word(fr)
+                            w3 = Cx_Word(col)
+                            Cv_BehLine(grp, w2, w3)
+                        }
+                        fr = Add(fr, 2)
+                    }
+                }
+            }
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "sound")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Cx.nw, 3) ThenBlock: {
+                w1 = Cx_Word(1)
+                w2 = Cx_Word(2)
+                Cv_Sound(w1, w2)
+            }
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "level")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            Cx.levels = Add(Cx.levels, 1)
+            w1 = Cx_Word(1)
+            Cx.lev = Cx_Num(w1)
+            ReturnValue(0)
+        }
+        IfCondition NotEqual(Cx.lev, 1) ThenBlock: { ReturnValue(0) }
+        hit = Cx_Eq(w0, "music")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Cx.nw, 2) ThenBlock: {
+                w1 = Cx_Word(1)
+                Cv_Copy(Cv.mus, w1, 120)
+            }
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "width")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            w1 = Cx_Word(1)
+            Cx.width = Cx_Num(w1)
+            Cv_Size(Cx.width, Cv.maph)
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "height")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            w1 = Cx_Word(1)
+            Cx.height = Cx_Num(w1)
+            Cv_Size(Cv.mapw, Cx.height)
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "view")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            w1 = Cx_Word(1)
+            w2 = Cx_Word(2)
+            ww = Cx_Num(w1)
+            hh = Cx_Num(w2)
+            Cv_View(ww, hh)
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "tile")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            w1 = Cx_Word(1)
+            Cv.tile = Cx_Num(w1)
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "gravity")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            w1 = Cx_Word(1)
+            Cv.grav = Cx_Num(w1)
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "fall")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            w1 = Cx_Word(1)
+            Cv.fall = Cx_Num(w1)
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "run")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            w1 = Cx_Word(1)
+            Cv.spd = Cx_Num(w1)
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "jump")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            w1 = Cx_Word(1)
+            Cv.jmp = Cx_Num(w1)
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "walk")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            w1 = Cx_Word(1)
+            Cv.walk = Cx_Num(w1)
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "wind")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            w1 = Cx_Word(1)
+            Cv.wind = Cx_Num(w1)
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "leap")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            w1 = Cx_Word(1)
+            Cv.leap = Cx_Num(w1)
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "layer")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Cx.nw, 2) ThenBlock: {
+                w1 = Cx_Word(1)
+                Cv_Layer(w1)
+            }
+            ReturnValue(0)
+        }
+        hit = Cx_Eq(w0, "character")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Cx.nw, 3) ThenBlock: {
+                w2 = Cx_Word(2)
+                Cv_Anim(w2)
+            }
+            ReturnValue(0)
+        }
+        place = 0
+        hit = Cx_Eq(w0, "span")
+        IfCondition EqualTo(hit, 1) ThenBlock: { place = 1 }
+        hit = Cx_Eq(w0, "put")
+        IfCondition EqualTo(hit, 1) ThenBlock: { place = 1 }
+        IfCondition EqualTo(place, 1) ThenBlock: {
+            w1 = Cx_Word(1)
+            w2 = Cx_Word(2)
+            w3 = Cx_Word(3)
+            col = Cx_Num(w2)
+            row = Cx_Num(w3)
+            ww = 1
+            hh = 1
+            IfCondition GreaterEqual(Cx.nw, 5) ThenBlock: {
+                w2 = Cx_Word(4)
+                ww = Cx_Num(w2)
+            }
+            IfCondition GreaterEqual(Cx.nw, 6) ThenBlock: {
+                w2 = Cx_Word(5)
+                hh = Cx_Num(w2)
+            }
+            IfCondition LessThan(ww, 1) ThenBlock: { ww = 1 }
+            IfCondition LessThan(hh, 1) ThenBlock: { hh = 1 }
+            Cx.spans = Add(Cx.spans, 1)
+            Cx.cells = Add(Cx.cells, Multiply(ww, hh))
+            Cv_Stamp(w1, col, row, ww, hh)
+        }
+        ReturnValue(0)
+    }
+}
+
+Function.Cx_Scan {
+    Body: {
+        hit = 0
+        hit = Cx_Line()
+        WhileLoop EqualTo(hit, 1) {
+            Cx_Take()
+            hit = Cx_Line()
+        }
+    }
+}
+
+Function.Cx_Show {
+    Body: {
+        PrintMessage("assets ")
+        PrintNumber(Cx.assets)
+        PrintMessage("\n")
+        PrintMessage("levels ")
+        PrintNumber(Cx.levels)
+        PrintMessage("\n")
+        PrintMessage("width ")
+        PrintNumber(Cx.width)
+        PrintMessage("\n")
+        PrintMessage("height ")
+        PrintNumber(Cx.height)
+        PrintMessage("\n")
+        PrintMessage("spans ")
+        PrintNumber(Cx.spans)
+        PrintMessage("\n")
+        PrintMessage("cells ")
+        PrintNumber(Cx.cells)
+        PrintMessage("\n")
+        PrintMessage("view ")
+        PrintNumber(Cv.vieww)
+        PrintMessage(" ")
+        PrintNumber(Cv.viewh)
+        PrintMessage("\n")
+        PrintMessage("gravity ")
+        PrintNumber(Cv.grav)
+        PrintMessage("\n")
+        PrintMessage("fall ")
+        PrintNumber(Cv.fall)
+        PrintMessage("\n")
+        PrintMessage("run ")
+        PrintNumber(Cv.spd)
+        PrintMessage("\n")
+        PrintMessage("jump ")
+        PrintNumber(Cv.jmp)
+        PrintMessage("\n")
+        PrintMessage("walk ")
+        PrintNumber(Cv.walk)
+        PrintMessage("\n")
+        PrintMessage("wind ")
+        PrintNumber(Cv.wind)
+        PrintMessage("\n")
+        PrintMessage("leap ")
+        PrintNumber(Cv.leap)
+        PrintMessage("\n")
+        PrintMessage("layers ")
+        PrintNumber(Cv.nlayer)
+        PrintMessage("\n")
+        PrintMessage("anim ")
+        PrintMessage(Cv.anim)
+        PrintMessage("\n")
+    }
+}
+
+Function.DebugLog_Push {
+    Input: tag: Address
+    Input: n: Integer
+    Output: Integer
+    Body: { ReturnValue(0) }
+}
+
+SubRoutine.Main {
+    arg = 0
+    n = 0
+    hit = 0
+    Load_Boot()
+    SVG_Init()
+    VIF_Init()
+    FB_FontInit()
+    hit = Cv_Boot()
+    IfCondition EqualTo(hit, 0) ThenBlock: {
+        PrintMessage("FAIL alloc\n")
+        SystemCall(60, 1, 0, 0, 0, 0)
+    }
+    Cx.tok = Allocate(512)
+    MemorySet(Cx.tok, 0, 512)
+    arg = Allocate(256)
+    MemorySet(arg, 0, 256)
+    n = Load_Arg(1, arg, 256)
+    IfCondition GreaterThan(n, 0) ThenBlock: {
+        hit = Cx_Read(arg)
+        IfCondition EqualTo(hit, 1) ThenBlock: { Cx.which = 1 }
+    }
+    IfCondition EqualTo(Cx.which, 0) ThenBlock: {
+        hit = Cx_Read("games/circuit/levels/edit.lvl")
+        IfCondition EqualTo(hit, 1) ThenBlock: { Cx.which = 2 }
+    }
+    IfCondition EqualTo(Cx.which, 0) ThenBlock: {
+        hit = Cx_Read("levels/edit.lvl")
+        IfCondition EqualTo(hit, 1) ThenBlock: { Cx.which = 3 }
+    }
+    IfCondition EqualTo(Cx.which, 0) ThenBlock: {
+        PrintMessage("circuit miss\n")
+        SystemCall(60, 1, 0, 0, 0, 0)
+    }
+    IfCondition EqualTo(Cx.which, 1) ThenBlock: { PrintMessage("file arg\n") }
+    IfCondition EqualTo(Cx.which, 2) ThenBlock: { PrintMessage("file game\n") }
+    IfCondition EqualTo(Cx.which, 3) ThenBlock: { PrintMessage("file old\n") }
+    Cx_Scan()
+    Cv_Tune()
+    Cv_Clamp()
+    Cx_Show()
+    Cv_Pick()
+    Cv_Spawn()
+    Cv_FoeBoot()
+    Cv_Follow()
+    Cv_Layers()
+    Ci_Ensure()
+    Cv_SfxMap()
+    Cv_MusicPub()
+    Ci_PollSize()
+    IfCondition NotEqual(World.ok, 1) ThenBlock: {
+        hit = World_SetSize(900, 720)
+        IfCondition EqualTo(hit, Subtract(0, 1)) ThenBlock: {
+            PrintMessage("FAIL fb\n")
+            SystemCall(60, 1, 0, 0, 0, 0)
+        }
+    }
+    Cv_FitPx()
+    n = 0
+    WhileLoop EqualTo(Cv.ready, 0) {
+        Cv_Raster()
+        Cv_Draw()
+        Ci_Present()
+        n = Add(n, 1)
+        IfCondition GreaterThan(n, 256) ThenBlock: { BreakLoop }
+    }
+    n = 0
+    WhileLoop LessThan(Cv.bi, Cv.nlayer) {
+        Cv_Draw()
+        Ci_Present()
+        n = Add(n, 1)
+        IfCondition GreaterThan(n, 800) ThenBlock: { BreakLoop }
+    }
+    Cv_Arm()
+    WhileLoop EqualTo(Cv.live, 1) {
+        Cv.tick = Add(Cv.tick, 1)
+        Ci_PollSize()
+        IfCondition GreaterThan(Cv.tick, 1) ThenBlock: { Cv_FitPx() }
+        Ci_PollKeys()
+        hit = Ci_PollCmd()
+        IfCondition EqualTo(hit, 1) ThenBlock: { Cv.live = 0 }
+        hit = Ci_PollPtr()
+        IfCondition EqualTo(hit, 1) ThenBlock: { Cv.live = 0 }
+        Cv_Step()
+        Cv_Raster()
+        Cv_Draw()
+        Ci_Present()
+        Ci_Sleep(16)
+    }
+}
+
+RunTask(Main)

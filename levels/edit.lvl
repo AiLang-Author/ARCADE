@@ -1,0 +1,394 @@
+levels 5
+asset arc-floor-sheet block assets/circuit/svg/Tiles/arc-floor-sheet.svg 1 1 3
+asset brick block assets/circuit/svg/Tiles/brick.svg 1 1 1
+asset cable-vine block assets/circuit/svg/Server Farm/cable-vine.svg 1 1 1
+asset cargo-crate block assets/circuit/svg/Foundry/cargo-crate.svg 1 1 1
+asset chain block assets/circuit/svg/Foundry/chain.svg 1 1 1
+asset conduit-left block assets/circuit/svg/Tiles/conduit-left.svg 1 1 1
+asset conduit-right block assets/circuit/svg/Tiles/conduit-right.svg 1 1 1
+asset conduit-top-left block assets/circuit/svg/Tiles/conduit-top-left.svg 1 1 1
+asset conduit-top-right block assets/circuit/svg/Tiles/conduit-top-right.svg 1 1 1
+asset conveyor-sheet block assets/circuit/svg/Tiles/conveyor-sheet.svg 1 1 4
+asset cooling-vent-sheet block assets/circuit/svg/Server Farm/cooling-vent-sheet.svg 1 1 4
+asset data-block-sheet block assets/circuit/svg/Tiles/data-block-sheet.svg 1 1 4
+asset data-block-spent block assets/circuit/svg/Tiles/data-block-spent.svg 1 1 1
+asset data-bridge-sheet block assets/circuit/svg/Server Farm/data-bridge-sheet.svg 1 1 4
+asset firewall-sheet block assets/circuit/svg/Server Farm/firewall-sheet.svg 1 1 2
+asset foundry-fill block assets/circuit/svg/Foundry/foundry-fill.svg 1 1 1
+asset foundry-side-left block assets/circuit/svg/Foundry/foundry-side-left.svg 1 1 1
+asset foundry-side-right block assets/circuit/svg/Foundry/foundry-side-right.svg 1 1 1
+asset foundry-top block assets/circuit/svg/Foundry/foundry-top.svg 1 1 1
+asset foundry-top-left block assets/circuit/svg/Foundry/foundry-top-left.svg 1 1 1
+asset foundry-top-right block assets/circuit/svg/Foundry/foundry-top-right.svg 1 1 1
+asset girder block assets/circuit/svg/Foundry/girder.svg 1 1 1
+asset ground-fill block assets/circuit/svg/Tiles/ground-fill.svg 1 1 1
+asset ground-side-left block assets/circuit/svg/Tiles/ground-side-left.svg 1 1 1
+asset ground-side-right block assets/circuit/svg/Tiles/ground-side-right.svg 1 1 1
+asset ground-top block assets/circuit/svg/Tiles/ground-top.svg 1 1 1
+asset ground-top-left block assets/circuit/svg/Tiles/ground-top-left.svg 1 1 1
+asset ground-top-right block assets/circuit/svg/Tiles/ground-top-right.svg 1 1 1
+asset hard-block block assets/circuit/svg/Tiles/hard-block.svg 1 1 1
+asset jump-pad-sheet block assets/circuit/svg/Tiles/jump-pad-sheet.svg 1 1 2
+asset ladder block assets/circuit/svg/Tiles/ladder.svg 1 1 1
+asset ledge-left block assets/circuit/svg/Tiles/ledge-left.svg 1 1 1
+asset ledge-mid block assets/circuit/svg/Tiles/ledge-mid.svg 1 1 1
+asset ledge-right block assets/circuit/svg/Tiles/ledge-right.svg 1 1 1
+asset molten-sheet block assets/circuit/svg/Foundry/molten-sheet.svg 1 1 4
+asset platform-grate block assets/circuit/svg/Tiles/platform-grate.svg 1 1 1
+asset server-fill block assets/circuit/svg/Server Farm/server-fill.svg 1 1 1
+asset server-rack-sheet block assets/circuit/svg/Server Farm/server-rack-sheet.svg 1 1 4
+asset server-side-left block assets/circuit/svg/Server Farm/server-side-left.svg 1 1 1
+asset server-side-right block assets/circuit/svg/Server Farm/server-side-right.svg 1 1 1
+asset server-top block assets/circuit/svg/Server Farm/server-top.svg 1 1 1
+asset server-top-left block assets/circuit/svg/Server Farm/server-top-left.svg 1 1 1
+asset server-top-right block assets/circuit/svg/Server Farm/server-top-right.svg 1 1 1
+asset slope-down block assets/circuit/svg/Tiles/slope-down.svg 1 1 1
+asset slope-gentle-down-a block assets/circuit/svg/Tiles/slope-gentle-down-a.svg 1 1 1
+asset slope-gentle-down-b block assets/circuit/svg/Tiles/slope-gentle-down-b.svg 1 1 1
+asset slope-gentle-up-a block assets/circuit/svg/Tiles/slope-gentle-up-a.svg 1 1 1
+asset slope-gentle-up-b block assets/circuit/svg/Tiles/slope-gentle-up-b.svg 1 1 1
+asset slope-up block assets/circuit/svg/Tiles/slope-up.svg 1 1 1
+asset arc-beetle-sheet enemy assets/circuit/svg/Enemies/arc-beetle-sheet.svg 1 1 2
+asset custodian-charge-sheet enemy assets/circuit/svg/Boss/custodian-charge-sheet.svg 1 1 2
+asset custodian-hurt enemy assets/circuit/svg/Boss/custodian-hurt.svg 1 1 1
+asset custodian-idle-sheet enemy assets/circuit/svg/Boss/custodian-idle-sheet.svg 1 1 4
+asset custodian-wreck enemy assets/circuit/svg/Boss/custodian-wreck.svg 1 1 1
+asset glitch-shot-sheet enemy assets/circuit/svg/Boss/glitch-shot-sheet.svg 1 1 2
+asset mainframe-hurt enemy assets/circuit/svg/Boss/mainframe-hurt.svg 1 1 1
+asset mainframe-idle-sheet enemy assets/circuit/svg/Boss/mainframe-idle-sheet.svg 1 1 8
+asset mainframe-tell-sheet enemy assets/circuit/svg/Boss/mainframe-tell-sheet.svg 1 1 2
+asset mainframe-wreck enemy assets/circuit/svg/Boss/mainframe-wreck.svg 1 1 1
+asset molten-blob-sheet enemy assets/circuit/svg/Boss/molten-blob-sheet.svg 1 1 2
+asset packet-sheet enemy assets/circuit/svg/Enemies/packet-sheet.svg 1 1 4
+asset scrubbit-sheet enemy assets/circuit/svg/Enemies/scrubbit-sheet.svg 1 1 4
+asset sentry-sheet enemy assets/circuit/svg/Enemies/sentry-sheet.svg 1 1 4
+asset smeltbot-sheet enemy assets/circuit/svg/Enemies/smeltbot-sheet.svg 1 1 2
+asset smelter-hurt enemy assets/circuit/svg/Boss/smelter-hurt.svg 1 1 1
+asset smelter-idle-sheet enemy assets/circuit/svg/Boss/smelter-idle-sheet.svg 1 1 4
+asset smelter-pour-sheet enemy assets/circuit/svg/Boss/smelter-pour-sheet.svg 1 1 2
+asset smelter-wreck enemy assets/circuit/svg/Boss/smelter-wreck.svg 1 1 1
+asset spark-shot-sheet enemy assets/circuit/svg/Enemies/spark-shot-sheet.svg 1 1 2
+asset spoolbot-sheet enemy assets/circuit/svg/Enemies/spoolbot-sheet.svg 1 1 2
+asset sweepr-sheet enemy assets/circuit/svg/Enemies/sweepr-sheet.svg 1 1 4
+asset zapfly-sheet enemy assets/circuit/svg/Enemies/zapfly-sheet.svg 1 1 2
+asset bit-sheet object assets/circuit/svg/Items/bit-sheet.svg 1 1 4
+asset checkpoint-beacon-sheet object assets/circuit/svg/Items/checkpoint-beacon-sheet.svg 1 1 2
+asset extra-life object assets/circuit/svg/Items/extra-life.svg 1 1 1
+asset goal-gate-sheet object assets/circuit/svg/Items/goal-gate-sheet.svg 1 1 4
+asset overclock-chip object assets/circuit/svg/Items/overclock-chip.svg 1 1 1
+asset surge-core-sheet object assets/circuit/svg/Items/surge-core-sheet.svg 1 1 4
+asset hero-climb-sheet entity assets/circuit/svg/Hero/hero-climb-sheet.svg 1 1 2
+asset hero-cobalt-idle-sheet entity assets/circuit/svg/Hero/hero-cobalt-idle-sheet.svg 1 1 4
+asset hero-cobalt-run-sheet entity assets/circuit/svg/Hero/hero-cobalt-run-sheet.svg 1 1 4
+asset hero-derez-sheet entity assets/circuit/svg/Hero/hero-derez-sheet.svg 1 1 6
+asset hero-frost-idle-sheet entity assets/circuit/svg/Hero/hero-frost-idle-sheet.svg 1 1 4
+asset hero-frost-run-sheet entity assets/circuit/svg/Hero/hero-frost-run-sheet.svg 1 1 4
+asset hero-hurt entity assets/circuit/svg/Hero/hero-hurt.svg 1 1 1
+asset hero-idle entity assets/circuit/svg/Hero/hero-idle.svg 1 1 1
+asset hero-idle-sheet entity assets/circuit/svg/Hero/hero-idle-sheet.svg 1 1 4
+asset hero-jade-idle-sheet entity assets/circuit/svg/Hero/hero-jade-idle-sheet.svg 1 1 4
+asset hero-jade-run-sheet entity assets/circuit/svg/Hero/hero-jade-run-sheet.svg 1 1 4
+asset hero-jump entity assets/circuit/svg/Hero/hero-jump.svg 1 1 1
+asset hero-overclock-idle-sheet entity assets/circuit/svg/Hero/hero-overclock-idle-sheet.svg 1 1 4
+asset hero-overclock-jump entity assets/circuit/svg/Hero/hero-overclock-jump.svg 1 1 1
+asset hero-overclock-run-sheet entity assets/circuit/svg/Hero/hero-overclock-run-sheet.svg 1 1 4
+asset hero-run-sheet entity assets/circuit/svg/Hero/hero-run-sheet.svg 1 1 4
+level 1
+tile 200
+width 112
+height 12
+view 20 11
+gravity 30
+fall 20
+run 8
+jump 14
+layer assets/circuit/png/Backgrounds/layer-0-sky.png
+layer assets/circuit/png/Backgrounds/layer-1-far-city.png
+layer assets/circuit/png/Backgrounds/layer-2-mid-city.png
+layer assets/circuit/png/Backgrounds/layer-3-near-girders.png
+span ground-side-left 0 0 1 1
+span ground-fill 1 0 29 1
+span ground-side-right 30 0 1 1
+span ground-side-left 35 0 1 1
+span ground-fill 36 0 22 1
+span ground-side-right 58 0 1 1
+span ground-side-left 59 0 1 1
+span ground-fill 60 0 2 1
+span ground-side-right 62 0 1 1
+span ground-side-left 78 0 1 1
+span ground-fill 79 0 7 1
+span ground-side-right 86 0 1 1
+span ground-side-left 88 0 1 1
+span ground-fill 89 0 22 1
+span ground-side-right 111 0 1 1
+span ground-top-left 0 1 1 1
+span ground-top 1 1 29 1
+span ground-top-right 30 1 1 1
+span ground-top-left 35 1 1 1
+span ground-top 36 1 4 1
+span ground-fill 40 1 5 1
+span ground-top 45 1 13 1
+span ground-top-right 58 1 1 1
+span ground-top-left 59 1 1 1
+span ground-top 60 1 2 1
+span ground-top-right 62 1 1 1
+span ground-top-left 78 1 1 1
+span ground-top 79 1 1 1
+span arc-floor-sheet 80 1 2 1
+span ground-top 82 1 4 1
+span ground-top-right 86 1 1 1
+span ground-top-left 88 1 1 1
+span ground-top 89 1 22 1
+span ground-top-right 111 1 1 1
+span sweepr-sheet 22 2 1 1
+span conduit-left 28 2 1 1
+span conduit-right 29 2 1 1
+span slope-up 40 2 1 1
+span ground-top 41 2 3 1
+span slope-down 44 2 1 1
+span scrubbit-sheet 54 2 1 1
+span checkpoint-beacon-sheet 57 2 1 1
+span jump-pad-sheet 62 2 1 1
+span arc-beetle-sheet 80 2 1 1
+span ladder 84 2 1 1
+span hard-block 92 2 7 1
+span sweepr-sheet 100 2 1 1
+span goal-gate-sheet 104 2 1 1
+span bit-sheet 8 3 3 1
+span conduit-left 28 3 1 1
+span conduit-right 29 3 1 1
+span ladder 84 3 1 1
+span hard-block 93 3 6 1
+span conduit-top-left 28 4 1 1
+span conduit-top-right 29 4 1 1
+span bit-sheet 32 4 2 1
+span platform-grate 71 4 5 1
+span ladder 84 4 1 1
+span hard-block 94 4 5 1
+span brick 13 5 1 1
+span data-block-sheet 14 5 1 1
+span brick 15 5 1 1
+span data-block-sheet 16 5 1 1
+span zapfly-sheet 46 5 1 1
+span brick 50 5 2 1
+span data-block-sheet 52 5 1 1
+span brick 53 5 1 1
+span ledge-left 65 5 1 1
+span ledge-mid 66 5 1 1
+span ledge-right 67 5 1 1
+span bit-sheet 72 5 3 1
+span ladder 84 5 1 1
+span hard-block 95 5 4 1
+span overclock-chip 14 6 1 1
+span bit-sheet 66 6 1 1
+span ledge-left 83 6 1 1
+span ledge-mid 84 6 1 1
+span ledge-right 85 6 1 1
+span hard-block 96 6 3 1
+span bit-sheet 84 7 1 1
+level 2
+tile 200
+width 20
+height 12
+view 20 11
+gravity 30
+fall 20
+run 8
+jump 14
+layer assets/circuit/png/Backgrounds/layer-0-sky.png
+layer assets/circuit/png/Backgrounds/layer-1-far-city.png
+layer assets/circuit/png/Backgrounds/layer-2-mid-city.png
+layer assets/circuit/png/Backgrounds/layer-3-near-girders.png
+span ground-side-left 0 0 1 1
+span ground-fill 1 0 18 1
+span ground-side-right 19 0 1 1
+span ground-top-left 0 1 1 1
+span ground-top 1 1 18 1
+span ground-top-right 19 1 1 1
+span hard-block 0 2 1 1
+span custodian-idle-sheet 13 2 1 1
+span hard-block 19 2 1 1
+span hard-block 0 3 1 1
+span hard-block 19 3 1 1
+span hard-block 0 4 1 1
+span hard-block 19 4 1 1
+span hard-block 0 5 1 1
+span platform-grate 6 5 2 1
+span platform-grate 12 5 2 1
+span hard-block 19 5 1 1
+span hard-block 0 6 1 1
+span hard-block 19 6 1 1
+span hard-block 0 7 1 1
+span hard-block 19 7 1 1
+span hard-block 0 8 1 1
+span hard-block 19 8 1 1
+span hard-block 0 9 1 1
+span hard-block 19 9 1 1
+span hard-block 0 10 1 1
+span hard-block 19 10 1 1
+span hard-block 0 11 1 1
+span hard-block 19 11 1 1
+level 3
+tile 200
+width 120
+height 12
+view 20 11
+gravity 30
+fall 20
+run 8
+jump 14
+layer assets/circuit/png/FoundryBackgrounds/foundry-0-sky.png
+layer assets/circuit/png/FoundryBackgrounds/foundry-1-furnaces.png
+layer assets/circuit/png/FoundryBackgrounds/foundry-2-gearworks.png
+layer assets/circuit/png/FoundryBackgrounds/foundry-3-cranes.png
+span foundry-side-left 0 0 1 1
+span foundry-fill 1 0 21 1
+span foundry-side-right 22 0 1 1
+span molten-sheet 23 0 2 1
+span foundry-side-left 25 0 1 1
+span foundry-fill 26 0 14 1
+span foundry-side-right 40 0 1 1
+span molten-sheet 41 0 4 1
+span foundry-side-left 45 0 1 1
+span foundry-fill 46 0 16 1
+span foundry-side-right 62 0 1 1
+span molten-sheet 63 0 2 1
+span cargo-crate 65 0 1 1
+span molten-sheet 66 0 2 1
+span cargo-crate 68 0 1 1
+span molten-sheet 69 0 2 1
+span cargo-crate 71 0 1 1
+span molten-sheet 72 0 3 1
+span foundry-side-left 75 0 1 1
+span foundry-fill 76 0 16 1
+span foundry-side-right 92 0 1 1
+span molten-sheet 93 0 3 1
+span foundry-side-left 96 0 1 1
+span foundry-fill 97 0 22 1
+span foundry-side-right 119 0 1 1
+span foundry-top-left 0 1 1 1
+span foundry-top 1 1 21 1
+span foundry-top-right 22 1 1 1
+span molten-sheet 23 1 2 1
+span foundry-top-left 25 1 1 1
+span foundry-top 26 1 14 1
+span foundry-top-right 40 1 1 1
+span molten-sheet 41 1 4 1
+span foundry-top-left 45 1 1 1
+span foundry-top 46 1 16 1
+span foundry-top-right 62 1 1 1
+span molten-sheet 63 1 2 1
+span cargo-crate 65 1 1 1
+span molten-sheet 66 1 2 1
+span cargo-crate 68 1 1 1
+span molten-sheet 69 1 2 1
+span cargo-crate 71 1 1 1
+span molten-sheet 72 1 3 1
+span foundry-top-left 75 1 1 1
+span foundry-top 76 1 16 1
+span foundry-top-right 92 1 1 1
+span molten-sheet 93 1 3 1
+span foundry-top-left 96 1 1 1
+span foundry-top 97 1 22 1
+span foundry-top-right 119 1 1 1
+span smeltbot-sheet 18 2 1 1
+span cargo-crate 30 2 2 1
+span chain 39 2 1 1
+span smeltbot-sheet 50 2 1 1
+span smeltbot-sheet 55 2 1 1
+span checkpoint-beacon-sheet 60 2 1 1
+span cargo-crate 65 2 1 1
+span cargo-crate 68 2 1 1
+span cargo-crate 71 2 1 1
+span arc-beetle-sheet 82 2 1 1
+span chain 90 2 1 1
+span cargo-crate 98 2 4 1
+span smeltbot-sheet 104 2 1 1
+span goal-gate-sheet 110 2 1 1
+span bit-sheet 7 3 3 1
+span cargo-crate 31 3 1 1
+span chain 39 3 1 1
+span chain 90 3 1 1
+span cargo-crate 98 3 3 1
+span girder 22 4 4 1
+span chain 39 4 1 1
+span bit-sheet 65 4 1 1
+span bit-sheet 68 4 1 1
+span bit-sheet 71 4 1 1
+span chain 90 4 1 1
+span cargo-crate 98 4 2 1
+span cargo-crate 11 5 1 1
+span data-block-sheet 12 5 1 1
+span cargo-crate 13 5 1 1
+span bit-sheet 23 5 2 1
+span zapfly-sheet 35 5 1 1
+span data-block-sheet 37 5 1 1
+span girder 40 5 7 1
+span cargo-crate 52 5 1 1
+span data-block-sheet 53 5 1 1
+span cargo-crate 54 5 1 1
+span chain 90 5 1 1
+span cargo-crate 98 5 1 1
+span overclock-chip 12 6 1 1
+span surge-core-sheet 37 6 1 1
+span bit-sheet 41 6 4 1
+span zapfly-sheet 67 6 1 1
+span chain 90 6 1 1
+span zapfly-sheet 72 7 1 1
+span girder 87 7 5 1
+span bit-sheet 87 8 3 1
+level 4
+tile 200
+width 20
+height 12
+view 20 11
+gravity 30
+fall 20
+run 8
+jump 14
+layer assets/circuit/png/FoundryBackgrounds/foundry-0-sky.png
+layer assets/circuit/png/FoundryBackgrounds/foundry-1-furnaces.png
+layer assets/circuit/png/FoundryBackgrounds/foundry-2-gearworks.png
+layer assets/circuit/png/FoundryBackgrounds/foundry-3-cranes.png
+span foundry-side-left 0 0 1 1
+span foundry-fill 1 0 18 1
+span foundry-side-right 19 0 1 1
+span foundry-top-left 0 1 1 1
+span foundry-top 1 1 18 1
+span foundry-top-right 19 1 1 1
+span cargo-crate 0 2 1 1
+span smelter-idle-sheet 13 2 1 1
+span cargo-crate 19 2 1 1
+span cargo-crate 0 3 1 1
+span cargo-crate 19 3 1 1
+span cargo-crate 0 4 1 1
+span cargo-crate 19 4 1 1
+span cargo-crate 0 5 1 1
+span girder 4 5 2 1
+span girder 14 5 2 1
+span cargo-crate 19 5 1 1
+span cargo-crate 0 6 1 1
+span cargo-crate 19 6 1 1
+span cargo-crate 0 7 1 1
+span cargo-crate 19 7 1 1
+span cargo-crate 0 8 1 1
+span cargo-crate 19 8 1 1
+span cargo-crate 0 9 1 1
+span cargo-crate 19 9 1 1
+span cargo-crate 0 10 1 1
+span cargo-crate 19 10 1 1
+span cargo-crate 0 11 1 1
+span cargo-crate 19 11 1 1
+level 5
+tile 200
+width 40
+height 12
+view 20 11
+gravity 30
+fall 20
+run 8
+jump 14
+layer assets/circuit/png/ServerFarmBackgrounds/server-0-datarain.png
+layer assets/circuit/png/ServerFarmBackgrounds/server-1-aisles.png
+layer assets/circuit/png/ServerFarmBackgrounds/server-2-coolers.png
+layer assets/circuit/png/ServerFarmBackgrounds/server-3-cables.png
