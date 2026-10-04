@@ -173,7 +173,7 @@ fi
 ICON="$ROOT/assets/hud/icons/hicolor/512x512/apps/arcade-cabinet.png"
 [[ -f "$ICON" ]] || ICON="$ROOT/assets/hud/arcade.png"
 [[ -f "$ICON" ]] || ICON="$ROOT/assets/hud/noway-home.svg"
-[[ -f "$ICON" ]] || ICON="$ROOT/noway-home/Intro.png"
+[[ -f "$ICON" ]] || ICON="$ROOT/screenshots/Intro.png"
 LAUNCH="$ROOT/scripts/launch_arcade.sh"
 EDIT="$ROOT/scripts/run_editor.sh"
 [[ -x "$LAUNCH" ]]

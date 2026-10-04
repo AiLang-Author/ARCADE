@@ -31,7 +31,7 @@ only and are not in this repository.
 The desktop launcher is named ARCADE. Its icon is the neon cabinet in
 `assets/hud/icons`.
 
-![Cabinet screen](noway-home/arcade.png)
+![Cabinet screen](screenshots/arcade.png)
 
 ## NOWAY HOME
 
@@ -46,11 +46,11 @@ home.
 
 
 
-![Title screen](noway-home/Intro.png)
+![Title screen](screenshots/Intro.png)
 
-![Gameplay](noway-home/gameplay.png)
+![Gameplay](screenshots/gameplay.png)
 
-![Queen battle](noway-home/bossbattle.png)
+![Queen battle](screenshots/bossbattle.png)
 
 ## GYRE
 
@@ -73,7 +73,7 @@ The kernel writes two frame slots and a generation count. The host shows the
 slot the kernel is not drawing, and it ignores generation 0 so a leftover
 frame from the previous session is not painted at startup.
 
-![GYRE screen](noway-home/gyre.png)
+![GYRE screen](screenshots/gyre.png)
 
 ## Performance
 
@@ -97,7 +97,7 @@ fonts/                Game fonts
 host/                 GTK window and audio host
 scripts/              Run and installation scripts
 docs/                 Circuit, the editor, and the level-file format
-noway-home/           NOWAY HOME screenshots
+screenshots/           Cabinet, game, and editor screenshots
 ```
 
 ## Install
