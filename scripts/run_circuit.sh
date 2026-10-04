@@ -41,7 +41,7 @@ printf '0 0 0 0 0 0 0 0 0\n' > "$STATE/keys.txt"
 printf '900 720\n' > "$STATE/size.txt"
 printf '0\n' > "$STATE/gen.txt"
 
-echo "Circuit. Arrows walk. Hold one to run. Hold Enter for turbo. Up or fire jumps. Down crouches. X fires. Q or Esc leaves the picture. Close the window to exit."
+echo "Circuit. Arrows walk. Hold one to run. Hold Enter for turbo. Up or fire jumps. Down crouches. X fires. P pauses. Q or Esc leaves the picture. Close the window to exit."
 
 setsid "$ROOT/circuit.x" >"$STATE/log.txt" 2>&1 < /dev/null &
 APP_PID=$!

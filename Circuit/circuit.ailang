@@ -36,6 +36,40 @@ FixedPool.Cx {
     "which": Initialize=0
 }
 
+Function.Cx_Mus {
+    Body: {
+        i = 0
+        k = 0
+        c = 0
+        off = 0
+        w = 0
+        MemorySet(Cv.mus, 0, 128)
+        i = 1
+        off = 0
+        WhileLoop LessThan(i, Cx.nw) {
+            IfCondition GreaterThan(i, 1) ThenBlock: {
+                IfCondition LessThan(off, 120) ThenBlock: {
+                    SetByte(Cv.mus, off, 32)
+                    off = Add(off, 1)
+                }
+            }
+            w = Cx_Word(i)
+            k = 0
+            WhileLoop LessThan(k, 63) {
+                c = GetByte(w, k)
+                IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+                IfCondition LessThan(off, 120) ThenBlock: {
+                    SetByte(Cv.mus, off, c)
+                    off = Add(off, 1)
+                }
+                k = Add(k, 1)
+            }
+            i = Add(i, 1)
+        }
+        SetByte(Cv.mus, off, 0)
+    }
+}
+
 Function.Cx_Word {
     Input: i: Integer
     Output: Address
@@ -283,10 +317,7 @@ Function.Cx_Take {
         IfCondition NotEqual(Cx.lev, 1) ThenBlock: { ReturnValue(0) }
         hit = Cx_Eq(w0, "music")
         IfCondition EqualTo(hit, 1) ThenBlock: {
-            IfCondition GreaterEqual(Cx.nw, 2) ThenBlock: {
-                w1 = Cx_Word(1)
-                Cv_Copy(Cv.mus, w1, 120)
-            }
+            IfCondition GreaterEqual(Cx.nw, 2) ThenBlock: { Cx_Mus() }
             ReturnValue(0)
         }
         hit = Cx_Eq(w0, "width")
@@ -497,10 +528,19 @@ SubRoutine.Main {
     MemorySet(Cx.tok, 0, 512)
     arg = Allocate(256)
     MemorySet(arg, 0, 256)
+    Ci_Root("/dev/shm/circuit")
     n = Load_Arg(1, arg, 256)
     IfCondition GreaterThan(n, 0) ThenBlock: {
-        hit = Cx_Read(arg)
-        IfCondition EqualTo(hit, 1) ThenBlock: { Cx.which = 1 }
+        hit = StringCompare(arg, "cabinet")
+        IfCondition EqualTo(hit, 0) ThenBlock: {
+            Cv.cab = 1
+            Ci_Root("/dev/shm/arcade_app")
+            PrintMessage("shm cabinet\n")
+        }
+        ElseBlock: {
+            hit = Cx_Read(arg)
+            IfCondition EqualTo(hit, 1) ThenBlock: { Cx.which = 1 }
+        }
     }
     IfCondition EqualTo(Cx.which, 0) ThenBlock: {
         hit = Cx_Read("games/circuit/levels/edit.lvl")
@@ -529,6 +569,8 @@ SubRoutine.Main {
     Ci_Ensure()
     Cv_SfxMap()
     Cv_MusicPub()
+    Cv_VolLoad()
+    Cv_VolPub(0)
     Ci_PollSize()
     IfCondition NotEqual(World.ok, 1) ThenBlock: {
         hit = World_SetSize(900, 720)
@@ -563,9 +605,11 @@ SubRoutine.Main {
         IfCondition EqualTo(hit, 1) ThenBlock: { Cv.live = 0 }
         hit = Ci_PollPtr()
         IfCondition EqualTo(hit, 1) ThenBlock: { Cv.live = 0 }
-        Cv_Step()
+        Cv_PauseIn()
+        IfCondition EqualTo(Cv.pause, 0) ThenBlock: { Cv_Step() }
         Cv_Raster()
         Cv_Draw()
+        Cv_PauseDraw()
         Ci_Present()
         Ci_Sleep(16)
     }

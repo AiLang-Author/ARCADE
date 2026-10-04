@@ -56,13 +56,21 @@ When the cell changes, `Gfx_Reload`:
 | `frame0.raw`, `frame1.raw` | kernel | BGRA, pitch×height. The kernel fills one while the host reads the other. |
 | `gen.txt` | kernel | `count slot`. `slot` is the finished buffer. |
 | `size.txt` | host | `W H` of the drawing area |
-| `keys.txt` | host | `L R U D F S P` as 0/1 |
+| `keys.txt` | host | `L R U D F S P N X` as 0/1. N and X are the eighth and ninth fields. |
 | `cmd.txt` | host | `quit` / `pause` / `start` |
 | `prof.txt` | kernel | one timing line per second, average/max microseconds |
 | `hprof.txt` | host | tick gap, idle, paint, and kernel frames not shown |
 
 ## Adding a game
 
-`Import.Game.YourGame` from `arcade_app.ailang`, call `YourGame_Init` after
-`Gfx_Reload`, `YourGame_Tick` in the loop. Reuse `Ent_*`, `Form_*`, `Boom_*`,
-`Star_*`, `Hud_*`.
+NOWAY HOME and GYRE are compiled into `arcade_app.x`. The cabinet loop is
+`Cab_Tick`, and that is what calls each game's tick. Enter on a row loads
+that game's artwork and then starts it. A new shooter in that program is
+an import from `arcade_app.ailang` and a row in `App/Cab.ailang`. Reuse
+`Ent_*`, `Form_*`, `Boom_*`, `Star_*`, and `Hud_*`.
+
+Circuit is not imported. It is `circuit.x`, started with `Load_Swap` from
+the cabinet row. A new side-scroller is another program plus a folder
+`games/<name>/levels/`. The level editor creates that folder and leaves
+`games/circuit` in place. See `docs/CIRCUIT.md`, `docs/EDITOR.md`, and
+`docs/LEVEL.md`.

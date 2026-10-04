@@ -14,6 +14,7 @@ pkill -x arcade_app.x 2>/dev/null || true
 pkill -x arcade_shell_gtk 2>/dev/null || true
 sleep 0.2
 : > "$STATE/cmd.txt"
+printf '\n' > "$STATE/music.txt"
 : > "$STATE/keys.txt"
 : > "$STATE/size.txt"
 printf '0\n' > "$STATE/gen.txt"
@@ -27,8 +28,9 @@ fi
 if [[ -z "${XAUTHORITY:-}" && -f "$HOME/.Xauthority" ]]; then
   export XAUTHORITY="$HOME/.Xauthority"
 fi
-export XMODIFIERS="${XMODIFIERS:-@im=none}"
-export GTK_IM_MODULE="${GTK_IM_MODULE:-}"
+export XMODIFIERS="@im=none"
+export GTK_IM_MODULE="gtk-im-context-simple"
+export QT_IM_MODULE="simple"
 
 echo "run_arcade: building gtk host..."
 make -C host

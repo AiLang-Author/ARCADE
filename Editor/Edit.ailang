@@ -420,7 +420,7 @@ Function.Ed_AGet {
     Output: Integer
     Body: {
         off = 0
-        off = Multiply(idx, 17)
+        off = Multiply(idx, 19)
         off = Add(off, f)
         ReturnValue(Ed_IGet(Ed.attr, off))
     }
@@ -448,7 +448,13 @@ Function.Ed_ASet {
         IfCondition EqualTo(f, 15) ThenBlock: {
             IfCondition GreaterThan(v, 1) ThenBlock: { v = 1 }
         }
-        off = Multiply(idx, 17)
+        IfCondition EqualTo(f, 17) ThenBlock: {
+            IfCondition GreaterThan(v, 8) ThenBlock: { v = 8 }
+        }
+        IfCondition EqualTo(f, 18) ThenBlock: {
+            IfCondition GreaterThan(v, 8) ThenBlock: { v = 8 }
+        }
+        off = Multiply(idx, 19)
         off = Add(off, f)
         Ed_ISet(Ed.attr, off, v)
     }
@@ -1253,6 +1259,10 @@ Function.Ed_AttrTake {
             IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 15, val) }
             hit = Ed_Eq(key, "boost")
             IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 16, val) }
+            hit = Ed_Eq(key, "sleft")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 17, val) }
+            hit = Ed_Eq(key, "sright")
+            IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 18, val) }
         }
         ReturnValue(1)
     }
@@ -1462,6 +1472,7 @@ Function.Ed_Apply {
         IfCondition EqualTo(hit, 1) ThenBlock: {
             IfCondition LessThan(Ed.nw, 2) ThenBlock: { ReturnValue(0) }
             path = Ed_MusAt(Ed.lev)
+            w1 = Ed_Join(1, Subtract(Ed.nw, 1))
             id = 0
             t = 0
             WhileLoop LessThan(t, 90) {
@@ -1797,6 +1808,25 @@ Function.Ed_OutAttr {
         p = Ed_UtoA(v)
         Ed_OutS(p)
         Ed_OutC(10)
+        v = Ed_AGet(idx, 17)
+        g = Ed_AGet(idx, 18)
+        p = 0
+        IfCondition NotEqual(v, 0) ThenBlock: { p = 1 }
+        IfCondition NotEqual(g, 0) ThenBlock: { p = 1 }
+        IfCondition EqualTo(p, 1) ThenBlock: {
+            Ed_OutS("attr ")
+            Ed_OutS(nm)
+            Ed_OutS(" sleft ")
+            p = Ed_UtoA(v)
+            Ed_OutS(p)
+            Ed_OutC(10)
+            Ed_OutS("attr ")
+            Ed_OutS(nm)
+            Ed_OutS(" sright ")
+            p = Ed_UtoA(g)
+            Ed_OutS(p)
+            Ed_OutC(10)
+        }
     }
 }
 
@@ -2387,7 +2417,7 @@ Function.Ed_Wipe {
         MemorySet(Ed.grp, 0, 1024)
         MemorySet(Ed.surf, 0, 1024)
         MemorySet(Ed.grid, 0, 32768)
-        MemorySet(Ed.attr, 0, 17408)
+        MemorySet(Ed.attr, 0, 19456)
         MemorySet(Ed.mus, 0, 768)
         MemorySet(Ed.beh, 0, 6144)
         MemorySet(Ed.bpath, 0, 1152)
@@ -3101,7 +3131,7 @@ Function.Ed_Boot {
         Ed.meta = Allocate(1024)
         Ed.msg = Allocate(192)
         Ed.num = Allocate(32)
-        Ed.attr = Allocate(17408)
+        Ed.attr = Allocate(19456)
         Ed.beh = Allocate(6144)
         Ed.doc = Allocate(96)
         Ed.names = Allocate(768)
@@ -3161,7 +3191,7 @@ Function.Ed_Boot {
         MemorySet(Ed.pbuf, 0, 544)
         MemorySet(Ed.meta, 0, 1024)
         MemorySet(Ed.out, 0, 65536)
-        MemorySet(Ed.attr, 0, 17408)
+        MemorySet(Ed.attr, 0, 19456)
         MemorySet(Ed.beh, 0, 6144)
         MemorySet(Ed.doc, 0, 96)
         MemorySet(Ed.names, 0, 768)

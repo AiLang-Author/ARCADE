@@ -104,12 +104,12 @@ Function.Ed_DeskInit {
         Ed_WinSet(4, 2, 280)
         Ed_WinSet(4, 3, 252)
         Ed_WinSet(4, 4, 1)
-        y = Subtract(FB.height, 284)
+        y = Subtract(FB.height, 308)
         IfCondition LessThan(y, 8) ThenBlock: { y = 8 }
         Ed_WinSet(5, 0, 8)
         Ed_WinSet(5, 1, y)
         Ed_WinSet(5, 2, 460)
-        Ed_WinSet(5, 3, 276)
+        Ed_WinSet(5, 3, 300)
         Ed_WinSet(5, 4, 1)
         Ed.focus = 4
         Ed.form = 1
@@ -1151,6 +1151,102 @@ Function.Ed_DrawReward {
     }
 }
 
+Function.Ed_SlopeCycle {
+    Input: idx: Integer
+    Body: {
+        sl = 0
+        sr = 0
+        n = 0
+        sl = Ed_AGet(idx, 17)
+        sr = Ed_AGet(idx, 18)
+        n = 0
+        IfCondition EqualTo(sl, 0) ThenBlock: {
+            IfCondition EqualTo(sr, 8) ThenBlock: { n = 1 }
+            IfCondition EqualTo(sr, 4) ThenBlock: { n = 3 }
+        }
+        IfCondition EqualTo(sl, 8) ThenBlock: {
+            IfCondition EqualTo(sr, 0) ThenBlock: { n = 2 }
+            IfCondition EqualTo(sr, 4) ThenBlock: { n = 5 }
+        }
+        IfCondition EqualTo(sl, 4) ThenBlock: {
+            IfCondition EqualTo(sr, 8) ThenBlock: { n = 4 }
+            IfCondition EqualTo(sr, 0) ThenBlock: { n = 6 }
+        }
+        n = Add(n, 1)
+        IfCondition GreaterThan(n, 6) ThenBlock: { n = 0 }
+        sl = 0
+        sr = 0
+        IfCondition EqualTo(n, 1) ThenBlock: { sr = 8 }
+        IfCondition EqualTo(n, 2) ThenBlock: { sl = 8 }
+        IfCondition EqualTo(n, 3) ThenBlock: { sr = 4 }
+        IfCondition EqualTo(n, 4) ThenBlock: {
+            sl = 4
+            sr = 8
+        }
+        IfCondition EqualTo(n, 5) ThenBlock: {
+            sl = 8
+            sr = 4
+        }
+        IfCondition EqualTo(n, 6) ThenBlock: { sl = 4 }
+        Ed_ASet(idx, 17, sl)
+        Ed_ASet(idx, 18, sr)
+    }
+}
+
+Function.Ed_SlopeWord {
+    Input: idx: Integer
+    Input: dx: Integer
+    Input: dy: Integer
+    Body: {
+        sl = 0
+        sr = 0
+        ink = 0
+        off = 0
+        sl = Ed_AGet(idx, 17)
+        sr = Ed_AGet(idx, 18)
+        ink = FB_RGB(0, 0, 0)
+        IfCondition EqualTo(sl, 0) ThenBlock: {
+            IfCondition EqualTo(sr, 0) ThenBlock: {
+                FB_DrawStringScaled(dx, dy, "none", ink, Subtract(0, 1), 1)
+                ReturnValue(0)
+            }
+            IfCondition EqualTo(sr, 8) ThenBlock: {
+                FB_DrawStringScaled(dx, dy, "up", ink, Subtract(0, 1), 1)
+                ReturnValue(0)
+            }
+            IfCondition EqualTo(sr, 4) ThenBlock: {
+                FB_DrawStringScaled(dx, dy, "up low", ink, Subtract(0, 1), 1)
+                ReturnValue(0)
+            }
+        }
+        IfCondition EqualTo(sl, 8) ThenBlock: {
+            IfCondition EqualTo(sr, 0) ThenBlock: {
+                FB_DrawStringScaled(dx, dy, "down", ink, Subtract(0, 1), 1)
+                ReturnValue(0)
+            }
+            IfCondition EqualTo(sr, 4) ThenBlock: {
+                FB_DrawStringScaled(dx, dy, "down high", ink, Subtract(0, 1), 1)
+                ReturnValue(0)
+            }
+        }
+        IfCondition EqualTo(sl, 4) ThenBlock: {
+            IfCondition EqualTo(sr, 8) ThenBlock: {
+                FB_DrawStringScaled(dx, dy, "up high", ink, Subtract(0, 1), 1)
+                ReturnValue(0)
+            }
+            IfCondition EqualTo(sr, 0) ThenBlock: {
+                FB_DrawStringScaled(dx, dy, "down low", ink, Subtract(0, 1), 1)
+                ReturnValue(0)
+            }
+        }
+        off = Ed_PutN(Ed.msg, 0, sl)
+        off = Ed_PutS(Ed.msg, off, "/")
+        off = Ed_PutN(Ed.msg, off, sr)
+        SetByte(Ed.msg, off, 0)
+        FB_DrawStringScaled(dx, dy, Ed.msg, ink, Subtract(0, 1), 1)
+    }
+}
+
 Function.Ed_AttrClick {
     Input: ax: Integer
     Input: ay: Integer
@@ -1248,6 +1344,15 @@ Function.Ed_AttrClick {
                     }
                     Ed.afield = 16
                     Ed.form = 1
+                    ReturnValue(0)
+                }
+                IfCondition EqualTo(item, 9) ThenBlock: {
+                    IfCondition NotEqual(g, 1) ThenBlock: { ReturnValue(0) }
+                    Ed_SlopeCycle(idx)
+                    Ed.afield = 26
+                    Ed.form = 0
+                    Ed.fn = 0
+                    SetByte(Ed.fbuf, 0, 0)
                     ReturnValue(0)
                 }
                 IfCondition NotEqual(item, 6) ThenBlock: { ReturnValue(0) }
@@ -1384,6 +1489,11 @@ Function.Ed_AttrApply {
             SetByte(Ed.fbuf, 0, 0)
             ReturnValue(0)
         }
+        IfCondition EqualTo(Ed.afield, 26) ThenBlock: {
+            Ed.fn = 0
+            SetByte(Ed.fbuf, 0, 0)
+            ReturnValue(0)
+        }
         IfCondition LessEqual(Ed.afield, 9) ThenBlock: { Ed_ASet(idx, Ed.afield, n) }
         IfCondition EqualTo(Ed.afield, 16) ThenBlock: { Ed_ASet(idx, 16, n) }
         IfCondition EqualTo(Ed.afield, 20) ThenBlock: { Ed_BSet(idx, 2, n) }
@@ -1482,6 +1592,11 @@ Function.Ed_AttrCommit {
             ReturnValue(0)
         }
         IfCondition EqualTo(Ed.afield, 23) ThenBlock: {
+            Ed.fn = 0
+            SetByte(Ed.fbuf, 0, 0)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Ed.afield, 26) ThenBlock: {
             Ed.fn = 0
             SetByte(Ed.fbuf, 0, 0)
             ReturnValue(0)
@@ -1749,6 +1864,11 @@ Function.Ed_DrawAttr {
                         FB_FillRectFast(Add(x, 2), Add(y, 222), Subtract(w, 4), 20, sel)
                     }
                 }
+                IfCondition EqualTo(Ed.afield, 26) ThenBlock: {
+                    IfCondition EqualTo(g, 1) ThenBlock: {
+                        FB_FillRectFast(Add(x, 2), Add(y, 244), Subtract(w, 4), 20, sel)
+                    }
+                }
             }
             FB_DrawStringScaled(Add(x, 8), Add(y, 204), "checkpoint", ink, Subtract(0, 1), 1)
             n = Ed_AGet(idx, 15)
@@ -1773,6 +1893,10 @@ Function.Ed_DrawAttr {
             ElseBlock: {
                 p = Ed_UtoA(Ed_AGet(idx, 16))
                 FB_DrawStringScaled(Add(x, 140), Add(y, 226), p, ink, Subtract(0, 1), 1)
+            }
+            IfCondition EqualTo(g, 1) ThenBlock: {
+                FB_DrawStringScaled(Add(x, 8), Add(y, 248), "slope", ink, Subtract(0, 1), 1)
+                Ed_SlopeWord(idx, Add(x, 140), Add(y, 248))
             }
         }
         }

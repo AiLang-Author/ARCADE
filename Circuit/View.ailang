@@ -109,6 +109,16 @@ FixedPool.Cv {
     "sfx": Initialize=0, CanChange=True
     "smap": Initialize=0, CanChange=True
     "mus": Initialize=0, CanChange=True
+    "pause": Initialize=0, CanChange=True
+    "pk": Initialize=0, CanChange=True
+    "vrow": Initialize=0, CanChange=True
+    "vm": Initialize=4, CanChange=True
+    "vs": Initialize=8, CanChange=True
+    "cab": Initialize=0, CanChange=True
+    "sk": Initialize=0, CanChange=True
+    "root": Initialize=0, CanChange=True
+    "path": Initialize=0, CanChange=True
+    "path2": Initialize=0, CanChange=True
 }
 
 Function.Cv_Boot {
@@ -128,14 +138,20 @@ Function.Cv_Boot {
         Cv.num = Allocate(16)
         Cv.imgio = Allocate(65536)
         Cv.lsurf = Allocate(32)
-        Cv.attr = Allocate(17408)
+        Cv.attr = Allocate(19456)
         Cv.cache = Allocate(12288)
         Cv.beh = Allocate(8192)
         Cv.act = Allocate(8192)
         Cv.sfx = Allocate(640)
         Cv.smap = Allocate(2048)
         Cv.mus = Allocate(128)
+        Cv.root = Allocate(80)
+        Cv.path = Allocate(160)
+        Cv.path2 = Allocate(160)
         IfCondition EqualTo(Cv.names, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Cv.root, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Cv.path, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Cv.path2, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Cv.sfx, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Cv.smap, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Cv.mus, 0) ThenBlock: { ReturnValue(0) }
@@ -154,13 +170,16 @@ Function.Cv_Boot {
         MemorySet(Cv.anim, 0, 32)
         MemorySet(Cv.msg, 0, 96)
         IfCondition NotEqual(Cv.lsurf, 0) ThenBlock: { MemorySet(Cv.lsurf, 0, 32) }
-        IfCondition NotEqual(Cv.attr, 0) ThenBlock: { MemorySet(Cv.attr, 0, 17408) }
+        IfCondition NotEqual(Cv.attr, 0) ThenBlock: { MemorySet(Cv.attr, 0, 19456) }
         IfCondition NotEqual(Cv.cache, 0) ThenBlock: { MemorySet(Cv.cache, 0, 12288) }
         IfCondition NotEqual(Cv.beh, 0) ThenBlock: { MemorySet(Cv.beh, 0, 8192) }
         IfCondition NotEqual(Cv.act, 0) ThenBlock: { MemorySet(Cv.act, 0, 8192) }
         MemorySet(Cv.sfx, 0, 640)
         MemorySet(Cv.smap, 0, 2048)
         MemorySet(Cv.mus, 0, 128)
+        MemorySet(Cv.root, 0, 80)
+        MemorySet(Cv.path, 0, 160)
+        MemorySet(Cv.path2, 0, 160)
         Cv_Copy(Cv.anim, "none", 32)
         Cv.hidle = Subtract(0, 1)
         Cv.hrun = Subtract(0, 1)

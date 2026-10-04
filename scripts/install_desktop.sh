@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Install ARCADE to the Linux applications menu and Desktop.
-# Prebuilt arcade_app.x is static. The GTK host needs shared libraries,
-# and held keys need a readable /dev/input device. This script installs both.
+# Install ARCADE and the level editor to the Linux applications menu and Desktop.
+# The three AILANG programs are static. The GTK host needs shared libraries,
+# and held keys need a readable /dev/input device. This script installs them.
+# It builds a missing binary and does not open a window.
 # Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -129,76 +130,129 @@ ensure_input() {
 
 ensure_deps
 
+# One compiler at a time. A second ailang.x beside the first fills the machine.
+build_one() {
+  local src="$1" out="$2" label="$3"
+  if [[ -x "$out" ]]; then
+    return 0
+  fi
+  if ! command -v ailang.x >/dev/null; then
+    echo "ERROR: $label is not built, and ailang.x is not on PATH."
+    echo "The program is static. Install Ailang-Self-Hosting and re-run."
+    exit 1
+  fi
+  echo "Building $label..."
+  ailang.x "$src" "$out"
+}
+
 if [[ ! -x "$ROOT/host/arcade_shell_gtk" ]]; then
   echo "Building GTK host..."
   make -C "$ROOT/host"
 fi
-if [[ ! -x "$ROOT/arcade_app.x" ]]; then
-  if ! command -v ailang.x >/dev/null; then
-    echo "ERROR: arcade_app.x is not built, and ailang.x is not on PATH."
-    echo "The kernel binary is static. To rebuild it, install Ailang-Self-Hosting and re-run."
-    exit 1
-  fi
-  echo "Building kernel..."
-  ailang.x "$ROOT/arcade_app.ailang" "$ROOT/arcade_app.x"
-fi
-chmod 755 "$ROOT/scripts/launch_arcade.sh" "$ROOT/arcade_app.x" "$ROOT/host/arcade_shell_gtk"
+build_one "$ROOT/arcade_app.ailang" "$ROOT/arcade_app.x" "cabinet"
+build_one "$ROOT/Circuit/circuit.ailang" "$ROOT/circuit.x" "Circuit"
+build_one "$ROOT/Editor/level_edit.ailang" "$ROOT/level_edit.x" "level editor"
+chmod 755 \
+  "$ROOT/scripts/launch_arcade.sh" \
+  "$ROOT/scripts/run_circuit.sh" \
+  "$ROOT/scripts/run_editor.sh" \
+  "$ROOT/arcade_app.x" \
+  "$ROOT/circuit.x" \
+  "$ROOT/level_edit.x" \
+  "$ROOT/host/arcade_shell_gtk"
 verify_host_libs
 ensure_input
+
+if [[ ! -e "$ROOT/assets/circuit" ]]; then
+  echo "WARN: assets/circuit does not reach an art pack."
+  echo "      The link in a GitHub clone points at the machine where the city was built."
+  echo "      Point it at your copy: ln -sfn /path/to/circuit-runner-assets assets/circuit"
+  echo "      NOWAY HOME and GYRE do not need that pack. The cabinet still installs."
+fi
 
 ICON="$ROOT/assets/hud/icons/hicolor/512x512/apps/arcade-cabinet.png"
 [[ -f "$ICON" ]] || ICON="$ROOT/assets/hud/arcade.png"
 [[ -f "$ICON" ]] || ICON="$ROOT/assets/hud/noway-home.svg"
 [[ -f "$ICON" ]] || ICON="$ROOT/noway-home/Intro.png"
 LAUNCH="$ROOT/scripts/launch_arcade.sh"
+EDIT="$ROOT/scripts/run_editor.sh"
 [[ -x "$LAUNCH" ]]
+[[ -x "$EDIT" ]]
+[[ -x "$ROOT/scripts/run_circuit.sh" ]]
 [[ -x "$ROOT/arcade_app.x" ]]
+[[ -x "$ROOT/circuit.x" ]]
+[[ -x "$ROOT/level_edit.x" ]]
 [[ -x "$ROOT/host/arcade_shell_gtk" ]]
 [[ -f "$ROOT/assets/ships/player.svg" ]]
 [[ -f "$ROOT/assets/enemies/bee.svg" ]]
 [[ -d "$ROOT/assets/sfx" ]]
 
-APPS="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
-mkdir -p "$APPS"
-DESK="$APPS/arcade.desktop"
-cat > "$DESK" << EOF
+write_entry() {
+  local dest="$1" name="$2" generic="$3" comment="$4" execp="$5" categories="$6" keywords="$7"
+  cat > "$dest" << EOF
 [Desktop Entry]
 Type=Application
 Version=1.0
-Name=ARCADE
-GenericName=Arcade
-Comment=ARCADE — AILANG cabinet. NOWAY HOME and GYRE.
-Exec=$LAUNCH
-TryExec=$LAUNCH
+Name=$name
+GenericName=$generic
+Comment=$comment
+Exec=$execp
+TryExec=$execp
 Icon=$ICON
 Terminal=false
-Categories=Game;ArcadeGame;
-Keywords=Arcade;NOWAY;HOME;GYRE;Ailang;
+Categories=$categories
+Keywords=$keywords
 StartupNotify=true
 StartupWMClass=arcade_shell_gtk
 Path=$ROOT
 EOF
-chmod 755 "$DESK"
+  chmod 755 "$dest"
+}
+
+trust_entry() {
+  local dest="$1"
+  if ! command -v gio >/dev/null; then
+    return 0
+  fi
+  gio set "$dest" metadata::trusted true 2>/dev/null || true
+  if command -v sha256sum >/dev/null; then
+    sum=$(sha256sum "$dest" | awk '{print $1}')
+    gio set -t string "$dest" metadata::xfce-exe-checksum "$sum" 2>/dev/null || true
+  fi
+}
+
+APPS="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+mkdir -p "$APPS"
+DESK="$APPS/arcade.desktop"
+EDITOR_DESK="$APPS/arcade-level-editor.desktop"
+write_entry "$DESK" "ARCADE" "Arcade" \
+  "ARCADE — AILANG cabinet. NOWAY HOME, GYRE, and CIRCUIT." \
+  "$LAUNCH" "Game;ArcadeGame;" "Arcade;NOWAY;HOME;GYRE;CIRCUIT;Ailang;"
+write_entry "$EDITOR_DESK" "ARCADE Level Editor" "Level editor" \
+  "Edit side-scroller levels. Circuit's city is games/circuit/levels/edit.lvl." \
+  "$EDIT" "Game;Development;" "Arcade;Circuit;Level;Editor;Ailang;"
 rm -f "$APPS/noway-home.desktop"
 
 DESKTOP="${XDG_DESKTOP_DIR:-$HOME/Desktop}"
 if [[ -d "$DESKTOP" ]]; then
   cp -f "$DESK" "$DESKTOP/arcade.desktop"
-  chmod 755 "$DESKTOP/arcade.desktop"
+  cp -f "$EDITOR_DESK" "$DESKTOP/arcade-level-editor.desktop"
+  chmod 755 "$DESKTOP/arcade.desktop" "$DESKTOP/arcade-level-editor.desktop"
   rm -f "$DESKTOP/noway-home.desktop"
-  if command -v gio >/dev/null; then
-    gio set "$DESKTOP/arcade.desktop" metadata::trusted true 2>/dev/null || true
-    if command -v sha256sum >/dev/null; then
-      sum=$(sha256sum "$DESKTOP/arcade.desktop" | awk '{print $1}')
-      gio set -t string "$DESKTOP/arcade.desktop" metadata::xfce-exe-checksum "$sum" 2>/dev/null || true
-    fi
-  fi
+  trust_entry "$DESKTOP/arcade.desktop"
+  trust_entry "$DESKTOP/arcade-level-editor.desktop"
   echo "Desktop: $DESKTOP/arcade.desktop"
+  echo "Desktop: $DESKTOP/arcade-level-editor.desktop"
 fi
 
 update-desktop-database "$APPS" 2>/dev/null || true
 echo "Menu:     $DESK"
+echo "Menu:     $EDITOR_DESK"
 echo "Launch:   $LAUNCH"
-echo "Kernel:   $ROOT/arcade_app.x"
+echo "Editor:   $EDIT"
+echo "Cabinet:  $ROOT/arcade_app.x"
+echo "Circuit:  $ROOT/circuit.x"
+echo "Editor x: $ROOT/level_edit.x"
 echo "Host:     $ROOT/host/arcade_shell_gtk"
 echo "OK — Applications → Games → ARCADE"
+echo "OK — Applications → Games → ARCADE Level Editor"

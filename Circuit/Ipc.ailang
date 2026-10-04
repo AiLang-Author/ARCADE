@@ -7,11 +7,75 @@ LibraryImport.Display.Render.Framebuffer
 Import.App.State
 Import.App.World
 
+Function.Ci_Copy {
+    Input: dst: Address
+    Input: src: Address
+    Input: cap: Integer
+    Body: {
+        i = 0
+        last = 0
+        c = 0
+        last = Subtract(cap, 1)
+        IfCondition LessThan(last, 1) ThenBlock: { last = 1 }
+        WhileLoop LessThan(i, last) {
+            c = GetByte(src, i)
+            SetByte(dst, i, c)
+            IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(0) }
+            i = Add(i, 1)
+        }
+        SetByte(dst, last, 0)
+    }
+}
+
+Function.Ci_Root {
+    Input: s: Address
+    Body: {
+        IfCondition EqualTo(Cv.root, 0) ThenBlock: { Cv.root = Allocate(80) }
+        IfCondition EqualTo(Cv.root, 0) ThenBlock: { ReturnValue(0) }
+        Ci_Copy(Cv.root, s, 80)
+    }
+}
+
+Function.Ci_Join {
+    Input: dst: Address
+    Input: tail: Address
+    Body: {
+        i = 0
+        k = 0
+        c = 0
+        IfCondition EqualTo(Cv.root, 0) ThenBlock: { Ci_Root("/dev/shm/circuit") }
+        Ci_Copy(dst, Cv.root, 140)
+        i = 0
+        WhileLoop LessThan(i, 140) {
+            c = GetByte(dst, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            i = Add(i, 1)
+        }
+        IfCondition LessThan(i, 150) ThenBlock: {
+            SetByte(dst, i, 47)
+            i = Add(i, 1)
+        }
+        k = 0
+        WhileLoop LessThan(k, 48) {
+            c = GetByte(tail, k)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            IfCondition LessThan(i, 150) ThenBlock: {
+                SetByte(dst, i, c)
+                i = Add(i, 1)
+            }
+            k = Add(k, 1)
+        }
+        IfCondition GreaterThan(i, 159) ThenBlock: { i = 159 }
+        SetByte(dst, i, 0)
+    }
+}
+
 Function.Ci_Ensure {
     Output: Integer
     Body: {
         SystemCall(83, "/dev/shm", 493)
-        SystemCall(83, "/dev/shm/circuit", 493)
+        IfCondition EqualTo(Cv.root, 0) ThenBlock: { Ci_Root("/dev/shm/circuit") }
+        SystemCall(83, Cv.root, 493)
         ReturnValue(1)
     }
 }
@@ -23,14 +87,38 @@ Function.Ci_Open {
     Output: Integer
     Body: {
         fd = Subtract(0, 1)
-        IfCondition EqualTo(kind, 1) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/meta.bin", flags, mode) }
-        IfCondition EqualTo(kind, 2) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/frame.tmp", flags, mode) }
-        IfCondition EqualTo(kind, 3) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/gen.tmp", flags, mode) }
-        IfCondition EqualTo(kind, 4) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/size.txt", flags, mode) }
-        IfCondition EqualTo(kind, 5) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/keys.txt", flags, mode) }
-        IfCondition EqualTo(kind, 6) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/cmd.txt", flags, mode) }
-        IfCondition EqualTo(kind, 7) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/pointer.bin", 0, 0) }
-        IfCondition EqualTo(kind, 8) ThenBlock: { fd = SystemCall(2, "/dev/shm/circuit/sfx.bin", flags, mode) }
+        IfCondition EqualTo(kind, 1) ThenBlock: {
+            Ci_Join(Cv.path, "meta.bin")
+            fd = SystemCall(2, Cv.path, flags, mode)
+        }
+        IfCondition EqualTo(kind, 2) ThenBlock: {
+            Ci_Join(Cv.path, "frame.tmp")
+            fd = SystemCall(2, Cv.path, flags, mode)
+        }
+        IfCondition EqualTo(kind, 3) ThenBlock: {
+            Ci_Join(Cv.path, "gen.tmp")
+            fd = SystemCall(2, Cv.path, flags, mode)
+        }
+        IfCondition EqualTo(kind, 4) ThenBlock: {
+            Ci_Join(Cv.path, "size.txt")
+            fd = SystemCall(2, Cv.path, flags, mode)
+        }
+        IfCondition EqualTo(kind, 5) ThenBlock: {
+            Ci_Join(Cv.path, "keys.txt")
+            fd = SystemCall(2, Cv.path, flags, mode)
+        }
+        IfCondition EqualTo(kind, 6) ThenBlock: {
+            Ci_Join(Cv.path, "cmd.txt")
+            fd = SystemCall(2, Cv.path, flags, mode)
+        }
+        IfCondition EqualTo(kind, 7) ThenBlock: {
+            Ci_Join(Cv.path, "pointer.bin")
+            fd = SystemCall(2, Cv.path, 0, 0)
+        }
+        IfCondition EqualTo(kind, 8) ThenBlock: {
+            Ci_Join(Cv.path, "sfx.bin")
+            fd = SystemCall(2, Cv.path, flags, mode)
+        }
         ReturnValue(fd)
     }
 }
@@ -39,13 +127,19 @@ Function.Ci_Rename {
     Input: kind: Integer
     Body: {
         IfCondition EqualTo(kind, 0) ThenBlock: {
-            SystemCall(82, "/dev/shm/circuit/frame.tmp", "/dev/shm/circuit/frame0.raw")
+            Ci_Join(Cv.path, "frame.tmp")
+            Ci_Join(Cv.path2, "frame0.raw")
+            SystemCall(82, Cv.path, Cv.path2)
         }
         IfCondition EqualTo(kind, 1) ThenBlock: {
-            SystemCall(82, "/dev/shm/circuit/frame.tmp", "/dev/shm/circuit/frame1.raw")
+            Ci_Join(Cv.path, "frame.tmp")
+            Ci_Join(Cv.path2, "frame1.raw")
+            SystemCall(82, Cv.path, Cv.path2)
         }
         IfCondition EqualTo(kind, 2) ThenBlock: {
-            SystemCall(82, "/dev/shm/circuit/gen.tmp", "/dev/shm/circuit/gen.txt")
+            Ci_Join(Cv.path, "gen.tmp")
+            Ci_Join(Cv.path2, "gen.txt")
+            SystemCall(82, Cv.path, Cv.path2)
         }
     }
 }

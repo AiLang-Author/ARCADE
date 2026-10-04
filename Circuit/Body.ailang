@@ -2,11 +2,15 @@
 // stored run, jump, gravity, and fall. World y increases up. Row 0 is the
 // bottom of the map. Feet sit on hy. The sheet faces right, so face 1
 // mirrors it. The sprite fills the same 1 by 2 tile box the body tests.
-// The file run speed is turbo, held with Enter. Walk, wind, and leap come
-// from the level. Missing lines keep a quarter of run, three seconds to
-// double that walk, and a jump that covers twice the walking distance.
-// Gravity is four times the file value, so the file jump peaks
-// near four tiles instead of flying out of the view.
+// The file run speed is the top of a held direction, and Enter reaches it
+// immediately. Walk is the start of that build. Wind is how many seconds
+// it takes. A jump keeps the speed already built.
+// from the level. Missing lines keep a quarter of run and three seconds
+// to reach that run. Gravity is four times the file value. Jump 18 at
+// gravity 30 clears a block one tile above the head.
+// sleft and sright are the left and right edge heights of a block,
+// in eighths of a tile. Either one above 0 is a ramp, not a wall.
+// 0 and 0 stays a square. The asset name is not what decides it.
 // Enemies leave the grid and move in millimeters. A behave line wins.
 // With no line, a sweeper walks, a scrubbit hops, an arc beetle chases
 // inside its zone, and a zapfly flies.
@@ -88,6 +92,8 @@ Function.Cv_Solid {
         id = Subtract(id, 1)
         g = Cv_IGet(Cv.grp, id)
         IfCondition NotEqual(Cv_AGet(id, 7), 0) ThenBlock: { ReturnValue(0) }
+        IfCondition NotEqual(Cv_AGet(id, 17), 0) ThenBlock: { ReturnValue(0) }
+        IfCondition NotEqual(Cv_AGet(id, 18), 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(g, 1) ThenBlock: { ReturnValue(1) }
         ReturnValue(0)
     }
@@ -324,6 +330,8 @@ Function.Cv_MoveX {
         guard = 0
         nx = 0
         hit = 0
+        surf = 0
+        rise = 0
         t = Cv_TileMm()
         step = Divide(t, 2)
         IfCondition LessThan(step, 1) ThenBlock: { step = 1 }
@@ -340,9 +348,35 @@ Function.Cv_MoveX {
             IfCondition LessThan(move, 0) ThenBlock: { chunk = Subtract(0, chunk) }
             nx = Add(Cv.hx, chunk)
             hit = Cv_BoxHit(nx, Cv.hy)
-            IfCondition EqualTo(hit, 1) ThenBlock: { BreakLoop }
-            Cv.hx = nx
-            move = Subtract(move, chunk)
+            IfCondition EqualTo(hit, 1) ThenBlock: {
+                surf = Subtract(0, 1)
+                IfCondition LessEqual(Cv.vy, 0) ThenBlock: {
+                    rise = Subtract(Cv.hy, t)
+                    surf = Add(Cv.hy, t)
+                    surf = Cv_SlopeBest(nx, rise, surf)
+                }
+                rise = 0
+                IfCondition GreaterThan(surf, Cv.hy) ThenBlock: {
+                    rise = Subtract(surf, Cv.hy)
+                }
+                IfCondition GreaterThan(rise, 0) ThenBlock: {
+                    IfCondition LessEqual(rise, t) ThenBlock: {
+                        hit = Cv_BoxHit(nx, surf)
+                        IfCondition EqualTo(hit, 0) ThenBlock: {
+                            Cv.hx = nx
+                            Cv.hy = surf
+                            Cv.ground = 1
+                            IfCondition LessThan(Cv.vy, 0) ThenBlock: { Cv.vy = 0 }
+                            move = Subtract(move, chunk)
+                        }
+                    }
+                }
+                IfCondition EqualTo(hit, 1) ThenBlock: { BreakLoop }
+            }
+            ElseBlock: {
+                Cv.hx = nx
+                move = Subtract(move, chunk)
+            }
         }
     }
 }
@@ -417,7 +451,7 @@ Function.Cv_AGet {
         i = 0
         IfCondition EqualTo(Cv.attr, 0) ThenBlock: { ReturnValue(0) }
         IfCondition LessThan(idx, 0) ThenBlock: { ReturnValue(0) }
-        i = Multiply(idx, 17)
+        i = Multiply(idx, 19)
         i = Add(i, field)
         ReturnValue(Cv_IGet(Cv.attr, i))
     }
@@ -431,7 +465,7 @@ Function.Cv_ASet {
         i = 0
         IfCondition EqualTo(Cv.attr, 0) ThenBlock: { ReturnValue(0) }
         IfCondition LessThan(idx, 0) ThenBlock: { ReturnValue(0) }
-        i = Multiply(idx, 17)
+        i = Multiply(idx, 19)
         i = Add(i, field)
         Cv_ISet(Cv.attr, i, v)
     }
@@ -502,6 +536,18 @@ Function.Cv_AttrKey {
         IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 15, v) }
         hit = StringCompare(key, "boost")
         IfCondition EqualTo(hit, 0) ThenBlock: { Cv_ASet(idx, 16, v) }
+        hit = StringCompare(key, "sleft")
+        IfCondition EqualTo(hit, 0) ThenBlock: {
+            IfCondition LessThan(v, 0) ThenBlock: { v = 0 }
+            IfCondition GreaterThan(v, 8) ThenBlock: { v = 8 }
+            Cv_ASet(idx, 17, v)
+        }
+        hit = StringCompare(key, "sright")
+        IfCondition EqualTo(hit, 0) ThenBlock: {
+            IfCondition LessThan(v, 0) ThenBlock: { v = 0 }
+            IfCondition GreaterThan(v, 8) ThenBlock: { v = 8 }
+            Cv_ASet(idx, 18, v)
+        }
     }
 }
 
@@ -520,6 +566,175 @@ Function.Cv_IdxAt {
         id = GetByte(Cv.grid, at)
         IfCondition EqualTo(id, 0) ThenBlock: { ReturnValue(Subtract(0, 1)) }
         ReturnValue(Subtract(id, 1))
+    }
+}
+
+Function.Cv_Ramp {
+    Input: col: Integer
+    Input: row: Integer
+    Output: Integer
+    Body: {
+        idx = 0
+        idx = Cv_IdxAt(col, row)
+        IfCondition LessThan(idx, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition NotEqual(Cv_AGet(idx, 17), 0) ThenBlock: { ReturnValue(1) }
+        IfCondition NotEqual(Cv_AGet(idx, 18), 0) ThenBlock: { ReturnValue(1) }
+        ReturnValue(0)
+    }
+}
+
+Function.Cv_SlopeCell {
+    Input: col: Integer
+    Input: row: Integer
+    Input: x: Integer
+    Output: Integer
+    Body: {
+        idx = 0
+        sl = 0
+        sr = 0
+        t = 0
+        u = 0
+        left = 0
+        num = 0
+        idx = Cv_IdxAt(col, row)
+        IfCondition LessThan(idx, 0) ThenBlock: { ReturnValue(Subtract(0, 1)) }
+        sl = Cv_AGet(idx, 17)
+        sr = Cv_AGet(idx, 18)
+        IfCondition EqualTo(sl, 0) ThenBlock: {
+            IfCondition EqualTo(sr, 0) ThenBlock: { ReturnValue(Subtract(0, 1)) }
+        }
+        IfCondition LessThan(sl, 0) ThenBlock: { sl = 0 }
+        IfCondition GreaterThan(sl, 8) ThenBlock: { sl = 8 }
+        IfCondition LessThan(sr, 0) ThenBlock: { sr = 0 }
+        IfCondition GreaterThan(sr, 8) ThenBlock: { sr = 8 }
+        t = Cv_TileMm()
+        left = Multiply(col, t)
+        u = Subtract(x, left)
+        IfCondition LessThan(u, 0) ThenBlock: { u = 0 }
+        IfCondition GreaterThan(u, t) ThenBlock: { u = t }
+        num = Subtract(sr, sl)
+        num = Multiply(num, u)
+        left = Multiply(sl, t)
+        num = Add(left, num)
+        num = Divide(num, 8)
+        left = Multiply(row, t)
+        ReturnValue(Add(left, num))
+    }
+}
+
+Function.Cv_SlopeBest {
+    Input: x: Integer
+    Input: lo: Integer
+    Input: hi: Integer
+    Output: Integer
+    Body: {
+        t = 0
+        right = 0
+        c0 = 0
+        c1 = 0
+        r0 = 0
+        r1 = 0
+        c = 0
+        r = 0
+        best = 0
+        s = 0
+        a = 0
+        b = 0
+        cell = 0
+        t = Cv_TileMm()
+        right = Add(x, t)
+        IfCondition LessEqual(right, 0) ThenBlock: { ReturnValue(Subtract(0, 1)) }
+        IfCondition LessThan(x, 0) ThenBlock: { c0 = 0 }
+        ElseBlock: { c0 = Divide(x, t) }
+        c1 = Divide(Subtract(right, 1), t)
+        IfCondition LessThan(lo, 0) ThenBlock: { r0 = 0 }
+        ElseBlock: { r0 = Divide(lo, t) }
+        IfCondition GreaterThan(r0, 0) ThenBlock: { r0 = Subtract(r0, 1) }
+        IfCondition LessThan(hi, 0) ThenBlock: { r1 = 0 }
+        ElseBlock: { r1 = Divide(hi, t) }
+        r1 = Add(r1, 1)
+        IfCondition GreaterEqual(r1, Cv.maph) ThenBlock: { r1 = Subtract(Cv.maph, 1) }
+        best = Subtract(0, 1)
+        r = r0
+        WhileLoop LessEqual(r, r1) {
+            c = c0
+            WhileLoop LessEqual(c, c1) {
+                cell = Multiply(c, t)
+                a = x
+                IfCondition LessThan(a, cell) ThenBlock: { a = cell }
+                b = right
+                cell = Add(cell, t)
+                IfCondition GreaterThan(b, cell) ThenBlock: { b = cell }
+                IfCondition LessThan(a, b) ThenBlock: {
+                    s = Cv_SlopeCell(c, r, a)
+                    IfCondition GreaterEqual(s, lo) ThenBlock: {
+                        IfCondition LessEqual(s, hi) ThenBlock: {
+                            IfCondition GreaterThan(s, best) ThenBlock: { best = s }
+                        }
+                    }
+                    s = Cv_SlopeCell(c, r, b)
+                    IfCondition GreaterEqual(s, lo) ThenBlock: {
+                        IfCondition LessEqual(s, hi) ThenBlock: {
+                            IfCondition GreaterThan(s, best) ThenBlock: { best = s }
+                        }
+                    }
+                }
+                c = Add(c, 1)
+            }
+            r = Add(r, 1)
+        }
+        ReturnValue(best)
+    }
+}
+
+Function.Cv_SlopeSnap {
+    Input: prev: Integer
+    Body: {
+        t = 0
+        lo = 0
+        hi = 0
+        surf = 0
+        floor = 0
+        rise = 0
+        hit = 0
+        IfCondition GreaterThan(Cv.vy, 0) ThenBlock: { ReturnValue(0) }
+        t = Cv_TileMm()
+        lo = Subtract(Cv.hy, t)
+        hi = Add(Cv.hy, t)
+        IfCondition GreaterThan(prev, hi) ThenBlock: { hi = prev }
+        surf = Cv_SlopeBest(Cv.hx, lo, hi)
+        IfCondition LessThan(surf, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition LessThan(Cv.hy, surf) ThenBlock: {
+            rise = Subtract(surf, Cv.hy)
+            hit = 0
+            IfCondition LessEqual(surf, prev) ThenBlock: { hit = 1 }
+            IfCondition LessEqual(rise, t) ThenBlock: { hit = 1 }
+            IfCondition EqualTo(hit, 1) ThenBlock: {
+                hit = Cv_BoxHit(Cv.hx, surf)
+                IfCondition EqualTo(hit, 0) ThenBlock: {
+                    Cv.hy = surf
+                    Cv.ground = 1
+                    IfCondition LessThan(Cv.vy, 0) ThenBlock: { Cv.vy = 0 }
+                }
+            }
+            ReturnValue(0)
+        }
+        rise = Subtract(Cv.hy, surf)
+        IfCondition GreaterThan(rise, t) ThenBlock: { ReturnValue(0) }
+        floor = Subtract(Cv.hy, 1)
+        floor = Cv_SnapDown(Cv.hx, floor, Cv.hy)
+        IfCondition GreaterEqual(floor, 0) ThenBlock: {
+            IfCondition GreaterEqual(floor, surf) ThenBlock: {
+                Cv.ground = 1
+                ReturnValue(0)
+            }
+        }
+        hit = Cv_BoxHit(Cv.hx, surf)
+        IfCondition EqualTo(hit, 0) ThenBlock: {
+            Cv.hy = surf
+            Cv.ground = 1
+            IfCondition LessThan(Cv.vy, 0) ThenBlock: { Cv.vy = 0 }
+        }
     }
 }
 
@@ -956,6 +1171,7 @@ Function.Cv_FoeHit {
             c = c0
             WhileLoop LessEqual(c, c1) {
                 hit = Cv_Solid(c, r)
+                IfCondition EqualTo(hit, 0) ThenBlock: { hit = Cv_Ramp(c, r) }
                 IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(1) }
                 c = Add(c, 1)
             }
@@ -988,6 +1204,7 @@ Function.Cv_FoeLedge {
         row = Divide(y, t)
         row = Subtract(row, 1)
         hit = Cv_Solid(col, row)
+        IfCondition EqualTo(hit, 0) ThenBlock: { hit = Cv_Ramp(col, row) }
         IfCondition EqualTo(hit, 0) ThenBlock: { ReturnValue(1) }
         ReturnValue(0)
     }
@@ -1215,7 +1432,8 @@ Function.Cv_SfxMap {
             i = Add(i, 1)
         }
         SetByte(Cv.smap, k, 0)
-        fd = SystemCall(2, "/dev/shm/circuit/sfx.map", 577, 420)
+        Ci_Join(Cv.path, "sfx.map")
+        fd = SystemCall(2, Cv.path, 577, 420)
         IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
         SystemCall(1, fd, Cv.smap, k)
         SystemCall(3, fd)
@@ -1245,10 +1463,271 @@ Function.Cv_MusicPub {
             SetByte(Cv.msg, n, 10)
             n = Add(n, 1)
         }
-        fd = SystemCall(2, "/dev/shm/circuit/music.txt", 577, 420)
+        Ci_Join(Cv.path, "music.txt")
+        fd = SystemCall(2, Cv.path, 577, 420)
         IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
         SystemCall(1, fd, Cv.msg, n)
         SystemCall(3, fd)
+    }
+}
+
+Function.Cv_VolClamp {
+    Body: {
+        IfCondition LessThan(Cv.vm, 0) ThenBlock: { Cv.vm = 0 }
+        IfCondition GreaterThan(Cv.vm, 10) ThenBlock: { Cv.vm = 10 }
+        IfCondition LessThan(Cv.vs, 0) ThenBlock: { Cv.vs = 0 }
+        IfCondition GreaterThan(Cv.vs, 10) ThenBlock: { Cv.vs = 10 }
+    }
+}
+
+Function.Cv_VolLoad {
+    Body: {
+        fd = 0
+        n = 0
+        i = 0
+        c = 0
+        v = 0
+        which = 0
+        saw = 0
+        Cv.vm = 4
+        Cv.vs = 8
+        fd = SystemCall(2, "games/circuit/volume.txt", 0, 0)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        n = SystemCall(0, fd, Cv.msg, 32)
+        SystemCall(3, fd)
+        IfCondition LessThan(n, 1) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(n, 32) ThenBlock: { n = 32 }
+        SetByte(Cv.msg, n, 0)
+        which = 0
+        v = 0
+        saw = 0
+        i = 0
+        WhileLoop LessThan(i, n) {
+            c = GetByte(Cv.msg, i)
+            IfCondition GreaterEqual(c, 48) ThenBlock: {
+                IfCondition LessEqual(c, 57) ThenBlock: {
+                    v = Multiply(v, 10)
+                    v = Add(v, Subtract(c, 48))
+                    saw = 1
+                }
+            }
+            IfCondition EqualTo(saw, 1) ThenBlock: {
+                IfCondition EqualTo(c, 32) ThenBlock: { saw = 2 }
+                IfCondition EqualTo(c, 10) ThenBlock: { saw = 2 }
+            }
+            IfCondition EqualTo(saw, 2) ThenBlock: {
+                IfCondition EqualTo(which, 0) ThenBlock: { Cv.vm = v }
+                IfCondition EqualTo(which, 1) ThenBlock: { Cv.vs = v }
+                which = Add(which, 1)
+                v = 0
+                saw = 0
+            }
+            i = Add(i, 1)
+        }
+        IfCondition EqualTo(saw, 1) ThenBlock: {
+            IfCondition EqualTo(which, 0) ThenBlock: { Cv.vm = v }
+            IfCondition EqualTo(which, 1) ThenBlock: { Cv.vs = v }
+        }
+        Cv_VolClamp()
+    }
+}
+
+Function.Cv_VolPub {
+    Input: hold: Integer
+    Body: {
+        off = 0
+        fd = 0
+        IfCondition LessThan(hold, 1) ThenBlock: { hold = 0 }
+        IfCondition GreaterThan(hold, 1) ThenBlock: { hold = 1 }
+        Cv_VolClamp()
+        MemorySet(Cv.msg, 0, 96)
+        off = Cv_PutN(Cv.msg, 0, Cv.vm)
+        off = Cv_PutS(Cv.msg, off, " ")
+        off = Cv_PutN(Cv.msg, off, Cv.vs)
+        off = Cv_PutS(Cv.msg, off, " ")
+        off = Cv_PutN(Cv.msg, off, hold)
+        SetByte(Cv.msg, off, 10)
+        off = Add(off, 1)
+        Ci_Join(Cv.path, "vol.txt")
+        fd = SystemCall(2, Cv.path, 577, 420)
+        IfCondition GreaterEqual(fd, 0) ThenBlock: {
+            SystemCall(1, fd, Cv.msg, off)
+            SystemCall(3, fd)
+        }
+        MemorySet(Cv.msg, 0, 96)
+        off = Cv_PutN(Cv.msg, 0, Cv.vm)
+        off = Cv_PutS(Cv.msg, off, " ")
+        off = Cv_PutN(Cv.msg, off, Cv.vs)
+        SetByte(Cv.msg, off, 10)
+        off = Add(off, 1)
+        fd = SystemCall(2, "games/circuit/volume.txt", 577, 420)
+        IfCondition GreaterEqual(fd, 0) ThenBlock: {
+            SystemCall(1, fd, Cv.msg, off)
+            SystemCall(3, fd)
+        }
+        PrintMessage("vol ")
+        PrintNumber(Cv.vm)
+        PrintMessage(" ")
+        PrintNumber(Cv.vs)
+        PrintMessage(" ")
+        PrintNumber(hold)
+        PrintMessage("\n")
+    }
+}
+
+Function.Cv_PauseIn {
+    Body: {
+        n = 0
+        changed = 0
+        fresh = 0
+        IfCondition EqualTo(Key.p, 1) ThenBlock: {
+            IfCondition EqualTo(Cv.pk, 0) ThenBlock: {
+                IfCondition EqualTo(Cv.pause, 0) ThenBlock: { Cv.pause = 1 }
+                ElseBlock: { Cv.pause = 0 }
+                PrintMessage("pause ")
+                PrintNumber(Cv.pause)
+                PrintMessage("\n")
+                Cv_VolPub(Cv.pause)
+                fresh = 1
+            }
+        }
+        Cv.pk = Key.p
+        IfCondition EqualTo(Cv.pause, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(fresh, 1) ThenBlock: {
+            Cv.uk = Key.u
+            Cv.dk = Key.d
+            Cv.lk = Key.l
+            Cv.rk = Key.r
+            Cv.sk = Key.s
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Key.u, 1) ThenBlock: {
+            IfCondition EqualTo(Cv.uk, 0) ThenBlock: { Cv.vrow = 0 }
+        }
+        IfCondition EqualTo(Key.d, 1) ThenBlock: {
+            IfCondition EqualTo(Cv.dk, 0) ThenBlock: { Cv.vrow = 1 }
+        }
+        n = 0
+        IfCondition EqualTo(Key.l, 1) ThenBlock: {
+            IfCondition EqualTo(Cv.lk, 0) ThenBlock: { n = Subtract(0, 1) }
+        }
+        IfCondition EqualTo(Key.r, 1) ThenBlock: {
+            IfCondition EqualTo(Cv.rk, 0) ThenBlock: { n = 1 }
+        }
+        IfCondition NotEqual(n, 0) ThenBlock: {
+            IfCondition EqualTo(Cv.vrow, 0) ThenBlock: {
+                Cv.vm = Add(Cv.vm, n)
+                changed = 1
+            }
+            ElseBlock: {
+                Cv.vs = Add(Cv.vs, n)
+                changed = 1
+            }
+        }
+        IfCondition EqualTo(Cv.cab, 1) ThenBlock: {
+            IfCondition EqualTo(Key.s, 1) ThenBlock: {
+                IfCondition EqualTo(Cv.sk, 0) ThenBlock: { Cv_Cabinet() }
+            }
+        }
+        Cv.uk = Key.u
+        Cv.dk = Key.d
+        Cv.lk = Key.l
+        Cv.rk = Key.r
+        Cv.sk = Key.s
+        IfCondition EqualTo(changed, 1) ThenBlock: { Cv_VolPub(1) }
+    }
+}
+
+Function.Cv_Cabinet {
+    Body: {
+        fd = 0
+        Ci_Join(Cv.path, "music.txt")
+        fd = SystemCall(2, Cv.path, 577, 420)
+        IfCondition GreaterEqual(fd, 0) ThenBlock: {
+            SetByte(Cv.msg, 0, 10)
+            SystemCall(1, fd, Cv.msg, 1)
+            SystemCall(3, fd)
+        }
+        PrintMessage("cabinet\n")
+        Load_Swap("arcade_app.x", 0, 0)
+        Cv_MusicPub()
+    }
+}
+
+Function.Cv_PauseDraw {
+    Body: {
+        x = 0
+        y = 0
+        w = 0
+        h = 0
+        ink = 0
+        dim = 0
+        hot = 0
+        bg = 0
+        sel = 0
+        i = 0
+        n = 0
+        px = 0
+        py = 0
+        off = 0
+        IfCondition EqualTo(Cv.pause, 0) ThenBlock: { ReturnValue(0) }
+        w = 480
+        h = 230
+        IfCondition EqualTo(Cv.cab, 1) ThenBlock: { h = 258 }
+        IfCondition GreaterThan(w, Subtract(FB.width, 16)) ThenBlock: {
+            w = Subtract(FB.width, 16)
+        }
+        IfCondition LessThan(w, 200) ThenBlock: { w = 200 }
+        x = Subtract(FB.width, w)
+        x = Divide(x, 2)
+        y = Subtract(FB.height, h)
+        y = Divide(y, 2)
+        IfCondition LessThan(x, 0) ThenBlock: { x = 0 }
+        IfCondition LessThan(y, 24) ThenBlock: { y = 24 }
+        bg = FB_RGB(16, 22, 36)
+        ink = FB_RGB(232, 220, 190)
+        hot = FB_RGB(80, 220, 255)
+        dim = FB_RGB(70, 78, 96)
+        sel = FB_RGB(40, 52, 72)
+        FB_FillRectFast(x, y, w, h, bg)
+        FB_Rect(x, y, w, h, ink)
+        FB_DrawStringScaled(Add(x, 16), Add(y, 16), "Paused", ink, Subtract(0, 1), 2)
+        IfCondition EqualTo(Cv.vrow, 0) ThenBlock: {
+            FB_FillRectFast(Add(x, 8), Add(y, 58), Subtract(w, 16), 36, sel)
+        }
+        ElseBlock: {
+            FB_FillRectFast(Add(x, 8), Add(y, 102), Subtract(w, 16), 36, sel)
+        }
+        FB_DrawStringScaled(Add(x, 16), Add(y, 66), "Music", ink, Subtract(0, 1), 1)
+        FB_DrawStringScaled(Add(x, 16), Add(y, 110), "Effects", ink, Subtract(0, 1), 1)
+        off = Cv_PutN(Cv.msg, 0, Cv.vm)
+        SetByte(Cv.msg, off, 0)
+        FB_DrawStringScaled(Add(x, 110), Add(y, 66), Cv.msg, ink, Subtract(0, 1), 1)
+        off = Cv_PutN(Cv.msg, 0, Cv.vs)
+        SetByte(Cv.msg, off, 0)
+        FB_DrawStringScaled(Add(x, 110), Add(y, 110), Cv.msg, ink, Subtract(0, 1), 1)
+        i = 0
+        WhileLoop LessThan(i, 10) {
+            px = Add(x, 150)
+            px = Add(px, Multiply(i, 18))
+            py = Add(y, 66)
+            n = dim
+            IfCondition LessThan(i, Cv.vm) ThenBlock: { n = hot }
+            FB_FillRectFast(px, py, 14, 14, n)
+            py = Add(y, 110)
+            n = dim
+            IfCondition LessThan(i, Cv.vs) ThenBlock: { n = hot }
+            FB_FillRectFast(px, py, 14, 14, n)
+            i = Add(i, 1)
+        }
+        FB_DrawStringScaled(Add(x, 16), Add(y, 160), "Up and down pick. Left and right change.", ink, Subtract(0, 1), 1)
+        IfCondition EqualTo(Cv.cab, 1) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 16), Add(y, 184), "P resumes. Enter returns to the games.", ink, Subtract(0, 1), 1)
+            FB_DrawStringScaled(Add(x, 16), Add(y, 208), "Esc quits the cabinet.", ink, Subtract(0, 1), 1)
+        }
+        ElseBlock: {
+            FB_DrawStringScaled(Add(x, 16), Add(y, 184), "P resumes. Q or Esc leaves.", ink, Subtract(0, 1), 1)
+        }
     }
 }
 
@@ -1295,6 +1774,10 @@ Function.Cv_Fire {
             row = 0
             IfCondition GreaterEqual(y, 0) ThenBlock: { row = Divide(y, t) }
             IfCondition EqualTo(Cv_Solid(col, row), 1) ThenBlock: {
+                x = prev
+                BreakLoop
+            }
+            IfCondition EqualTo(Cv_Ramp(col, row), 1) ThenBlock: {
                 x = prev
                 BreakLoop
             }
@@ -1761,11 +2244,8 @@ Function.Cv_Takeoff {
         hang = 0
         base = 0
         top = 0
-        leap = 0
         walk = Cv.walk
         IfCondition LessThan(walk, 1) ThenBlock: { walk = 1 }
-        leap = Cv.leap
-        IfCondition LessThan(leap, 1) ThenBlock: { leap = 2 }
         IfCondition EqualTo(turbo, 1) ThenBlock: {
             Cv.carry = Multiply(Cv.spd, 1000)
         }
@@ -1778,8 +2258,8 @@ Function.Cv_Takeoff {
             IfCondition LessThan(hang, 0) ThenBlock: { hang = Subtract(0, hang) }
             IfCondition GreaterThan(hang, windf) ThenBlock: { hang = windf }
             base = Multiply(walk, 1000)
-            top = Multiply(walk, leap)
-            top = Multiply(top, 1000)
+            top = Multiply(Cv.spd, 1000)
+            IfCondition LessThan(top, base) ThenBlock: { top = base }
             top = Subtract(top, base)
             top = Multiply(top, hang)
             top = Divide(top, windf)
@@ -1811,6 +2291,7 @@ Function.Cv_Step {
         base = 0
         top = 0
         stun = 0
+        prev = 0
         oc = Cv.hcol
         orow = Cv.hrow
         og = Cv.ground
@@ -1854,7 +2335,16 @@ Function.Cv_Step {
             IfCondition NotEqual(Key.r, 1) ThenBlock: { g = Subtract(0, 1) }
         }
         }
-        IfCondition EqualTo(g, 0) ThenBlock: { Cv.runh = 0 }
+        IfCondition EqualTo(g, 0) ThenBlock: {
+            IfCondition GreaterThan(Cv.runh, 0) ThenBlock: {
+                Cv.runh = Subtract(Cv.runh, 8)
+                IfCondition LessThan(Cv.runh, 0) ThenBlock: { Cv.runh = 0 }
+            }
+            IfCondition LessThan(Cv.runh, 0) ThenBlock: {
+                Cv.runh = Add(Cv.runh, 8)
+                IfCondition GreaterThan(Cv.runh, 0) ThenBlock: { Cv.runh = 0 }
+            }
+        }
         ElseBlock: {
             IfCondition GreaterThan(g, 0) ThenBlock: {
                 IfCondition LessThan(Cv.runh, 0) ThenBlock: { Cv.runh = 0 }
@@ -1884,10 +2374,7 @@ Function.Cv_Step {
         }
         ElseBlock: {
             base = Multiply(walk, 1000)
-            top = Multiply(walk, 2)
-            top = Multiply(top, 1000)
-            term = Multiply(Cv.spd, 1000)
-            IfCondition GreaterThan(top, term) ThenBlock: { top = term }
+            top = Multiply(Cv.spd, 1000)
             IfCondition LessThan(top, base) ThenBlock: { top = base }
             hang = Cv.runh
             IfCondition LessThan(hang, 0) ThenBlock: { hang = Subtract(0, hang) }
@@ -2034,9 +2521,11 @@ Function.Cv_Step {
                 Cv.gun = 8
             }
         }
+        prev = Cv.hy
         Cv_MoveX()
         Cv_MoveY()
         Cv_Probe()
+        Cv_SlopeSnap(prev)
         IfCondition EqualTo(og, 0) ThenBlock: {
             IfCondition EqualTo(Cv.ground, 1) ThenBlock: { Cv_Noise(15) }
         }

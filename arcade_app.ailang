@@ -44,7 +44,7 @@ Function.DebugLog_Push {
 SubRoutine.Main {
     PrintMessage("arcade: kernel /dev/shm/arcade_app (playfield = window)\n")
     Ipc_Ensure()
-    Arena_Init()
+    Load_Boot()
     Data_Boot()
     Sfx_Init()
     Ipc_PollSize()

@@ -172,18 +172,21 @@ static void bgm_next(void) {
 }
 
 static void bgm_title(void) {
+    if (bgm_loaded && music_mode == 2) return;
     if (title_file[0]) bgm_play_file(title_file, 1, 2);
     else bgm_next();
 }
 
 /* Mode 5. The select menu loops the lobby track. */
 static void bgm_lobby(void) {
+    if (bgm_loaded && music_mode == 5) return;
     if (lobby_file[0]) bgm_play_file(lobby_file, 1, 5);
     else if (title_file[0]) bgm_play_file(title_file, 1, 2);
     else bgm_next();
 }
 
 static void bgm_queen(void) {
+    if (bgm_loaded && music_mode == 3) return;
     if (queen_file[0]) bgm_play_file(queen_file, 1, 3);
     else bgm_next();
 }
@@ -251,29 +254,54 @@ void arcade_audio_play(int code) {
     ma_engine_play_sound(&engine, clip[code], g);
 }
 
-void arcade_audio_set_vol(int music10, int sfx10) {
+static int last_hold;
+static int last_full = -1;
+
+static void apply_vol(int music10, int sfx10, int full) {
     if (music10 < 0) music10 = 0;
     if (music10 > 10) music10 = 10;
     if (sfx10 < 0) sfx10 = 0;
     if (sfx10 > 10) sfx10 = 10;
-    vol_music = (music10 / 10.0f) * 0.50f;
-    vol_sfx = (sfx10 / 10.0f) * 0.80f;
+    if (full) {
+        vol_music = music10 / 10.0f;
+        vol_sfx = sfx10 / 10.0f;
+    } else {
+        vol_music = (music10 / 10.0f) * 0.50f;
+        vol_sfx = (sfx10 / 10.0f) * 0.80f;
+    }
     if (bgm_loaded) ma_sound_set_volume(&bgm, vol_music);
     if (grp_ok) ma_sound_group_set_volume(&grp_sfx, vol_sfx);
+}
+
+void arcade_audio_set_vol(int music10, int sfx10) {
+    apply_vol(music10, sfx10, 0);
 }
 
 void arcade_audio_poll_vol(const char *vol_path) {
     if (!vol_path) return;
     FILE *f = fopen(vol_path, "r");
     if (!f) return;
-    int m = 7, s = 8;
-    int n = fscanf(f, "%d %d", &m, &s);
+    int m = 7, s = 8, hold = 0;
+    int n = fscanf(f, "%d %d %d", &m, &s, &hold);
     fclose(f);
-    if (n != 2) return;
-    if (m == last_mv && s == last_sv) return;
-    last_mv = m;
-    last_sv = s;
-    arcade_audio_set_vol(m, s);
+    if (n < 2) return;
+    /* Circuit writes a third number. 1 holds the track without unloading it. */
+    /* A third number is Circuit's scale, including when it shares the cabinet directory. */
+    int full = (n >= 3) || (strstr(vol_path, "/circuit/") != NULL);
+    if (m != last_mv || s != last_sv || full != last_full) {
+        last_mv = m;
+        last_sv = s;
+        last_full = full ? 1 : 0;
+        apply_vol(m, s, full);
+    }
+    if (n < 3) hold = 0;
+    if (hold != last_hold) {
+        last_hold = hold ? 1 : 0;
+        if (bgm_loaded) {
+            if (last_hold) ma_sound_stop(&bgm);
+            else ma_sound_start(&bgm);
+        }
+    }
 }
 
 /* Editor writes "<gen> <path>" into <shm>/preview.txt. One gen plays once. */
@@ -358,16 +386,30 @@ static void bgm_play_path(const char *path) {
     }
     ma_sound_set_volume(&bgm, vol_music);
     ma_sound_set_looping(&bgm, MA_TRUE);
-    ma_sound_start(&bgm);
     bgm_loaded = 1;
+    if (!last_hold) ma_sound_start(&bgm);
     music_mode = 6;
     snprintf(level_music, sizeof level_music, "%s", path);
     fprintf(stderr, "arcade audio: bgm %s\n", path);
 }
 
-/* Circuit writes one path, or a blank line for silence. */
-static void poll_music(void) {
-    const char *p = "/dev/shm/circuit/music.txt";
+static int sibling_path(const char *sfx_bin, const char *name, char *out, size_t cap) {
+    if (!sfx_bin || !name || !out || cap < 8) return 0;
+    const char *slash = strrchr(sfx_bin, '/');
+    size_t dirn = slash ? (size_t)(slash - sfx_bin) : 0;
+    size_t namelen = strlen(name);
+    if (dirn + 1 + namelen + 1 > cap) return 0;
+    if (dirn) memcpy(out, sfx_bin, dirn);
+    out[dirn] = '/';
+    memcpy(out + dirn + 1, name, namelen + 1);
+    return 1;
+}
+
+/* Circuit writes one path, or a blank line for silence, beside sfx.bin. */
+static void poll_music(const char *sfx_bin) {
+    char pathbuf[600];
+    if (!sibling_path(sfx_bin, "music.txt", pathbuf, sizeof pathbuf)) return;
+    const char *p = pathbuf;
     struct stat st;
     if (stat(p, &st) != 0) return;
     if (mus_seen && st.st_mtime == mus_m && st.st_size == mus_sz) return;
@@ -396,8 +438,10 @@ static void poll_music(void) {
     bgm_play_path(line);
 }
 
-static void poll_sfx_map(void) {
-    const char *p = "/dev/shm/circuit/sfx.map";
+static void poll_sfx_map(const char *sfx_bin) {
+    char pathbuf[600];
+    if (!sibling_path(sfx_bin, "sfx.map", pathbuf, sizeof pathbuf)) return;
+    const char *p = pathbuf;
     struct stat st;
     if (stat(p, &st) != 0) return;
     if (map_seen && st.st_mtime == map_m && st.st_size == map_sz) return;
@@ -425,11 +469,26 @@ static void poll_sfx_map(void) {
     fclose(f);
 }
 
+/* The menu writes its theme before the host opens. Keep that one music
+ * code. Shot effects in the same backlog stay quiet. A level track that
+ * poll_music just started is left alone. */
+static int backlog_bgm(const uint8_t *buf, uint32_t w) {
+    uint32_t nlook = w;
+    int bgm = 0;
+    if (nlook > 64) nlook = 64;
+    if (nlook == 0) return 0;
+    for (uint32_t i = w - nlook; i != w; i++) {
+        int c = (int)buf[8 + (i % 64)];
+        if (c >= 8 && c <= 13) bgm = c;
+    }
+    return bgm;
+}
+
 void arcade_audio_poll(const char *sfx_bin) {
     if (!sfx_bin) return;
     poll_preview(sfx_bin);
-    poll_sfx_map();
-    poll_music();
+    poll_sfx_map(sfx_bin);
+    poll_music(sfx_bin);
     int fd = open(sfx_bin, O_RDONLY);
     if (fd < 0) return;
     uint8_t buf[72];
@@ -438,8 +497,11 @@ void arcade_audio_poll(const char *sfx_bin) {
     if (n < 72) return;
     uint32_t w = (uint32_t)le32u(buf);
     if (!primed) {
+        int bgm = 0;
         seen = w;
         primed = 1;
+        if (!(bgm_loaded && music_mode == 6)) bgm = backlog_bgm(buf, w);
+        if (bgm) arcade_audio_play(bgm);
         return;
     }
     uint32_t nnew = w - seen;

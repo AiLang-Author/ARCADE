@@ -6,6 +6,8 @@ attr arc-floor-sheet slip 0 climb 0 goal 0
 attr arc-floor-sheet crumble 0 rkind none
 attr arc-floor-sheet emit none
 attr arc-floor-sheet dir none
+attr arc-floor-sheet check 0
+attr arc-floor-sheet boost 0
 asset brick block assets/circuit/svg/Tiles/brick.svg 1 1 1
 attr brick break 0 grav 0 spring 0
 attr brick reward 0 hurt 0 heal 0
@@ -13,6 +15,8 @@ attr brick slip 0 climb 0 goal 0
 attr brick crumble 0 rkind none
 attr brick emit none
 attr brick dir none
+attr brick check 0
+attr brick boost 0
 asset cable-vine block assets/circuit/svg/Server Farm/cable-vine.svg 1 1 1
 attr cable-vine break 0 grav 0 spring 0
 attr cable-vine reward 0 hurt 0 heal 0
@@ -20,6 +24,8 @@ attr cable-vine slip 0 climb 0 goal 0
 attr cable-vine crumble 0 rkind none
 attr cable-vine emit none
 attr cable-vine dir none
+attr cable-vine check 0
+attr cable-vine boost 0
 asset cargo-crate block assets/circuit/svg/Foundry/cargo-crate.svg 1 1 1
 attr cargo-crate break 0 grav 0 spring 0
 attr cargo-crate reward 0 hurt 0 heal 0
@@ -27,6 +33,8 @@ attr cargo-crate slip 0 climb 0 goal 0
 attr cargo-crate crumble 0 rkind none
 attr cargo-crate emit none
 attr cargo-crate dir none
+attr cargo-crate check 0
+attr cargo-crate boost 0
 asset chain block assets/circuit/svg/Foundry/chain.svg 1 1 1
 attr chain break 0 grav 0 spring 0
 attr chain reward 0 hurt 0 heal 0
@@ -34,6 +42,8 @@ attr chain slip 0 climb 0 goal 0
 attr chain crumble 0 rkind none
 attr chain emit none
 attr chain dir none
+attr chain check 0
+attr chain boost 0
 asset conduit-left block assets/circuit/svg/Tiles/conduit-left.svg 1 1 1
 attr conduit-left break 0 grav 0 spring 0
 attr conduit-left reward 0 hurt 0 heal 0
@@ -41,6 +51,8 @@ attr conduit-left slip 0 climb 0 goal 0
 attr conduit-left crumble 0 rkind none
 attr conduit-left emit none
 attr conduit-left dir none
+attr conduit-left check 0
+attr conduit-left boost 0
 asset conduit-right block assets/circuit/svg/Tiles/conduit-right.svg 1 1 1
 attr conduit-right break 0 grav 0 spring 0
 attr conduit-right reward 0 hurt 0 heal 0
@@ -48,6 +60,8 @@ attr conduit-right slip 0 climb 0 goal 0
 attr conduit-right crumble 0 rkind none
 attr conduit-right emit none
 attr conduit-right dir none
+attr conduit-right check 0
+attr conduit-right boost 0
 asset conduit-top-left block assets/circuit/svg/Tiles/conduit-top-left.svg 1 1 1
 attr conduit-top-left break 0 grav 0 spring 0
 attr conduit-top-left reward 0 hurt 0 heal 0
@@ -55,6 +69,8 @@ attr conduit-top-left slip 0 climb 0 goal 0
 attr conduit-top-left crumble 0 rkind none
 attr conduit-top-left emit none
 attr conduit-top-left dir none
+attr conduit-top-left check 0
+attr conduit-top-left boost 0
 asset conduit-top-right block assets/circuit/svg/Tiles/conduit-top-right.svg 1 1 1
 attr conduit-top-right break 0 grav 0 spring 0
 attr conduit-top-right reward 0 hurt 0 heal 0
@@ -62,6 +78,8 @@ attr conduit-top-right slip 0 climb 0 goal 0
 attr conduit-top-right crumble 0 rkind none
 attr conduit-top-right emit none
 attr conduit-top-right dir none
+attr conduit-top-right check 0
+attr conduit-top-right boost 0
 asset conveyor-sheet block assets/circuit/svg/Tiles/conveyor-sheet.svg 1 1 4
 attr conveyor-sheet break 0 grav 0 spring 0
 attr conveyor-sheet reward 0 hurt 0 heal 0
@@ -69,6 +87,8 @@ attr conveyor-sheet slip 0 climb 0 goal 0
 attr conveyor-sheet crumble 0 rkind none
 attr conveyor-sheet emit none
 attr conveyor-sheet dir none
+attr conveyor-sheet check 0
+attr conveyor-sheet boost 0
 asset cooling-vent-sheet block assets/circuit/svg/Server Farm/cooling-vent-sheet.svg 1 1 4
 attr cooling-vent-sheet break 0 grav 0 spring 0
 attr cooling-vent-sheet reward 0 hurt 0 heal 0
@@ -76,6 +96,8 @@ attr cooling-vent-sheet slip 0 climb 0 goal 0
 attr cooling-vent-sheet crumble 0 rkind none
 attr cooling-vent-sheet emit none
 attr cooling-vent-sheet dir none
+attr cooling-vent-sheet check 0
+attr cooling-vent-sheet boost 0
 asset data-block-sheet block assets/circuit/svg/Tiles/data-block-sheet.svg 1 1 4
 attr data-block-sheet break 0 grav 0 spring 0
 attr data-block-sheet reward 0 hurt 0 heal 0
@@ -83,6 +105,8 @@ attr data-block-sheet slip 0 climb 0 goal 0
 attr data-block-sheet crumble 0 rkind none
 attr data-block-sheet emit none
 attr data-block-sheet dir none
+attr data-block-sheet check 0
+attr data-block-sheet boost 0
 asset data-block-spent block assets/circuit/svg/Tiles/data-block-spent.svg 1 1 1
 attr data-block-spent break 0 grav 0 spring 0
 attr data-block-spent reward 0 hurt 0 heal 0
@@ -90,6 +114,8 @@ attr data-block-spent slip 0 climb 0 goal 0
 attr data-block-spent crumble 0 rkind none
 attr data-block-spent emit none
 attr data-block-spent dir none
+attr data-block-spent check 0
+attr data-block-spent boost 0
 asset data-bridge-sheet block assets/circuit/svg/Server Farm/data-bridge-sheet.svg 1 1 4
 attr data-bridge-sheet break 0 grav 0 spring 0
 attr data-bridge-sheet reward 0 hurt 0 heal 0
@@ -97,6 +123,8 @@ attr data-bridge-sheet slip 0 climb 0 goal 0
 attr data-bridge-sheet crumble 0 rkind none
 attr data-bridge-sheet emit none
 attr data-bridge-sheet dir none
+attr data-bridge-sheet check 0
+attr data-bridge-sheet boost 0
 asset firewall-sheet block assets/circuit/svg/Server Farm/firewall-sheet.svg 1 1 2
 attr firewall-sheet break 0 grav 0 spring 0
 attr firewall-sheet reward 0 hurt 0 heal 0
@@ -104,6 +132,8 @@ attr firewall-sheet slip 0 climb 0 goal 0
 attr firewall-sheet crumble 0 rkind none
 attr firewall-sheet emit none
 attr firewall-sheet dir none
+attr firewall-sheet check 0
+attr firewall-sheet boost 0
 asset foundry-fill block assets/circuit/svg/Foundry/foundry-fill.svg 1 1 1
 attr foundry-fill break 0 grav 0 spring 0
 attr foundry-fill reward 0 hurt 0 heal 0
@@ -111,6 +141,8 @@ attr foundry-fill slip 0 climb 0 goal 0
 attr foundry-fill crumble 0 rkind none
 attr foundry-fill emit none
 attr foundry-fill dir none
+attr foundry-fill check 0
+attr foundry-fill boost 0
 asset foundry-side-left block assets/circuit/svg/Foundry/foundry-side-left.svg 1 1 1
 attr foundry-side-left break 0 grav 0 spring 0
 attr foundry-side-left reward 0 hurt 0 heal 0
@@ -118,6 +150,8 @@ attr foundry-side-left slip 0 climb 0 goal 0
 attr foundry-side-left crumble 0 rkind none
 attr foundry-side-left emit none
 attr foundry-side-left dir none
+attr foundry-side-left check 0
+attr foundry-side-left boost 0
 asset foundry-side-right block assets/circuit/svg/Foundry/foundry-side-right.svg 1 1 1
 attr foundry-side-right break 0 grav 0 spring 0
 attr foundry-side-right reward 0 hurt 0 heal 0
@@ -125,6 +159,8 @@ attr foundry-side-right slip 0 climb 0 goal 0
 attr foundry-side-right crumble 0 rkind none
 attr foundry-side-right emit none
 attr foundry-side-right dir none
+attr foundry-side-right check 0
+attr foundry-side-right boost 0
 asset foundry-top block assets/circuit/svg/Foundry/foundry-top.svg 1 1 1
 attr foundry-top break 0 grav 0 spring 0
 attr foundry-top reward 0 hurt 0 heal 0
@@ -132,6 +168,8 @@ attr foundry-top slip 0 climb 0 goal 0
 attr foundry-top crumble 0 rkind none
 attr foundry-top emit none
 attr foundry-top dir none
+attr foundry-top check 0
+attr foundry-top boost 0
 asset foundry-top-left block assets/circuit/svg/Foundry/foundry-top-left.svg 1 1 1
 attr foundry-top-left break 0 grav 0 spring 0
 attr foundry-top-left reward 0 hurt 0 heal 0
@@ -139,6 +177,8 @@ attr foundry-top-left slip 0 climb 0 goal 0
 attr foundry-top-left crumble 0 rkind none
 attr foundry-top-left emit none
 attr foundry-top-left dir none
+attr foundry-top-left check 0
+attr foundry-top-left boost 0
 asset foundry-top-right block assets/circuit/svg/Foundry/foundry-top-right.svg 1 1 1
 attr foundry-top-right break 0 grav 0 spring 0
 attr foundry-top-right reward 0 hurt 0 heal 0
@@ -146,6 +186,8 @@ attr foundry-top-right slip 0 climb 0 goal 0
 attr foundry-top-right crumble 0 rkind none
 attr foundry-top-right emit none
 attr foundry-top-right dir none
+attr foundry-top-right check 0
+attr foundry-top-right boost 0
 asset girder block assets/circuit/svg/Foundry/girder.svg 1 1 1
 attr girder break 0 grav 0 spring 0
 attr girder reward 0 hurt 0 heal 0
@@ -153,6 +195,8 @@ attr girder slip 0 climb 0 goal 0
 attr girder crumble 0 rkind none
 attr girder emit none
 attr girder dir none
+attr girder check 0
+attr girder boost 0
 asset ground-fill block assets/circuit/svg/Tiles/ground-fill.svg 1 1 1
 attr ground-fill break 0 grav 0 spring 0
 attr ground-fill reward 0 hurt 0 heal 0
@@ -160,6 +204,8 @@ attr ground-fill slip 0 climb 0 goal 0
 attr ground-fill crumble 0 rkind none
 attr ground-fill emit none
 attr ground-fill dir none
+attr ground-fill check 0
+attr ground-fill boost 0
 asset ground-side-left block assets/circuit/svg/Tiles/ground-side-left.svg 1 1 1
 attr ground-side-left break 0 grav 0 spring 0
 attr ground-side-left reward 0 hurt 0 heal 0
@@ -167,6 +213,8 @@ attr ground-side-left slip 0 climb 0 goal 0
 attr ground-side-left crumble 0 rkind none
 attr ground-side-left emit none
 attr ground-side-left dir none
+attr ground-side-left check 0
+attr ground-side-left boost 0
 asset ground-side-right block assets/circuit/svg/Tiles/ground-side-right.svg 1 1 1
 attr ground-side-right break 0 grav 0 spring 0
 attr ground-side-right reward 0 hurt 0 heal 0
@@ -174,6 +222,8 @@ attr ground-side-right slip 0 climb 0 goal 0
 attr ground-side-right crumble 0 rkind none
 attr ground-side-right emit none
 attr ground-side-right dir none
+attr ground-side-right check 0
+attr ground-side-right boost 0
 asset ground-top block assets/circuit/svg/Tiles/ground-top.svg 1 1 1
 attr ground-top break 0 grav 0 spring 0
 attr ground-top reward 0 hurt 0 heal 0
@@ -181,6 +231,8 @@ attr ground-top slip 0 climb 0 goal 0
 attr ground-top crumble 0 rkind none
 attr ground-top emit none
 attr ground-top dir none
+attr ground-top check 0
+attr ground-top boost 0
 asset ground-top-left block assets/circuit/svg/Tiles/ground-top-left.svg 1 1 1
 attr ground-top-left break 0 grav 0 spring 0
 attr ground-top-left reward 0 hurt 0 heal 0
@@ -188,6 +240,8 @@ attr ground-top-left slip 0 climb 0 goal 0
 attr ground-top-left crumble 0 rkind none
 attr ground-top-left emit none
 attr ground-top-left dir none
+attr ground-top-left check 0
+attr ground-top-left boost 0
 asset ground-top-right block assets/circuit/svg/Tiles/ground-top-right.svg 1 1 1
 attr ground-top-right break 0 grav 0 spring 0
 attr ground-top-right reward 0 hurt 0 heal 0
@@ -195,6 +249,8 @@ attr ground-top-right slip 0 climb 0 goal 0
 attr ground-top-right crumble 0 rkind none
 attr ground-top-right emit none
 attr ground-top-right dir none
+attr ground-top-right check 0
+attr ground-top-right boost 0
 asset hard-block block assets/circuit/svg/Tiles/hard-block.svg 1 1 1
 attr hard-block break 0 grav 0 spring 0
 attr hard-block reward 0 hurt 0 heal 0
@@ -202,6 +258,8 @@ attr hard-block slip 0 climb 0 goal 0
 attr hard-block crumble 0 rkind none
 attr hard-block emit none
 attr hard-block dir none
+attr hard-block check 0
+attr hard-block boost 0
 asset jump-pad-sheet block assets/circuit/svg/Tiles/jump-pad-sheet.svg 1 1 2
 attr jump-pad-sheet break 0 grav 0 spring 20
 attr jump-pad-sheet reward 0 hurt 0 heal 0
@@ -209,6 +267,8 @@ attr jump-pad-sheet slip 0 climb 0 goal 0
 attr jump-pad-sheet crumble 0 rkind none
 attr jump-pad-sheet emit none
 attr jump-pad-sheet dir none
+attr jump-pad-sheet check 0
+attr jump-pad-sheet boost 0
 asset ladder block assets/circuit/svg/Tiles/ladder.svg 1 1 1
 attr ladder break 0 grav 0 spring 0
 attr ladder reward 0 hurt 0 heal 0
@@ -216,6 +276,8 @@ attr ladder slip 0 climb 1 goal 0
 attr ladder crumble 0 rkind none
 attr ladder emit none
 attr ladder dir none
+attr ladder check 0
+attr ladder boost 0
 asset ledge-left block assets/circuit/svg/Tiles/ledge-left.svg 1 1 1
 attr ledge-left break 0 grav 0 spring 0
 attr ledge-left reward 0 hurt 0 heal 0
@@ -223,6 +285,8 @@ attr ledge-left slip 0 climb 0 goal 0
 attr ledge-left crumble 0 rkind none
 attr ledge-left emit none
 attr ledge-left dir none
+attr ledge-left check 0
+attr ledge-left boost 0
 asset ledge-mid block assets/circuit/svg/Tiles/ledge-mid.svg 1 1 1
 attr ledge-mid break 0 grav 0 spring 0
 attr ledge-mid reward 0 hurt 0 heal 0
@@ -230,6 +294,8 @@ attr ledge-mid slip 0 climb 0 goal 0
 attr ledge-mid crumble 0 rkind none
 attr ledge-mid emit none
 attr ledge-mid dir none
+attr ledge-mid check 0
+attr ledge-mid boost 0
 asset ledge-right block assets/circuit/svg/Tiles/ledge-right.svg 1 1 1
 attr ledge-right break 0 grav 0 spring 0
 attr ledge-right reward 0 hurt 0 heal 0
@@ -237,6 +303,8 @@ attr ledge-right slip 0 climb 0 goal 0
 attr ledge-right crumble 0 rkind none
 attr ledge-right emit none
 attr ledge-right dir none
+attr ledge-right check 0
+attr ledge-right boost 0
 asset molten-sheet block assets/circuit/svg/Foundry/molten-sheet.svg 1 1 4
 attr molten-sheet break 0 grav 0 spring 0
 attr molten-sheet reward 0 hurt 0 heal 0
@@ -244,6 +312,8 @@ attr molten-sheet slip 0 climb 0 goal 0
 attr molten-sheet crumble 0 rkind none
 attr molten-sheet emit none
 attr molten-sheet dir none
+attr molten-sheet check 0
+attr molten-sheet boost 0
 asset platform-grate block assets/circuit/svg/Tiles/platform-grate.svg 1 1 1
 attr platform-grate break 0 grav 0 spring 0
 attr platform-grate reward 0 hurt 0 heal 0
@@ -251,6 +321,8 @@ attr platform-grate slip 0 climb 0 goal 0
 attr platform-grate crumble 0 rkind none
 attr platform-grate emit none
 attr platform-grate dir none
+attr platform-grate check 0
+attr platform-grate boost 0
 asset server-fill block assets/circuit/svg/Server Farm/server-fill.svg 1 1 1
 attr server-fill break 0 grav 0 spring 0
 attr server-fill reward 0 hurt 0 heal 0
@@ -258,6 +330,8 @@ attr server-fill slip 0 climb 0 goal 0
 attr server-fill crumble 0 rkind none
 attr server-fill emit none
 attr server-fill dir none
+attr server-fill check 0
+attr server-fill boost 0
 asset server-rack-sheet block assets/circuit/svg/Server Farm/server-rack-sheet.svg 1 1 4
 attr server-rack-sheet break 0 grav 0 spring 0
 attr server-rack-sheet reward 0 hurt 0 heal 0
@@ -265,6 +339,8 @@ attr server-rack-sheet slip 0 climb 0 goal 0
 attr server-rack-sheet crumble 0 rkind none
 attr server-rack-sheet emit none
 attr server-rack-sheet dir none
+attr server-rack-sheet check 0
+attr server-rack-sheet boost 0
 asset server-side-left block assets/circuit/svg/Server Farm/server-side-left.svg 1 1 1
 attr server-side-left break 0 grav 0 spring 0
 attr server-side-left reward 0 hurt 0 heal 0
@@ -272,6 +348,8 @@ attr server-side-left slip 0 climb 0 goal 0
 attr server-side-left crumble 0 rkind none
 attr server-side-left emit none
 attr server-side-left dir none
+attr server-side-left check 0
+attr server-side-left boost 0
 asset server-side-right block assets/circuit/svg/Server Farm/server-side-right.svg 1 1 1
 attr server-side-right break 0 grav 0 spring 0
 attr server-side-right reward 0 hurt 0 heal 0
@@ -279,6 +357,8 @@ attr server-side-right slip 0 climb 0 goal 0
 attr server-side-right crumble 0 rkind none
 attr server-side-right emit none
 attr server-side-right dir none
+attr server-side-right check 0
+attr server-side-right boost 0
 asset server-top block assets/circuit/svg/Server Farm/server-top.svg 1 1 1
 attr server-top break 0 grav 0 spring 0
 attr server-top reward 0 hurt 0 heal 0
@@ -286,6 +366,8 @@ attr server-top slip 0 climb 0 goal 0
 attr server-top crumble 0 rkind none
 attr server-top emit none
 attr server-top dir none
+attr server-top check 0
+attr server-top boost 0
 asset server-top-left block assets/circuit/svg/Server Farm/server-top-left.svg 1 1 1
 attr server-top-left break 0 grav 0 spring 0
 attr server-top-left reward 0 hurt 0 heal 0
@@ -293,6 +375,8 @@ attr server-top-left slip 0 climb 0 goal 0
 attr server-top-left crumble 0 rkind none
 attr server-top-left emit none
 attr server-top-left dir none
+attr server-top-left check 0
+attr server-top-left boost 0
 asset server-top-right block assets/circuit/svg/Server Farm/server-top-right.svg 1 1 1
 attr server-top-right break 0 grav 0 spring 0
 attr server-top-right reward 0 hurt 0 heal 0
@@ -300,6 +384,8 @@ attr server-top-right slip 0 climb 0 goal 0
 attr server-top-right crumble 0 rkind none
 attr server-top-right emit none
 attr server-top-right dir none
+attr server-top-right check 0
+attr server-top-right boost 0
 asset slope-down block assets/circuit/svg/Tiles/slope-down.svg 1 1 1
 attr slope-down break 0 grav 0 spring 0
 attr slope-down reward 0 hurt 0 heal 0
@@ -307,6 +393,10 @@ attr slope-down slip 0 climb 0 goal 0
 attr slope-down crumble 0 rkind none
 attr slope-down emit none
 attr slope-down dir none
+attr slope-down check 0
+attr slope-down boost 0
+attr slope-down sleft 8
+attr slope-down sright 0
 asset slope-gentle-down-a block assets/circuit/svg/Tiles/slope-gentle-down-a.svg 1 1 1
 attr slope-gentle-down-a break 0 grav 0 spring 0
 attr slope-gentle-down-a reward 0 hurt 0 heal 0
@@ -314,6 +404,10 @@ attr slope-gentle-down-a slip 0 climb 0 goal 0
 attr slope-gentle-down-a crumble 0 rkind none
 attr slope-gentle-down-a emit none
 attr slope-gentle-down-a dir none
+attr slope-gentle-down-a check 0
+attr slope-gentle-down-a boost 0
+attr slope-gentle-down-a sleft 8
+attr slope-gentle-down-a sright 4
 asset slope-gentle-down-b block assets/circuit/svg/Tiles/slope-gentle-down-b.svg 1 1 1
 attr slope-gentle-down-b break 0 grav 0 spring 0
 attr slope-gentle-down-b reward 0 hurt 0 heal 0
@@ -321,6 +415,10 @@ attr slope-gentle-down-b slip 0 climb 0 goal 0
 attr slope-gentle-down-b crumble 0 rkind none
 attr slope-gentle-down-b emit none
 attr slope-gentle-down-b dir none
+attr slope-gentle-down-b check 0
+attr slope-gentle-down-b boost 0
+attr slope-gentle-down-b sleft 4
+attr slope-gentle-down-b sright 0
 asset slope-gentle-up-a block assets/circuit/svg/Tiles/slope-gentle-up-a.svg 1 1 1
 attr slope-gentle-up-a break 0 grav 0 spring 0
 attr slope-gentle-up-a reward 0 hurt 0 heal 0
@@ -328,6 +426,10 @@ attr slope-gentle-up-a slip 0 climb 0 goal 0
 attr slope-gentle-up-a crumble 0 rkind none
 attr slope-gentle-up-a emit none
 attr slope-gentle-up-a dir none
+attr slope-gentle-up-a check 0
+attr slope-gentle-up-a boost 0
+attr slope-gentle-up-a sleft 0
+attr slope-gentle-up-a sright 4
 asset slope-gentle-up-b block assets/circuit/svg/Tiles/slope-gentle-up-b.svg 1 1 1
 attr slope-gentle-up-b break 0 grav 0 spring 0
 attr slope-gentle-up-b reward 0 hurt 0 heal 0
@@ -335,6 +437,10 @@ attr slope-gentle-up-b slip 0 climb 0 goal 0
 attr slope-gentle-up-b crumble 0 rkind none
 attr slope-gentle-up-b emit none
 attr slope-gentle-up-b dir none
+attr slope-gentle-up-b check 0
+attr slope-gentle-up-b boost 0
+attr slope-gentle-up-b sleft 4
+attr slope-gentle-up-b sright 8
 asset slope-up block assets/circuit/svg/Tiles/slope-up.svg 1 1 1
 attr slope-up break 0 grav 0 spring 0
 attr slope-up reward 0 hurt 0 heal 0
@@ -342,13 +448,19 @@ attr slope-up slip 0 climb 0 goal 0
 attr slope-up crumble 0 rkind none
 attr slope-up emit none
 attr slope-up dir none
+attr slope-up check 0
+attr slope-up boost 0
+attr slope-up sleft 0
+attr slope-up sright 8
 asset arc-beetle-sheet enemy assets/circuit/svg/Enemies/arc-beetle-sheet.svg 1 1 2
 attr arc-beetle-sheet break 0 grav 0 spring 0
 attr arc-beetle-sheet reward 0 hurt 0 heal 0
 attr arc-beetle-sheet slip 0 climb 0 goal 0
 attr arc-beetle-sheet crumble 0 rkind none
 attr arc-beetle-sheet emit none
-attr arc-beetle-sheet hp 0 def 0 off 0
+attr arc-beetle-sheet hp 1 def 0 off 0
+attr arc-beetle-sheet check 0
+attr arc-beetle-sheet boost 0
 behave arc-beetle-sheet motion 5 speed 2 zone 4
 behave arc-beetle-sheet health 1 stomp 1 ledge 1
 asset custodian-charge-sheet enemy assets/circuit/svg/Boss/custodian-charge-sheet.svg 1 1 2
@@ -358,6 +470,8 @@ attr custodian-charge-sheet slip 0 climb 0 goal 0
 attr custodian-charge-sheet crumble 0 rkind none
 attr custodian-charge-sheet emit none
 attr custodian-charge-sheet hp 0 def 0 off 0
+attr custodian-charge-sheet check 0
+attr custodian-charge-sheet boost 0
 behave custodian-charge-sheet motion 0 speed 0 zone 0
 behave custodian-charge-sheet health 0 stomp 0 ledge 0
 asset custodian-hurt enemy assets/circuit/svg/Boss/custodian-hurt.svg 1 1 1
@@ -367,6 +481,8 @@ attr custodian-hurt slip 0 climb 0 goal 0
 attr custodian-hurt crumble 0 rkind none
 attr custodian-hurt emit none
 attr custodian-hurt hp 0 def 0 off 0
+attr custodian-hurt check 0
+attr custodian-hurt boost 0
 behave custodian-hurt motion 0 speed 0 zone 0
 behave custodian-hurt health 0 stomp 0 ledge 0
 asset custodian-idle-sheet enemy assets/circuit/svg/Boss/custodian-idle-sheet.svg 1 1 4
@@ -376,6 +492,8 @@ attr custodian-idle-sheet slip 0 climb 0 goal 0
 attr custodian-idle-sheet crumble 0 rkind none
 attr custodian-idle-sheet emit none
 attr custodian-idle-sheet hp 0 def 0 off 0
+attr custodian-idle-sheet check 0
+attr custodian-idle-sheet boost 0
 behave custodian-idle-sheet motion 0 speed 0 zone 0
 behave custodian-idle-sheet health 0 stomp 0 ledge 0
 asset custodian-wreck enemy assets/circuit/svg/Boss/custodian-wreck.svg 1 1 1
@@ -385,6 +503,8 @@ attr custodian-wreck slip 0 climb 0 goal 0
 attr custodian-wreck crumble 0 rkind none
 attr custodian-wreck emit none
 attr custodian-wreck hp 0 def 0 off 0
+attr custodian-wreck check 0
+attr custodian-wreck boost 0
 behave custodian-wreck motion 0 speed 0 zone 0
 behave custodian-wreck health 0 stomp 0 ledge 0
 asset glitch-shot-sheet enemy assets/circuit/svg/Boss/glitch-shot-sheet.svg 1 1 2
@@ -394,6 +514,8 @@ attr glitch-shot-sheet slip 0 climb 0 goal 0
 attr glitch-shot-sheet crumble 0 rkind none
 attr glitch-shot-sheet emit none
 attr glitch-shot-sheet hp 0 def 0 off 0
+attr glitch-shot-sheet check 0
+attr glitch-shot-sheet boost 0
 behave glitch-shot-sheet motion 0 speed 0 zone 0
 behave glitch-shot-sheet health 0 stomp 0 ledge 0
 asset mainframe-hurt enemy assets/circuit/svg/Boss/mainframe-hurt.svg 1 1 1
@@ -403,6 +525,8 @@ attr mainframe-hurt slip 0 climb 0 goal 0
 attr mainframe-hurt crumble 0 rkind none
 attr mainframe-hurt emit none
 attr mainframe-hurt hp 0 def 0 off 0
+attr mainframe-hurt check 0
+attr mainframe-hurt boost 0
 behave mainframe-hurt motion 0 speed 0 zone 0
 behave mainframe-hurt health 0 stomp 0 ledge 0
 asset mainframe-idle-sheet enemy assets/circuit/svg/Boss/mainframe-idle-sheet.svg 1 1 8
@@ -412,6 +536,8 @@ attr mainframe-idle-sheet slip 0 climb 0 goal 0
 attr mainframe-idle-sheet crumble 0 rkind none
 attr mainframe-idle-sheet emit none
 attr mainframe-idle-sheet hp 0 def 0 off 0
+attr mainframe-idle-sheet check 0
+attr mainframe-idle-sheet boost 0
 behave mainframe-idle-sheet motion 0 speed 0 zone 0
 behave mainframe-idle-sheet health 0 stomp 0 ledge 0
 asset mainframe-tell-sheet enemy assets/circuit/svg/Boss/mainframe-tell-sheet.svg 1 1 2
@@ -421,6 +547,8 @@ attr mainframe-tell-sheet slip 0 climb 0 goal 0
 attr mainframe-tell-sheet crumble 0 rkind none
 attr mainframe-tell-sheet emit none
 attr mainframe-tell-sheet hp 0 def 0 off 0
+attr mainframe-tell-sheet check 0
+attr mainframe-tell-sheet boost 0
 behave mainframe-tell-sheet motion 0 speed 0 zone 0
 behave mainframe-tell-sheet health 0 stomp 0 ledge 0
 asset mainframe-wreck enemy assets/circuit/svg/Boss/mainframe-wreck.svg 1 1 1
@@ -430,6 +558,8 @@ attr mainframe-wreck slip 0 climb 0 goal 0
 attr mainframe-wreck crumble 0 rkind none
 attr mainframe-wreck emit none
 attr mainframe-wreck hp 0 def 0 off 0
+attr mainframe-wreck check 0
+attr mainframe-wreck boost 0
 behave mainframe-wreck motion 0 speed 0 zone 0
 behave mainframe-wreck health 0 stomp 0 ledge 0
 asset molten-blob-sheet enemy assets/circuit/svg/Boss/molten-blob-sheet.svg 1 1 2
@@ -439,6 +569,8 @@ attr molten-blob-sheet slip 0 climb 0 goal 0
 attr molten-blob-sheet crumble 0 rkind none
 attr molten-blob-sheet emit none
 attr molten-blob-sheet hp 0 def 0 off 0
+attr molten-blob-sheet check 0
+attr molten-blob-sheet boost 0
 behave molten-blob-sheet motion 0 speed 0 zone 0
 behave molten-blob-sheet health 0 stomp 0 ledge 0
 asset packet-sheet enemy assets/circuit/svg/Enemies/packet-sheet.svg 1 1 4
@@ -448,6 +580,8 @@ attr packet-sheet slip 0 climb 0 goal 0
 attr packet-sheet crumble 0 rkind none
 attr packet-sheet emit none
 attr packet-sheet hp 0 def 0 off 0
+attr packet-sheet check 0
+attr packet-sheet boost 0
 behave packet-sheet motion 0 speed 0 zone 0
 behave packet-sheet health 0 stomp 0 ledge 0
 asset scrubbit-sheet enemy assets/circuit/svg/Enemies/scrubbit-sheet.svg 1 1 4
@@ -456,7 +590,9 @@ attr scrubbit-sheet reward 0 hurt 0 heal 0
 attr scrubbit-sheet slip 0 climb 0 goal 0
 attr scrubbit-sheet crumble 0 rkind none
 attr scrubbit-sheet emit none
-attr scrubbit-sheet hp 0 def 0 off 0
+attr scrubbit-sheet hp 1 def 0 off 0
+attr scrubbit-sheet check 0
+attr scrubbit-sheet boost 0
 behave scrubbit-sheet motion 4 speed 2 zone 3
 behave scrubbit-sheet health 1 stomp 1 ledge 1
 asset sentry-sheet enemy assets/circuit/svg/Enemies/sentry-sheet.svg 1 1 4
@@ -466,6 +602,8 @@ attr sentry-sheet slip 0 climb 0 goal 0
 attr sentry-sheet crumble 0 rkind none
 attr sentry-sheet emit none
 attr sentry-sheet hp 0 def 0 off 0
+attr sentry-sheet check 0
+attr sentry-sheet boost 0
 behave sentry-sheet motion 0 speed 0 zone 0
 behave sentry-sheet health 0 stomp 0 ledge 0
 asset smeltbot-sheet enemy assets/circuit/svg/Enemies/smeltbot-sheet.svg 1 1 2
@@ -475,6 +613,8 @@ attr smeltbot-sheet slip 0 climb 0 goal 0
 attr smeltbot-sheet crumble 0 rkind none
 attr smeltbot-sheet emit none
 attr smeltbot-sheet hp 0 def 0 off 0
+attr smeltbot-sheet check 0
+attr smeltbot-sheet boost 0
 behave smeltbot-sheet motion 0 speed 0 zone 0
 behave smeltbot-sheet health 0 stomp 0 ledge 0
 asset smelter-hurt enemy assets/circuit/svg/Boss/smelter-hurt.svg 1 1 1
@@ -484,6 +624,8 @@ attr smelter-hurt slip 0 climb 0 goal 0
 attr smelter-hurt crumble 0 rkind none
 attr smelter-hurt emit none
 attr smelter-hurt hp 0 def 0 off 0
+attr smelter-hurt check 0
+attr smelter-hurt boost 0
 behave smelter-hurt motion 0 speed 0 zone 0
 behave smelter-hurt health 0 stomp 0 ledge 0
 asset smelter-idle-sheet enemy assets/circuit/svg/Boss/smelter-idle-sheet.svg 1 1 4
@@ -493,6 +635,8 @@ attr smelter-idle-sheet slip 0 climb 0 goal 0
 attr smelter-idle-sheet crumble 0 rkind none
 attr smelter-idle-sheet emit none
 attr smelter-idle-sheet hp 0 def 0 off 0
+attr smelter-idle-sheet check 0
+attr smelter-idle-sheet boost 0
 behave smelter-idle-sheet motion 0 speed 0 zone 0
 behave smelter-idle-sheet health 0 stomp 0 ledge 0
 asset smelter-pour-sheet enemy assets/circuit/svg/Boss/smelter-pour-sheet.svg 1 1 2
@@ -502,6 +646,8 @@ attr smelter-pour-sheet slip 0 climb 0 goal 0
 attr smelter-pour-sheet crumble 0 rkind none
 attr smelter-pour-sheet emit none
 attr smelter-pour-sheet hp 0 def 0 off 0
+attr smelter-pour-sheet check 0
+attr smelter-pour-sheet boost 0
 behave smelter-pour-sheet motion 0 speed 0 zone 0
 behave smelter-pour-sheet health 0 stomp 0 ledge 0
 asset smelter-wreck enemy assets/circuit/svg/Boss/smelter-wreck.svg 1 1 1
@@ -511,6 +657,8 @@ attr smelter-wreck slip 0 climb 0 goal 0
 attr smelter-wreck crumble 0 rkind none
 attr smelter-wreck emit none
 attr smelter-wreck hp 0 def 0 off 0
+attr smelter-wreck check 0
+attr smelter-wreck boost 0
 behave smelter-wreck motion 0 speed 0 zone 0
 behave smelter-wreck health 0 stomp 0 ledge 0
 asset spark-shot-sheet enemy assets/circuit/svg/Enemies/spark-shot-sheet.svg 1 1 2
@@ -520,6 +668,8 @@ attr spark-shot-sheet slip 0 climb 0 goal 0
 attr spark-shot-sheet crumble 0 rkind none
 attr spark-shot-sheet emit none
 attr spark-shot-sheet hp 0 def 0 off 0
+attr spark-shot-sheet check 0
+attr spark-shot-sheet boost 0
 behave spark-shot-sheet motion 0 speed 0 zone 0
 behave spark-shot-sheet health 0 stomp 0 ledge 0
 asset spoolbot-sheet enemy assets/circuit/svg/Enemies/spoolbot-sheet.svg 1 1 2
@@ -529,6 +679,8 @@ attr spoolbot-sheet slip 0 climb 0 goal 0
 attr spoolbot-sheet crumble 0 rkind none
 attr spoolbot-sheet emit none
 attr spoolbot-sheet hp 0 def 0 off 0
+attr spoolbot-sheet check 0
+attr spoolbot-sheet boost 0
 behave spoolbot-sheet motion 0 speed 0 zone 0
 behave spoolbot-sheet health 0 stomp 0 ledge 0
 asset sweepr-sheet enemy assets/circuit/svg/Enemies/sweepr-sheet.svg 1 1 4
@@ -537,7 +689,9 @@ attr sweepr-sheet reward 0 hurt 0 heal 0
 attr sweepr-sheet slip 0 climb 0 goal 0
 attr sweepr-sheet crumble 0 rkind none
 attr sweepr-sheet emit none
-attr sweepr-sheet hp 0 def 0 off 0
+attr sweepr-sheet hp 1 def 0 off 0
+attr sweepr-sheet check 0
+attr sweepr-sheet boost 0
 behave sweepr-sheet motion 1 speed 2 zone 5
 behave sweepr-sheet health 1 stomp 1 ledge 1
 asset zapfly-sheet enemy assets/circuit/svg/Enemies/zapfly-sheet.svg 1 1 2
@@ -546,7 +700,9 @@ attr zapfly-sheet reward 0 hurt 0 heal 0
 attr zapfly-sheet slip 0 climb 0 goal 0
 attr zapfly-sheet crumble 0 rkind none
 attr zapfly-sheet emit none
-attr zapfly-sheet hp 0 def 0 off 0
+attr zapfly-sheet hp 1 def 0 off 0
+attr zapfly-sheet check 0
+attr zapfly-sheet boost 0
 behave zapfly-sheet motion 3 speed 2 zone 4
 behave zapfly-sheet health 1 stomp 0 ledge 0
 asset bit-sheet object assets/circuit/svg/Items/bit-sheet.svg 1 1 4
@@ -556,6 +712,8 @@ attr bit-sheet slip 0 climb 0 goal 0
 attr bit-sheet crumble 0 rkind points
 attr bit-sheet emit none
 attr bit-sheet dir none
+attr bit-sheet check 0
+attr bit-sheet boost 0
 behave bit-sheet motion 0 speed 0 zone 0
 behave bit-sheet health 0 stomp 0 ledge 0
 asset checkpoint-beacon-sheet object assets/circuit/svg/Items/checkpoint-beacon-sheet.svg 1 1 2
@@ -566,6 +724,7 @@ attr checkpoint-beacon-sheet crumble 0 rkind none
 attr checkpoint-beacon-sheet emit none
 attr checkpoint-beacon-sheet dir none
 attr checkpoint-beacon-sheet check 1
+attr checkpoint-beacon-sheet boost 0
 behave checkpoint-beacon-sheet motion 0 speed 0 zone 0
 behave checkpoint-beacon-sheet health 0 stomp 0 ledge 0
 asset extra-life object assets/circuit/svg/Items/extra-life.svg 1 1 1
@@ -575,6 +734,8 @@ attr extra-life slip 0 climb 0 goal 0
 attr extra-life crumble 0 rkind 1up
 attr extra-life emit none
 attr extra-life dir none
+attr extra-life check 0
+attr extra-life boost 0
 behave extra-life motion 0 speed 0 zone 0
 behave extra-life health 0 stomp 0 ledge 0
 asset goal-gate-sheet object assets/circuit/svg/Items/goal-gate-sheet.svg 1 1 4
@@ -584,6 +745,8 @@ attr goal-gate-sheet slip 0 climb 0 goal 1
 attr goal-gate-sheet crumble 0 rkind none
 attr goal-gate-sheet emit none
 attr goal-gate-sheet dir none
+attr goal-gate-sheet check 0
+attr goal-gate-sheet boost 0
 behave goal-gate-sheet motion 0 speed 0 zone 0
 behave goal-gate-sheet health 0 stomp 0 ledge 0
 asset overclock-chip object assets/circuit/svg/Items/overclock-chip.svg 1 1 1
@@ -593,6 +756,7 @@ attr overclock-chip slip 0 climb 0 goal 0
 attr overclock-chip crumble 0 rkind none
 attr overclock-chip emit none
 attr overclock-chip dir none
+attr overclock-chip check 0
 attr overclock-chip boost 300
 behave overclock-chip motion 0 speed 0 zone 0
 behave overclock-chip health 0 stomp 0 ledge 0
@@ -603,6 +767,8 @@ attr surge-core-sheet slip 0 climb 0 goal 0
 attr surge-core-sheet crumble 0 rkind none
 attr surge-core-sheet emit none
 attr surge-core-sheet dir none
+attr surge-core-sheet check 0
+attr surge-core-sheet boost 0
 behave surge-core-sheet motion 0 speed 0 zone 0
 behave surge-core-sheet health 0 stomp 0 ledge 0
 asset hero-climb-sheet entity assets/circuit/svg/Hero/hero-climb-sheet.svg 1 1 2
@@ -611,96 +777,128 @@ attr hero-climb-sheet reward 0 hurt 0 heal 0
 attr hero-climb-sheet slip 0 climb 0 goal 0
 attr hero-climb-sheet crumble 0 rkind none
 attr hero-climb-sheet emit none
+attr hero-climb-sheet check 0
+attr hero-climb-sheet boost 0
 asset hero-cobalt-idle-sheet entity assets/circuit/svg/Hero/hero-cobalt-idle-sheet.svg 1 1 4
 attr hero-cobalt-idle-sheet break 0 grav 0 spring 0
 attr hero-cobalt-idle-sheet reward 0 hurt 0 heal 0
 attr hero-cobalt-idle-sheet slip 0 climb 0 goal 0
 attr hero-cobalt-idle-sheet crumble 0 rkind none
 attr hero-cobalt-idle-sheet emit none
+attr hero-cobalt-idle-sheet check 0
+attr hero-cobalt-idle-sheet boost 0
 asset hero-cobalt-run-sheet entity assets/circuit/svg/Hero/hero-cobalt-run-sheet.svg 1 1 4
 attr hero-cobalt-run-sheet break 0 grav 0 spring 0
 attr hero-cobalt-run-sheet reward 0 hurt 0 heal 0
 attr hero-cobalt-run-sheet slip 0 climb 0 goal 0
 attr hero-cobalt-run-sheet crumble 0 rkind none
 attr hero-cobalt-run-sheet emit none
+attr hero-cobalt-run-sheet check 0
+attr hero-cobalt-run-sheet boost 0
 asset hero-derez-sheet entity assets/circuit/svg/Hero/hero-derez-sheet.svg 1 1 6
 attr hero-derez-sheet break 0 grav 0 spring 0
 attr hero-derez-sheet reward 0 hurt 0 heal 0
 attr hero-derez-sheet slip 0 climb 0 goal 0
 attr hero-derez-sheet crumble 0 rkind none
 attr hero-derez-sheet emit none
+attr hero-derez-sheet check 0
+attr hero-derez-sheet boost 0
 asset hero-frost-idle-sheet entity assets/circuit/svg/Hero/hero-frost-idle-sheet.svg 1 1 4
 attr hero-frost-idle-sheet break 0 grav 0 spring 0
 attr hero-frost-idle-sheet reward 0 hurt 0 heal 0
 attr hero-frost-idle-sheet slip 0 climb 0 goal 0
 attr hero-frost-idle-sheet crumble 0 rkind none
 attr hero-frost-idle-sheet emit none
+attr hero-frost-idle-sheet check 0
+attr hero-frost-idle-sheet boost 0
 asset hero-frost-run-sheet entity assets/circuit/svg/Hero/hero-frost-run-sheet.svg 1 1 4
 attr hero-frost-run-sheet break 0 grav 0 spring 0
 attr hero-frost-run-sheet reward 0 hurt 0 heal 0
 attr hero-frost-run-sheet slip 0 climb 0 goal 0
 attr hero-frost-run-sheet crumble 0 rkind none
 attr hero-frost-run-sheet emit none
+attr hero-frost-run-sheet check 0
+attr hero-frost-run-sheet boost 0
 asset hero-hurt entity assets/circuit/svg/Hero/hero-hurt.svg 1 1 1
 attr hero-hurt break 0 grav 0 spring 0
 attr hero-hurt reward 0 hurt 0 heal 0
 attr hero-hurt slip 0 climb 0 goal 0
 attr hero-hurt crumble 0 rkind none
 attr hero-hurt emit none
+attr hero-hurt check 0
+attr hero-hurt boost 0
 asset hero-idle entity assets/circuit/svg/Hero/hero-idle.svg 1 1 1
 attr hero-idle break 0 grav 0 spring 0
 attr hero-idle reward 0 hurt 0 heal 0
 attr hero-idle slip 0 climb 0 goal 0
 attr hero-idle crumble 0 rkind none
 attr hero-idle emit none
+attr hero-idle check 0
+attr hero-idle boost 0
 asset hero-idle-sheet entity assets/circuit/svg/Hero/hero-idle-sheet.svg 1 1 4
 attr hero-idle-sheet break 0 grav 0 spring 0
 attr hero-idle-sheet reward 0 hurt 0 heal 0
 attr hero-idle-sheet slip 0 climb 0 goal 0
 attr hero-idle-sheet crumble 0 rkind none
 attr hero-idle-sheet emit none
+attr hero-idle-sheet check 0
+attr hero-idle-sheet boost 0
 asset hero-jade-idle-sheet entity assets/circuit/svg/Hero/hero-jade-idle-sheet.svg 1 1 4
 attr hero-jade-idle-sheet break 0 grav 0 spring 0
 attr hero-jade-idle-sheet reward 0 hurt 0 heal 0
 attr hero-jade-idle-sheet slip 0 climb 0 goal 0
 attr hero-jade-idle-sheet crumble 0 rkind none
 attr hero-jade-idle-sheet emit none
+attr hero-jade-idle-sheet check 0
+attr hero-jade-idle-sheet boost 0
 asset hero-jade-run-sheet entity assets/circuit/svg/Hero/hero-jade-run-sheet.svg 1 1 4
 attr hero-jade-run-sheet break 0 grav 0 spring 0
 attr hero-jade-run-sheet reward 0 hurt 0 heal 0
 attr hero-jade-run-sheet slip 0 climb 0 goal 0
 attr hero-jade-run-sheet crumble 0 rkind none
 attr hero-jade-run-sheet emit none
+attr hero-jade-run-sheet check 0
+attr hero-jade-run-sheet boost 0
 asset hero-jump entity assets/circuit/svg/Hero/hero-jump.svg 1 1 1
 attr hero-jump break 0 grav 0 spring 0
 attr hero-jump reward 0 hurt 0 heal 0
 attr hero-jump slip 0 climb 0 goal 0
 attr hero-jump crumble 0 rkind none
 attr hero-jump emit none
+attr hero-jump check 0
+attr hero-jump boost 0
 asset hero-overclock-idle-sheet entity assets/circuit/svg/Hero/hero-overclock-idle-sheet.svg 1 1 4
 attr hero-overclock-idle-sheet break 0 grav 0 spring 0
 attr hero-overclock-idle-sheet reward 0 hurt 0 heal 0
 attr hero-overclock-idle-sheet slip 0 climb 0 goal 0
 attr hero-overclock-idle-sheet crumble 0 rkind none
 attr hero-overclock-idle-sheet emit none
+attr hero-overclock-idle-sheet check 0
+attr hero-overclock-idle-sheet boost 0
 asset hero-overclock-jump entity assets/circuit/svg/Hero/hero-overclock-jump.svg 1 1 1
 attr hero-overclock-jump break 0 grav 0 spring 0
 attr hero-overclock-jump reward 0 hurt 0 heal 0
 attr hero-overclock-jump slip 0 climb 0 goal 0
 attr hero-overclock-jump crumble 0 rkind none
 attr hero-overclock-jump emit none
+attr hero-overclock-jump check 0
+attr hero-overclock-jump boost 0
 asset hero-overclock-run-sheet entity assets/circuit/svg/Hero/hero-overclock-run-sheet.svg 1 1 4
 attr hero-overclock-run-sheet break 0 grav 0 spring 0
 attr hero-overclock-run-sheet reward 0 hurt 0 heal 0
 attr hero-overclock-run-sheet slip 0 climb 0 goal 0
 attr hero-overclock-run-sheet crumble 0 rkind none
 attr hero-overclock-run-sheet emit none
+attr hero-overclock-run-sheet check 0
+attr hero-overclock-run-sheet boost 0
 asset hero-run-sheet entity assets/circuit/svg/Hero/hero-run-sheet.svg 1 1 4
 attr hero-run-sheet break 0 grav 0 spring 0
 attr hero-run-sheet reward 0 hurt 0 heal 0
 attr hero-run-sheet slip 0 climb 0 goal 0
 attr hero-run-sheet crumble 0 rkind none
 attr hero-run-sheet emit none
+attr hero-run-sheet check 0
+attr hero-run-sheet boost 0
 sound jump jump.wav
 sound land stomp.wav
 sound hurt hurt.wav
@@ -720,10 +918,11 @@ view 20 11
 gravity 30
 fall 20
 run 8
-jump 14
+jump 18
 walk 2
-wind 3
+wind 1
 leap 2
+music assets/circuit/audio/music/Reassemble Me.mp3
 layer assets/circuit/png/Backgrounds/layer-0-sky.png
 layer assets/circuit/png/Backgrounds/layer-1-far-city.png
 layer assets/circuit/png/Backgrounds/layer-2-mid-city.png

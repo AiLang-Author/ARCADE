@@ -1,6 +1,7 @@
 arcade_app.x
 level_edit.x
 circuit.x
+games/circuit/volume.txt
 host/arcade_shell_gtk
 config/settings.txt
 *.o

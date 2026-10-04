@@ -1,10 +1,11 @@
 // App/Cab.ailang — cabinet select, then the running game.
-// PICK is the front menu. 0 is NOWAY HOME. 1 is GYRE.
+// PICK is the front menu. 0 is NOWAY HOME. 1 is GYRE. 2 is CIRCUIT.
 // Up on a game title returns here. Play is unchanged.
 // Copyright © 2026 Sean Collins, 2 Paws Machine and Engineering. SCSL v1.0.
 
 LibraryImport.Display.Render.Framebuffer
 LibraryImport.Arena
+LibraryImport.Load
 LibraryImport.Browser.ImageDecode
 Import.App.State
 Import.App.World
@@ -33,6 +34,20 @@ FixedPool.Cab {
     "fy": Initialize=0, CanChange=True
     "pw": Initialize=0, CanChange=True
     "ph": Initialize=0, CanChange=True
+    "sil": Initialize=0, CanChange=True
+}
+
+Function.Cab_Quiet {
+    Body: {
+        fd = 0
+        IfCondition EqualTo(Cab.sil, 0) ThenBlock: { Cab.sil = Allocate(4) }
+        IfCondition EqualTo(Cab.sil, 0) ThenBlock: { ReturnValue(0) }
+        SetByte(Cab.sil, 0, 10)
+        fd = SystemCall(2, "/dev/shm/arcade_app/music.txt", 577, 420)
+        IfCondition LessThan(fd, 0) ThenBlock: { ReturnValue(0) }
+        SystemCall(1, fd, Cab.sil, 1)
+        SystemCall(3, fd)
+    }
 }
 
 Function.Cab_Boot {
@@ -42,6 +57,7 @@ Function.Cab_Boot {
         Arcade.pause = 0
         Ent_Clear()
         Queen.id = -1
+        Cab_Quiet()
         Sfx_Emit(SfxCode.LOBBY)
     }
 }
@@ -88,6 +104,11 @@ Function.Cab_Resize {
 
 Function.Cab_Enter {
     Body: {
+        IfCondition EqualTo(Arcade.cab, 2) ThenBlock: {
+            PrintMessage("swap circuit\n")
+            Load_Swap("circuit.x", "cabinet", 0)
+            ReturnValue(0)
+        }
         IfCondition EqualTo(Arcade.cab, 1) ThenBlock: {
             Cab_LoadGyre()
             Gyre_Open()
@@ -104,6 +125,7 @@ Function.Cab_Menu {
         Queen.id = -1
         Arcade.mode = Mode.PICK
         Arcade.pause = 0
+        Cab_Quiet()
         Sfx_Emit(SfxCode.LOBBY)
     }
 }
@@ -133,8 +155,8 @@ Function.Cab_Nudge {
     Input: dir: Integer
     Body: {
         n = Add(Arcade.cab, dir)
-        IfCondition LessThan(n, 0) ThenBlock: { n = 1 }
-        IfCondition GreaterThan(n, 1) ThenBlock: { n = 0 }
+        IfCondition LessThan(n, 0) ThenBlock: { n = 2 }
+        IfCondition GreaterThan(n, 2) ThenBlock: { n = 0 }
         Arcade.cab = n
     }
 }
@@ -387,7 +409,7 @@ Function.Cab_Place {
         IfCondition LessThan(Cab.bx, 48) ThenBlock: { Cab.bx = 48 }
         Cab.by = Divide(World.fh, 7)
         IfCondition LessThan(Cab.by, 48) ThenBlock: { Cab.by = 48 }
-        Cab.bh = Multiply(fs, 10)
+        Cab.bh = Multiply(fs, 13)
         Cab.pw = Multiply(World.fw, 32)
         Cab.pw = Divide(Cab.pw, 100)
         IfCondition LessThan(Cab.pw, 160) ThenBlock: { Cab.pw = 160 }
@@ -596,7 +618,13 @@ Function.Cab_Fly {
         ih = Divide(ih, 8)
         h = Cab.gyre
         IfCondition EqualTo(Arcade.cab, 0) ThenBlock: { h = Cab.home }
-        Cab_Blit(h, Add(Cab.fx, 8), Add(Cab.fy, 8), Subtract(Cab.pw, 16), ih)
+        IfCondition EqualTo(Arcade.cab, 2) ThenBlock: { h = Subtract(0, 1) }
+        IfCondition LessThan(h, 0) ThenBlock: {
+            FB_FillRectFast(Add(Cab.fx, 8), Add(Cab.fy, 8), Subtract(Cab.pw, 16), ih, FB_RGB(16, 22, 36))
+        }
+        ElseBlock: {
+            Cab_Blit(h, Add(Cab.fx, 8), Add(Cab.fy, 8), Subtract(Cab.pw, 16), ih)
+        }
         y = Add(Cab.fy, ih)
         y = Add(y, 16)
         IfCondition EqualTo(Arcade.cab, 0) ThenBlock: {
@@ -616,6 +644,15 @@ Function.Cab_Fly {
             y = Add(y, fs)
             y = Add(y, 4)
             Hud_Text(Add(Cab.fx, 12), y, "TUBE SHOOTER", 12, tag)
+        }
+        IfCondition EqualTo(Arcade.cab, 2) ThenBlock: {
+            Hud_Text(Add(Cab.fx, 12), y, "CIRCUIT", 7, gold)
+            y = Add(y, fs)
+            y = Add(y, 6)
+            Hud_Text(Add(Cab.fx, 12), y, "RUN THE CITY", 12, ink)
+            y = Add(y, fs)
+            y = Add(y, 4)
+            Hud_Text(Add(Cab.fx, 12), y, "SIDE SCROLLER", 13, tag)
         }
         y = Add(y, fs)
         y = Add(y, 8)
@@ -641,6 +678,9 @@ Function.Cab_PickRows {
         y = Add(y, rh)
         y = Add(y, 4)
         Cab_Row(1, y, "GYRE", 4, "2", 1)
+        y = Add(y, rh)
+        y = Add(y, 4)
+        Cab_Row(2, y, "CIRCUIT", 7, "3", 1)
         Cab_Fly()
         Cab_Chase()
     }
