@@ -54,10 +54,26 @@ home.
 
 ## GYRE
 
+
 A rim-orbit tube shooter. You turn along the ring while craft come out of the
 vanishing point. Every tenth wave is a queen that sits on that point, turns,
 and can be hit only through one opening. The star field streams down the
 tunnel to the edge of the window.
+
+![Title screen](screenshots/gyre.png)
+
+
+## Circuit 
+
+A New 2d side scroller with a ton of customization this is the first title but feel free to make your own assets and levels. 
+
+![Title screen](screenshots/Circuit.png)
+
+## Editor
+
+A somewhat fully feature game editor, this and circuit are the first forays into a user eco system of buildable games. generate assets, layout levels, build custom games. 
+
+![Title screen](screenshots/Editor.png)
 
 ## How it works
 
