@@ -119,9 +119,11 @@ screenshots/           Cabinet, game, and editor screenshots
 ## Install
 
 The public repository is [ARCADE](https://github.com/AiLang-Author/ARCADE).
-A clone does not contain `arcade_app.x`, `circuit.x`, `level_edit.x`, or
-`host/arcade_shell_gtk`. The installer builds each one that is missing. It
-builds the three AILANG programs one at a time, and it does not open a window.
+A clone contains `arcade_app.x`, `circuit.x`, and `level_edit.x`. Those three
+were built by the tree-shaking compiler, which drops unused code. The GTK
+host, `host/arcade_shell_gtk`, is not in the clone. The installer builds each
+program that is missing. It builds the three AILANG programs one at a time,
+and it does not open a window.
 
 ```bash
 git clone https://github.com/AiLang-Author/ARCADE.git
@@ -187,9 +189,10 @@ The Haiku window host is maintained in a separate repository:
 https://github.com/AiLang-Author/Haiku-Arcade
 
 Clone it next to this repository after `./scripts/install_desktop.sh`, so its
-shared-file links can find `assets/`, `fonts/`, and `arcade_app.x`. The
-cabinet binary is built by that script and is not stored in git. See that
-repository's instructions for building and installing the Haiku version.
+shared-file links can find `assets/`, `fonts/`, and `arcade_app.x`.
+`arcade_app.x` is in this repository. The GTK host is built by the installer
+and is not stored in git. See that repository's instructions for building
+and installing the Haiku version.
 
 ## Adding a game
 
