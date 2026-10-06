@@ -67,6 +67,7 @@ Inside level 1, the header lines can be in any order. The editor writes this ord
 | Line | Meaning |
 |------|---------|
 | `levels <n>` | How many levels are in the file. Once, at the top. |
+| `link <a> <b>` | Joins two gate names. Written before the first level. Circuit ignores it. |
 | `level <n>` | Which level the following lines belong to. `1` is the first. |
 | `tile <size>` | World size of one cell. Default 200 mm. |
 | `width <length>` | World width. |
@@ -79,6 +80,8 @@ Inside level 1, the header lines can be in any order. The editor writes this ord
 | `walk <m/s>` | Walking speed. `0` means a quarter of run, and at least 1. |
 | `wind <seconds>` | Seconds for a held direction to build from walk to run. `0` means 3. Level 1 uses 1. Enter reaches run immediately. |
 | `leap <times>` | Stored with the level. The jump keeps the speed already built, from walk up to run. |
+| `kind <side\|overworld\|town\|dungeon\|building\|cave>` | What kind of map this level is. `side` is a side-scroller and the editor omits that line, so a Circuit save stays the same. The other words are kept. Circuit ignores the line. |
+| `spawn <col> <row>` | The player's cell on this level. Same column and row as a span. The editor shows the pair and writes the line when both are set. No line means no spawn, so a Circuit save stays the same. `0 0` is the corner. Circuit ignores the line. |
 | `music <path>` | Track for this level. The path is every word after `music`, so spaces stay. The editor adds `assets/circuit/audio/music/` when the path has no slash. Circuit plays the path as saved, and only on level 1. No line means silence. |
 | `asset <name> <block\|enemy\|object\|entity> <path> [w h] [frames]` | An external picture in one group. |
 | `attr <name> break <0\|1> grav <n> spring <n>` | Stored on that asset. Circuit applies the player-facing keys. |
@@ -216,8 +219,31 @@ level gravity. A smaller gravity is lighter and a larger gravity is heavier.
 | `boost` | Blocks and objects. Touch clears the cell and holds run speed for this many frames. `0` is off. Click, type, Enter. The window edits this on blocks and objects. A save writes `check` and `boost` for every asset. |
 | `sleft` | Left edge height of a block, in eighths of the tile, `0` through `8`. |
 | `sright` | Right edge height of the same block, in eighths of the tile, `0` through `8`. |
+| `portal <word>` | This asset is a gate. The word is the gate's name. One role on an asset. |
+| `shop <word>` | This asset is a shop. The word names the shop table, such as `blade_and_steel`. |
+| `inn <word>` | This asset is an inn. The word is the inn's name, with hyphens instead of spaces. |
 
 `sleft` and `sright` make any block a ramp. `0` and `0` stays a solid square. The picture is not what decides it, so a custom tile uses the same two lines. The height runs from the bottom of the cell. `sleft 0` and `sright 8` rises to the right. `sleft 8` and `sright 0` falls to the right. `4` is the middle. A save writes the two lines only when one of them is not `0`. On a block, the slope row cycles none, up, down, up low, up high, down high, and down low. Feet walk the higher edge under the body. A jump still leaves the ramp.
+
+A gate, a shop, or an inn is an ordinary object. The picture is whatever path you give that asset. The role is one word on the asset, and a save writes it only when the role is set and the name is not empty:
+
+```
+attr town-exit portal town_exit
+attr blade-and-steel shop blade_and_steel
+attr weary-traveler inn weary-traveler
+```
+
+The name is one word of letters, digits, a hyphen, or an underscore, at most 23 characters. Two cells that use the same asset share that name, so each gate is its own asset. Circuit does not read `portal`, `shop`, or `inn`.
+
+A pair of gates is a `link` line. The editor writes these once, after `character anim` and before the first `level` line. Circuit skips them there. Step on one name and the other end is the destination. Up to 32 pairs.
+
+```
+link town_exit overworld_town
+```
+
+`kind` sits with the other level header lines. The Level window cycles side, overworld, town, dungeon, building, and cave. A level with no `kind` line is side. Opening another file replaces the link list and the gate names. New keeps the brushes, including a gate name already set on one of them.
+
+`spawn` is the player's cell on that level, written under the `level` line as `spawn 10 9`. It is a header, shown on the Level window, and it is not a painted object. Save writes the line when both numbers are set and leaves it out when the level has none. A missing line and a Circuit file stay without one. The inn and each shop are their own objects, the same way a portal is.
 
 Circuit applies grav, spring, climb, goal, reward, hurt, crumble, check, boost, left/right/up direction, and these ramp heights. Break, heal, slip, and emit are stored only. The file keeps the old `break grav spring`
 line and adds lines for the other keys, including `emit <object>`.

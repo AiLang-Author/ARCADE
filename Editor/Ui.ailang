@@ -102,7 +102,7 @@ Function.Ed_DeskInit {
         Ed_WinSet(4, 0, x)
         Ed_WinSet(4, 1, 420)
         Ed_WinSet(4, 2, 280)
-        Ed_WinSet(4, 3, 252)
+        Ed_WinSet(4, 3, 288)
         Ed_WinSet(4, 4, 1)
         y = Subtract(FB.height, 308)
         IfCondition LessThan(y, 8) ThenBlock: { y = 8 }
@@ -156,6 +156,11 @@ Function.Ed_OnKey {
             IfCondition EqualTo(Ed.page, 3) ThenBlock: {
                 IfCondition EqualTo(Ed.form, 1) ThenBlock: { ok = 0 }
             }
+            IfCondition EqualTo(Ed.focus, 5) ThenBlock: {
+                IfCondition EqualTo(Ed.afield, 28) ThenBlock: {
+                    IfCondition EqualTo(Ed.form, 1) ThenBlock: { ok = 0 }
+                }
+            }
             IfCondition EqualTo(ok, 1) ThenBlock: {
                 Ed.run = 0
                 ReturnValue(0)
@@ -185,7 +190,12 @@ Function.Ed_OnKey {
         IfCondition EqualTo(cmd, 8) ThenBlock: {
             IfCondition GreaterThan(Ed.fn, 0) ThenBlock: {
                 Ed.fn = Subtract(Ed.fn, 1)
-                IfCondition EqualTo(Ed.page, 3) ThenBlock: { SetByte(Ed.nbuf, Ed.fn, 0) }
+                ok = 0
+                IfCondition EqualTo(Ed.page, 3) ThenBlock: { ok = 1 }
+                IfCondition EqualTo(Ed.focus, 5) ThenBlock: {
+                    IfCondition EqualTo(Ed.afield, 28) ThenBlock: { ok = 1 }
+                }
+                IfCondition EqualTo(ok, 1) ThenBlock: { SetByte(Ed.nbuf, Ed.fn, 0) }
                 ElseBlock: { SetByte(Ed.fbuf, Ed.fn, 0) }
             }
             ReturnValue(0)
@@ -205,6 +215,31 @@ Function.Ed_OnKey {
             Ed.fn = Add(Ed.fn, 1)
             SetByte(Ed.nbuf, Ed.fn, 0)
             ReturnValue(0)
+        }
+        IfCondition EqualTo(Ed.focus, 5) ThenBlock: {
+            IfCondition EqualTo(Ed.afield, 28) ThenBlock: {
+                ok = 0
+                IfCondition GreaterEqual(cmd, 97) ThenBlock: {
+                    IfCondition LessEqual(cmd, 122) ThenBlock: { ok = 1 }
+                }
+                IfCondition GreaterEqual(cmd, 65) ThenBlock: {
+                    IfCondition LessEqual(cmd, 90) ThenBlock: {
+                        cmd = Add(cmd, 32)
+                        ok = 1
+                    }
+                }
+                IfCondition GreaterEqual(cmd, 48) ThenBlock: {
+                    IfCondition LessEqual(cmd, 57) ThenBlock: { ok = 1 }
+                }
+                IfCondition EqualTo(cmd, 45) ThenBlock: { ok = 1 }
+                IfCondition EqualTo(cmd, 95) ThenBlock: { ok = 1 }
+                IfCondition EqualTo(ok, 0) ThenBlock: { ReturnValue(0) }
+                IfCondition GreaterEqual(Ed.fn, 23) ThenBlock: { ReturnValue(0) }
+                SetByte(Ed.nbuf, Ed.fn, cmd)
+                Ed.fn = Add(Ed.fn, 1)
+                SetByte(Ed.nbuf, Ed.fn, 0)
+                ReturnValue(0)
+            }
         }
         IfCondition LessThan(cmd, 48) ThenBlock: { ReturnValue(0) }
         IfCondition GreaterThan(cmd, 57) ThenBlock: { ReturnValue(0) }
@@ -234,6 +269,11 @@ Function.Ed_FormApply {
             ReturnValue(0)
         }
         IfCondition EqualTo(Ed.field, 12) ThenBlock: {
+            Ed.fn = 0
+            SetByte(Ed.fbuf, 0, 0)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Ed.field, 13) ThenBlock: {
             Ed.fn = 0
             SetByte(Ed.fbuf, 0, 0)
             ReturnValue(0)
@@ -576,7 +616,17 @@ Function.Ed_LevelClick {
         rel = Subtract(ay, Add(y, 22))
         IfCondition LessThan(rel, 0) ThenBlock: { ReturnValue(0) }
         item = Divide(rel, 16)
-        IfCondition GreaterThan(item, 12) ThenBlock: { ReturnValue(0) }
+        IfCondition GreaterThan(item, 13) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(item, 13) ThenBlock: {
+            Ed.kind = Add(Ed.kind, 1)
+            IfCondition GreaterThan(Ed.kind, 5) ThenBlock: { Ed.kind = 0 }
+            Ed_Store()
+            Ed.field = 13
+            Ed.form = 1
+            Ed.fn = 0
+            SetByte(Ed.fbuf, 0, 0)
+            ReturnValue(0)
+        }
         IfCondition EqualTo(item, 12) ThenBlock: {
             Ed_MusCycle()
             Ed.field = 12
@@ -1320,6 +1370,31 @@ Function.Ed_AttrClick {
                 IfCondition EqualTo(g, 3) ThenBlock: { item = 14 }
             }
             ElseBlock: {
+                IfCondition EqualTo(g, 3) ThenBlock: {
+                    IfCondition EqualTo(item, 9) ThenBlock: {
+                        IfCondition NotEqual(Ed.afield, 27) ThenBlock: { Ed_AttrCommit() }
+                        v = GetByte(Ed.role, idx)
+                        v = Add(v, 1)
+                        IfCondition GreaterThan(v, 3) ThenBlock: { v = 0 }
+                        SetByte(Ed.role, idx, v)
+                        Ed.afield = 27
+                        Ed.form = 0
+                        Ed.fn = 0
+                        SetByte(Ed.fbuf, 0, 0)
+                        SetByte(Ed.nbuf, 0, 0)
+                        ReturnValue(0)
+                    }
+                    IfCondition EqualTo(item, 10) ThenBlock: {
+                        IfCondition NotEqual(Ed.afield, 28) ThenBlock: {
+                            Ed_AttrCommit()
+                            Ed.fn = 0
+                            SetByte(Ed.nbuf, 0, 0)
+                        }
+                        Ed.afield = 28
+                        Ed.form = 1
+                        ReturnValue(0)
+                    }
+                }
                 IfCondition EqualTo(item, 7) ThenBlock: {
                     IfCondition EqualTo(g, 1) ThenBlock: { tog = 1 }
                     IfCondition EqualTo(g, 3) ThenBlock: { tog = 1 }
@@ -1454,6 +1529,19 @@ Function.Ed_AttrApply {
         IfCondition LessThan(Ed.fn, 1) ThenBlock: { ReturnValue(0) }
         IfCondition LessThan(Ed.brush, 1) ThenBlock: { ReturnValue(0) }
         idx = Subtract(Ed.brush, 1)
+        IfCondition EqualTo(Ed.afield, 27) ThenBlock: {
+            Ed.fn = 0
+            SetByte(Ed.fbuf, 0, 0)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Ed.afield, 28) ThenBlock: {
+            id = Ed_GateAt(idx)
+            Ed_WordCopy(id, Ed.nbuf)
+            Ed.fn = 0
+            SetByte(Ed.nbuf, 0, 0)
+            SetByte(Ed.fbuf, 0, 0)
+            ReturnValue(0)
+        }
         id = Ed.brush
         n = Arc_Atoi(Ed.fbuf)
         g = Ed_IGet(Ed.grp, idx)
@@ -1566,6 +1654,19 @@ Function.Ed_AttrCommit {
         IfCondition LessThan(Ed.fn, 1) ThenBlock: { ReturnValue(0) }
         IfCondition LessThan(Ed.brush, 1) ThenBlock: { ReturnValue(0) }
         idx = Subtract(Ed.brush, 1)
+        IfCondition EqualTo(Ed.afield, 28) ThenBlock: {
+            n = Ed_GateAt(idx)
+            Ed_WordCopy(n, Ed.nbuf)
+            Ed.fn = 0
+            SetByte(Ed.nbuf, 0, 0)
+            SetByte(Ed.fbuf, 0, 0)
+            ReturnValue(0)
+        }
+        IfCondition EqualTo(Ed.afield, 27) ThenBlock: {
+            Ed.fn = 0
+            SetByte(Ed.fbuf, 0, 0)
+            ReturnValue(0)
+        }
         IfCondition EqualTo(Ed.afield, 0) ThenBlock: {
             Ed.fn = 0
             SetByte(Ed.fbuf, 0, 0)
@@ -1645,6 +1746,66 @@ Function.Ed_DrawStat {
         }
         p = Ed_UtoA(n)
         FB_DrawStringScaled(dx, dy, p, ink, Subtract(0, 1), 1)
+    }
+}
+
+Function.Ed_DrawGate {
+    Input: idx: Integer
+    Input: x: Integer
+    Input: y: Integer
+    Input: w: Integer
+    Body: {
+        ink = 0
+        sel = 0
+        p = 0
+        n = 0
+        live = 0
+        ink = FB_RGB(0, 0, 0)
+        sel = FB_RGB(255, 230, 160)
+        IfCondition EqualTo(Ed.focus, 5) ThenBlock: {
+            IfCondition EqualTo(Ed.afield, 27) ThenBlock: {
+                FB_FillRectFast(Add(x, 2), Add(y, 244), Subtract(w, 4), 20, sel)
+            }
+            IfCondition EqualTo(Ed.afield, 28) ThenBlock: {
+                IfCondition EqualTo(Ed.form, 1) ThenBlock: {
+                    FB_FillRectFast(Add(x, 2), Add(y, 266), Subtract(w, 4), 20, sel)
+                }
+            }
+        }
+        FB_DrawStringScaled(Add(x, 8), Add(y, 248), "gate", ink, Subtract(0, 1), 1)
+        n = GetByte(Ed.role, idx)
+        IfCondition EqualTo(n, 1) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 80), Add(y, 248), "portal", ink, Subtract(0, 1), 1)
+        }
+        IfCondition EqualTo(n, 2) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 80), Add(y, 248), "shop", ink, Subtract(0, 1), 1)
+        }
+        IfCondition EqualTo(n, 3) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 80), Add(y, 248), "inn", ink, Subtract(0, 1), 1)
+        }
+        IfCondition EqualTo(n, 0) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 80), Add(y, 248), "none", ink, Subtract(0, 1), 1)
+        }
+        FB_DrawStringScaled(Add(x, 8), Add(y, 270), "name", ink, Subtract(0, 1), 1)
+        live = 0
+        IfCondition EqualTo(Ed.focus, 5) ThenBlock: {
+            IfCondition EqualTo(Ed.form, 1) ThenBlock: {
+                IfCondition EqualTo(Ed.afield, 28) ThenBlock: {
+                    IfCondition GreaterThan(Ed.fn, 0) ThenBlock: { live = 1 }
+                }
+            }
+        }
+        IfCondition EqualTo(live, 1) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 80), Add(y, 270), Ed.nbuf, ink, Subtract(0, 1), 1)
+            ReturnValue(0)
+        }
+        p = Ed_GateAt(idx)
+        n = GetByte(p, 0)
+        IfCondition EqualTo(n, 0) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 80), Add(y, 270), "-", ink, Subtract(0, 1), 1)
+            ReturnValue(0)
+        }
+        FB_DrawStringScaled(Add(x, 80), Add(y, 270), p, ink, Subtract(0, 1), 1)
     }
 }
 
@@ -1984,7 +2145,10 @@ Function.Ed_DrawAttr {
             FB_DrawStringScaled(Add(x, 8), Add(y, 206), "click motion. zone is how far, in cells.", ink, Subtract(0, 1), 1)
         }
         ElseBlock: {
-            FB_DrawStringScaled(Add(x, 8), Add(y, 250), "click yes/no. type hurt, boost, and the numbers.", ink, Subtract(0, 1), 1)
+            IfCondition EqualTo(g, 3) ThenBlock: { Ed_DrawGate(idx, x, y, w) }
+            ElseBlock: {
+                FB_DrawStringScaled(Add(x, 8), Add(y, 250), "click yes/no. type hurt, boost, and the numbers.", ink, Subtract(0, 1), 1)
+            }
         }
     }
 }
@@ -2079,6 +2243,47 @@ Function.Ed_DrawLevel {
         }
         ElseBlock: {
             FB_DrawStringScaled(Add(x, 120), Add(y, 218), p, ink, Subtract(0, 1), 1)
+        }
+        IfCondition EqualTo(Ed.focus, 4) ThenBlock: {
+            IfCondition EqualTo(Ed.field, 13) ThenBlock: {
+                IfCondition EqualTo(Ed.form, 1) ThenBlock: {
+                    FB_FillRectFast(Add(x, 2), Add(y, 234), Subtract(w, 4), 15, sel)
+                }
+            }
+        }
+        FB_DrawStringScaled(Add(x, 8), Add(y, 234), "kind", ink, Subtract(0, 1), 1)
+        IfCondition EqualTo(Ed.kind, 1) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 120), Add(y, 234), "overworld", ink, Subtract(0, 1), 1)
+        }
+        IfCondition EqualTo(Ed.kind, 2) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 120), Add(y, 234), "town", ink, Subtract(0, 1), 1)
+        }
+        IfCondition EqualTo(Ed.kind, 3) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 120), Add(y, 234), "dungeon", ink, Subtract(0, 1), 1)
+        }
+        IfCondition EqualTo(Ed.kind, 4) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 120), Add(y, 234), "building", ink, Subtract(0, 1), 1)
+        }
+        IfCondition EqualTo(Ed.kind, 5) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 120), Add(y, 234), "cave", ink, Subtract(0, 1), 1)
+        }
+        IfCondition EqualTo(Ed.kind, 0) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 120), Add(y, 234), "side", ink, Subtract(0, 1), 1)
+        }
+        FB_DrawStringScaled(Add(x, 8), Add(y, 250), "spawn", ink, Subtract(0, 1), 1)
+        IfCondition LessThan(Ed.spawnx, 0) ThenBlock: {
+            FB_DrawStringScaled(Add(x, 120), Add(y, 250), "none", ink, Subtract(0, 1), 1)
+        }
+        ElseBlock: {
+            IfCondition LessThan(Ed.spawny, 0) ThenBlock: {
+                FB_DrawStringScaled(Add(x, 120), Add(y, 250), "none", ink, Subtract(0, 1), 1)
+            }
+            ElseBlock: {
+                p = Ed_UtoA(Ed.spawnx)
+                FB_DrawStringScaled(Add(x, 120), Add(y, 250), p, ink, Subtract(0, 1), 1)
+                p = Ed_UtoA(Ed.spawny)
+                FB_DrawStringScaled(Add(x, 168), Add(y, 250), p, ink, Subtract(0, 1), 1)
+            }
         }
     }
 }

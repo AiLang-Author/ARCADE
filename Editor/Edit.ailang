@@ -109,6 +109,9 @@ Function.Ed_Store {
         Ed_MSet(10, Ed.walk)
         Ed_MSet(11, Ed.wind)
         Ed_MSet(12, Ed.leap)
+        Ed_MSet(13, Ed.kind)
+        Ed_MSet(14, Ed.spawnx)
+        Ed_MSet(15, Ed.spawny)
     }
 }
 
@@ -194,6 +197,11 @@ Function.Ed_Use {
         Ed.walk = Ed_MGet(10)
         Ed.wind = Ed_MGet(11)
         Ed.leap = Ed_MGet(12)
+        Ed.kind = Ed_MGet(13)
+        IfCondition LessThan(Ed.kind, 0) ThenBlock: { Ed.kind = 0 }
+        IfCondition GreaterThan(Ed.kind, 5) ThenBlock: { Ed.kind = 5 }
+        Ed.spawnx = Ed_MGet(14)
+        Ed.spawny = Ed_MGet(15)
         Ed_NormRun()
         Ed_ClampMap()
         Ed_Store()
@@ -215,6 +223,9 @@ Function.Ed_Defaults {
         Ed.walk = 2
         Ed.wind = 3
         Ed.leap = 2
+        Ed.kind = 0
+        Ed.spawnx = Subtract(0, 1)
+        Ed.spawny = Subtract(0, 1)
         Ed.nlev = 1
         Ed.lev = 0
         WhileLoop LessThan(i, 8) {
@@ -457,6 +468,124 @@ Function.Ed_ASet {
         off = Multiply(idx, 19)
         off = Add(off, f)
         Ed_ISet(Ed.attr, off, v)
+    }
+}
+
+Function.Ed_GateAt {
+    Input: idx: Integer
+    Output: Address
+    Body: {
+        off = 0
+        IfCondition LessThan(idx, 0) ThenBlock: { idx = 0 }
+        IfCondition GreaterThan(idx, 127) ThenBlock: { idx = 127 }
+        off = Multiply(idx, 24)
+        ReturnValue(Add(Ed.gate, off))
+    }
+}
+
+Function.Ed_LinkSlot {
+    Input: i: Integer
+    Input: side: Integer
+    Output: Address
+    Body: {
+        off = 0
+        IfCondition LessThan(i, 0) ThenBlock: { i = 0 }
+        IfCondition GreaterThan(i, 31) ThenBlock: { i = 31 }
+        off = Multiply(i, 48)
+        IfCondition EqualTo(side, 1) ThenBlock: { off = Add(off, 24) }
+        ReturnValue(Add(Ed.link, off))
+    }
+}
+
+Function.Ed_WordCopy {
+    Input: dst: Address
+    Input: src: Address
+    Body: {
+        i = 0
+        c = 0
+        n = 0
+        ok = 0
+        MemorySet(dst, 0, 24)
+        WhileLoop LessThan(i, 63) {
+            c = GetByte(src, i)
+            IfCondition EqualTo(c, 0) ThenBlock: { BreakLoop }
+            IfCondition GreaterEqual(n, 23) ThenBlock: { BreakLoop }
+            ok = 0
+            IfCondition GreaterEqual(c, 65) ThenBlock: {
+                IfCondition LessEqual(c, 90) ThenBlock: {
+                    c = Add(c, 32)
+                    ok = 1
+                }
+            }
+            IfCondition GreaterEqual(c, 97) ThenBlock: {
+                IfCondition LessEqual(c, 122) ThenBlock: { ok = 1 }
+            }
+            IfCondition GreaterEqual(c, 48) ThenBlock: {
+                IfCondition LessEqual(c, 57) ThenBlock: { ok = 1 }
+            }
+            IfCondition EqualTo(c, 45) ThenBlock: { ok = 1 }
+            IfCondition EqualTo(c, 95) ThenBlock: { ok = 1 }
+            IfCondition EqualTo(ok, 0) ThenBlock: { BreakLoop }
+            SetByte(dst, n, c)
+            n = Add(n, 1)
+            i = Add(i, 1)
+        }
+        SetByte(dst, n, 0)
+    }
+}
+
+Function.Ed_KindOf {
+    Input: s: Address
+    Output: Integer
+    Body: {
+        hit = 0
+        hit = Ed_Eq(s, "overworld")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(1) }
+        hit = Ed_Eq(s, "town")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(2) }
+        hit = Ed_Eq(s, "dungeon")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(3) }
+        hit = Ed_Eq(s, "building")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(4) }
+        hit = Ed_Eq(s, "cave")
+        IfCondition EqualTo(hit, 1) ThenBlock: { ReturnValue(5) }
+        ReturnValue(0)
+    }
+}
+
+Function.Ed_LinkAdd {
+    Input: a: Address
+    Input: b: Address
+    Body: {
+        dst = 0
+        c = 0
+        IfCondition GreaterEqual(Ed.nlink, 32) ThenBlock: { ReturnValue(0) }
+        dst = Ed_LinkSlot(Ed.nlink, 0)
+        Ed_WordCopy(dst, a)
+        c = GetByte(dst, 0)
+        IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(0) }
+        dst = Ed_LinkSlot(Ed.nlink, 1)
+        Ed_WordCopy(dst, b)
+        c = GetByte(dst, 0)
+        IfCondition EqualTo(c, 0) ThenBlock: { ReturnValue(0) }
+        Ed.nlink = Add(Ed.nlink, 1)
+    }
+}
+
+Function.Ed_OutLinks {
+    Body: {
+        i = 0
+        p = 0
+        WhileLoop LessThan(i, Ed.nlink) {
+            Ed_OutS("link ")
+            p = Ed_LinkSlot(i, 0)
+            Ed_OutS(p)
+            Ed_OutC(32)
+            p = Ed_LinkSlot(i, 1)
+            Ed_OutS(p)
+            Ed_OutC(10)
+            i = Add(i, 1)
+        }
     }
 }
 
@@ -1263,6 +1392,21 @@ Function.Ed_AttrTake {
             IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 17, val) }
             hit = Ed_Eq(key, "sright")
             IfCondition EqualTo(hit, 1) ThenBlock: { Ed_ASet(idx, 18, val) }
+            hit = Ed_Eq(key, "portal")
+            IfCondition EqualTo(hit, 1) ThenBlock: {
+                SetByte(Ed.role, idx, 1)
+                Ed_WordCopy(Ed_GateAt(idx), w)
+            }
+            hit = Ed_Eq(key, "shop")
+            IfCondition EqualTo(hit, 1) ThenBlock: {
+                SetByte(Ed.role, idx, 2)
+                Ed_WordCopy(Ed_GateAt(idx), w)
+            }
+            hit = Ed_Eq(key, "inn")
+            IfCondition EqualTo(hit, 1) ThenBlock: {
+                SetByte(Ed.role, idx, 3)
+                Ed_WordCopy(Ed_GateAt(idx), w)
+            }
         }
         ReturnValue(1)
     }
@@ -1445,6 +1589,33 @@ Function.Ed_Apply {
             }
             ReturnValue(0)
         }
+        hit = Ed_Eq(w0, "kind")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
+                Ed.kind = Ed_KindOf(w1)
+                Ed_MSet(13, Ed.kind)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "spawn")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 3) ThenBlock: {
+                Ed.spawnx = Arc_Atoi(w1)
+                Ed.spawny = Arc_Atoi(w2)
+                IfCondition LessThan(Ed.spawnx, 0) ThenBlock: { Ed.spawnx = 0 }
+                IfCondition LessThan(Ed.spawny, 0) ThenBlock: { Ed.spawny = 0 }
+                IfCondition GreaterThan(Ed.spawnx, 127) ThenBlock: { Ed.spawnx = 127 }
+                IfCondition GreaterThan(Ed.spawny, 31) ThenBlock: { Ed.spawny = 31 }
+                Ed_MSet(14, Ed.spawnx)
+                Ed_MSet(15, Ed.spawny)
+            }
+            ReturnValue(0)
+        }
+        hit = Ed_Eq(w0, "link")
+        IfCondition EqualTo(hit, 1) ThenBlock: {
+            IfCondition GreaterEqual(Ed.nw, 3) ThenBlock: { Ed_LinkAdd(w1, w2) }
+            ReturnValue(0)
+        }
         hit = Ed_Eq(w0, "levels")
         IfCondition EqualTo(hit, 1) ThenBlock: {
             IfCondition GreaterEqual(Ed.nw, 2) ThenBlock: {
@@ -1463,6 +1634,9 @@ Function.Ed_Apply {
                 IfCondition GreaterThan(n, 8) ThenBlock: { n = 8 }
                 Ed.lev = Subtract(n, 1)
                 IfCondition GreaterThan(n, Ed.nlev) ThenBlock: { Ed.nlev = n }
+                Ed.kind = 0
+                Ed.spawnx = Subtract(0, 1)
+                Ed.spawny = Subtract(0, 1)
                 Ed_Store()
                 Ed_MSet(9, 0)
             }
@@ -1605,6 +1779,10 @@ Function.Ed_Parse {
         at = 0
         Ed_SfxClear()
         MemorySet(Ed.mus, 0, 768)
+        MemorySet(Ed.role, 0, 128)
+        MemorySet(Ed.gate, 0, 3072)
+        MemorySet(Ed.link, 0, 1536)
+        Ed.nlink = 0
         WhileLoop LessThan(at, Ed.flen) {
             at = Ed_Line(at)
             IfCondition GreaterThan(Ed.nw, 0) ThenBlock: { Ed_Apply() }
@@ -1827,6 +2005,22 @@ Function.Ed_OutAttr {
             Ed_OutS(p)
             Ed_OutC(10)
         }
+        v = GetByte(Ed.role, idx)
+        IfCondition GreaterThan(v, 0) ThenBlock: {
+            IfCondition LessThan(v, 4) ThenBlock: {
+                p = Ed_GateAt(idx)
+                g = GetByte(p, 0)
+                IfCondition NotEqual(g, 0) ThenBlock: {
+                    Ed_OutS("attr ")
+                    Ed_OutS(nm)
+                    IfCondition EqualTo(v, 1) ThenBlock: { Ed_OutS(" portal ") }
+                    IfCondition EqualTo(v, 2) ThenBlock: { Ed_OutS(" shop ") }
+                    IfCondition EqualTo(v, 3) ThenBlock: { Ed_OutS(" inn ") }
+                    Ed_OutS(p)
+                    Ed_OutC(10)
+                }
+            }
+        }
     }
 }
 
@@ -1966,6 +2160,40 @@ Function.Ed_OutLevel {
         Ed_OutKV("wind ", v)
         v = Ed_MGetAt(lev, 12)
         Ed_OutKV("leap ", v)
+        v = Ed_MGetAt(lev, 13)
+        IfCondition EqualTo(v, 1) ThenBlock: {
+            Ed_OutS("kind overworld")
+            Ed_OutC(10)
+        }
+        IfCondition EqualTo(v, 2) ThenBlock: {
+            Ed_OutS("kind town")
+            Ed_OutC(10)
+        }
+        IfCondition EqualTo(v, 3) ThenBlock: {
+            Ed_OutS("kind dungeon")
+            Ed_OutC(10)
+        }
+        IfCondition EqualTo(v, 4) ThenBlock: {
+            Ed_OutS("kind building")
+            Ed_OutC(10)
+        }
+        IfCondition EqualTo(v, 5) ThenBlock: {
+            Ed_OutS("kind cave")
+            Ed_OutC(10)
+        }
+        v = Ed_MGetAt(lev, 14)
+        id = Ed_MGetAt(lev, 15)
+        IfCondition GreaterEqual(v, 0) ThenBlock: {
+            IfCondition GreaterEqual(id, 0) ThenBlock: {
+                Ed_OutS("spawn ")
+                p = Ed_UtoA(v)
+                Ed_OutS(p)
+                Ed_OutC(32)
+                p = Ed_UtoA(id)
+                Ed_OutS(p)
+                Ed_OutC(10)
+            }
+        }
         p = Ed_MusAt(lev)
         id = GetByte(p, 0)
         IfCondition NotEqual(id, 0) ThenBlock: {
@@ -2077,6 +2305,7 @@ Function.Ed_Save {
         }
         Ed_OutSound()
         Ed_OutChar()
+        Ed_OutLinks()
         i = 0
         WhileLoop LessThan(i, Ed.nlev) {
             Ed_OutLevel(i)
@@ -2423,6 +2652,10 @@ Function.Ed_Wipe {
         MemorySet(Ed.bpath, 0, 1152)
         MemorySet(Ed.bimg, 0, 96)
         MemorySet(Ed.lpath, 0, 3072)
+        MemorySet(Ed.role, 0, 128)
+        MemorySet(Ed.gate, 0, 3072)
+        MemorySet(Ed.link, 0, 1536)
+        Ed.nlink = 0
         Ed_Defaults()
     }
 }
@@ -3145,6 +3378,9 @@ Function.Ed_Boot {
         Ed.sdir = Allocate(512)
         Ed.mus = Allocate(768)
         Ed.mcat = Allocate(1024)
+        Ed.role = Allocate(128)
+        Ed.gate = Allocate(3072)
+        Ed.link = Allocate(1536)
         IfCondition EqualTo(Ed.file, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Ed.sfx, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Ed.spick, 0) ThenBlock: { ReturnValue(0) }
@@ -3152,6 +3388,9 @@ Function.Ed_Boot {
         IfCondition EqualTo(Ed.sdir, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Ed.mus, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Ed.mcat, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.role, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.gate, 0) ThenBlock: { ReturnValue(0) }
+        IfCondition EqualTo(Ed.link, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Ed.grid, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Ed.name, 0) ThenBlock: { ReturnValue(0) }
         IfCondition EqualTo(Ed.path, 0) ThenBlock: { ReturnValue(0) }
@@ -3203,6 +3442,10 @@ Function.Ed_Boot {
         MemorySet(Ed.sdir, 0, 512)
         MemorySet(Ed.mus, 0, 768)
         MemorySet(Ed.mcat, 0, 1024)
+        MemorySet(Ed.role, 0, 128)
+        MemorySet(Ed.gate, 0, 3072)
+        MemorySet(Ed.link, 0, 1536)
+        Ed.nlink = 0
         Ed_Copy(Ed.game, "circuit", 32)
         Ed_Copy(Ed.doc, "games/circuit/levels/edit.lvl", 96)
         Ed_MkGame()

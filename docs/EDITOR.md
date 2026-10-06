@@ -65,7 +65,7 @@ at most 24. Q is a letter there.
 The Level window starts with the tile field ready for digits. Click a row,
 type, and Enter stores it and moves to the next row through leap. The rows
 are tile mm, width, height, view wide, view tall, gravity, fall, run, jump,
-walk, wind s, leap x, and music.
+walk, wind s, leap x, music, and kind.
 
 Enter on a 0 for walk, wind, or leap fills the current feel. Walk becomes a
 quarter of run, and that becomes 1 when run is at least 1. If run is 0,
@@ -83,6 +83,18 @@ contain spaces. Circuit plays level 1's line only.
 Wind is how many seconds a held direction takes to build from walk to run
 when Circuit plays the file. Leap is stored. Circuit does not use it as a
 jump multiplier.
+
+Click the kind row to cycle side, overworld, town, dungeon, building, and
+cave. Side is the side-scroller and the save omits that line. Any other kind
+is written under that level as `kind town` (or whichever word you stopped
+on). Circuit ignores the line. A level that has no kind line opens as side.
+
+The spawn row shows this level's player column and row. It reads `none`
+until the file sets both. Save writes `spawn <col> <row>` under that level
+when both are set, and leaves the line out otherwise. Circuit ignores it.
+A Circuit file that has no spawn line still saves without one. The cell is
+not a painted object. An inn or a shop is its own object, with its own
+picture and its gate name.
 
 ## Attributes
 
@@ -102,6 +114,15 @@ edge. A pair that is not one of those still loads, shows as the two numbers,
 and is kept on the next save. The next click then starts again at up.
 Objects and enemies do not have this row. `0` and `0` stays a square. Save
 writes `sleft` and `sright` only when one of them is not 0.
+
+Objects also have a gate row and a name row. Click gate to cycle none,
+portal, shop, and inn. Click name, type a word, and Enter stores it. The
+word is letters, digits, a hyphen, or an underscore, at most 23 characters.
+Q is a letter on that row. Save writes one line when the gate is not none
+and the name is not empty: `attr <asset> portal <name>`, or `shop`, or `inn`.
+Two cells painted with the same asset share that gate. A portal that needs
+its own name is its own object, with whatever picture you assign. Blocks
+and enemies do not show this row. Circuit does not read it.
 
 Enemies do not show that effect list. Their rows are hit points, defense,
 offense, motion, speed, and zone, then where, col, and row. Motion cycles
@@ -175,9 +196,12 @@ write it. Delete removes the file you click.
 Save overwrites the open file. The order is the level count, then each
 asset with its attribute lines and, for enemies and objects, two behavior
 lines, then one `sound` line per assigned event, then one `character anim`
-line, then each level. A level is its header, `music` when a track is set,
-up to four `layer` lines, and horizontal `span` lines. Empty cells are
-skipped. An entity is not written as a span.
+line, then one `link <a> <b>` line for each gate pair, then each level. A
+level is its header, `kind` when the map is not a side-scroller, `spawn`
+when that level has a player cell, `music`
+when a track is set, up to four `layer` lines, and horizontal `span` lines.
+Empty cells are skipped. An entity is not written as a span. A gate name is
+written with the other attribute lines for that asset.
 
 The grammar of those lines is `docs/LEVEL.md`.
 

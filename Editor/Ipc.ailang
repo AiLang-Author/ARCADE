@@ -143,6 +143,13 @@ FixedPool.Ed {
     "mn": Initialize=0, CanChange=True
     "mus": Initialize=0, CanChange=True
     "mcat": Initialize=0, CanChange=True
+    "kind": Initialize=0, CanChange=True
+    "spawnx": Initialize=-1, CanChange=True
+    "spawny": Initialize=-1, CanChange=True
+    "role": Initialize=0, CanChange=True
+    "gate": Initialize=0, CanChange=True
+    "nlink": Initialize=0, CanChange=True
+    "link": Initialize=0, CanChange=True
 }
 
 Function.Ed_Ensure {
